@@ -26,6 +26,7 @@ HEADERS=helpers.h\
 	vehicle.h\
 	world.h\
 	world_viewer.h\
+	common.h\
 
 %.o:	%.c $(HEADERS)
 	$(CC) $(CCOPTS) -c -o $@  $<
@@ -39,7 +40,7 @@ libso_game.a: $(OBJS)
 	$(AR) -rcs $@ $^
 	$(RM) $(OBJS)
 
-so_game: so_game.c libso_game.a 
+so_game: so_game_client.c libso_game.a 
 	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
 
 test_packets_serialization: test_packets_serialization.c libso_game.a  

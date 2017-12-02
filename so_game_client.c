@@ -4,18 +4,21 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
-
+#include <arpa/inet.h>  // htons() and inet_addr()
+#include <netinet/in.h> // struct sockaddr_in
+#include <sys/socket.h>
+#include "common.h"
 #include "image.h"
 #include "surface.h"
 #include "world.h"
 #include "vehicle.h"
 #include "world_viewer.h"
-
+#include "client_op.h"
 int window;
 WorldViewer viewer;
 World world;
 Vehicle* vehicle; // The vehicle
-
+int id;
 void keyPressed(unsigned char key, int x, int y)
 {
   switch(key){
@@ -82,15 +85,15 @@ void idle(void) {
   World_update(&world);
   usleep(30000);
   glutPostRedisplay();
-  
+
   // decay the commands
   vehicle->translational_force_update *= 0.999;
   vehicle->rotational_force_update *= 0.7;
 }
 
 int main(int argc, char **argv) {
-  if (argc<3) {
-    printf("usage: %s <server_address> <player texture>\n", argv[1]);
+  if (argc<4) {
+    printf("usage: %s <server_address> <player texture> <port-server>\n", argv[1]);
     exit(-1);
   }
 
@@ -101,7 +104,7 @@ int main(int argc, char **argv) {
   } else {
     printf("Fail! \n");
   }
-  
+
   Image* my_texture_for_server;
   // todo: connect to the server
   //   -get ad id
@@ -114,9 +117,52 @@ int main(int argc, char **argv) {
   Image* map_elevation;
   Image* map_texture;
   Image* my_texture_from_server;
+  long tmp = strtol(argv[1], NULL, 0);
+  if (tmp < 1024 || tmp > 49151) {
+	  fprintf(stderr, "Use a port number between 1024 and 49151.\n");
+	  exit(EXIT_FAILURE);
+      }
+    uint16_t port_number_no = htons((uint16_t)tmp); // we use network byte order
+	int socket_desc = socket(AF_INET, SOCK_STREAM, 0);
+    in_addr_t ip_addr = inet_addr("127.0.0.1");
+    ERROR_HELPER(socket_desc, "Impossibile creare una socket");
+	struct sockaddr_in server_addr = {0}; // some fields are required to be filled with 0
+    server_addr.sin_addr.s_addr = ip_addr;
+    server_addr.sin_family      = AF_INET;
+    server_addr.sin_port        = port_number_no;
+	int ret= connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
+    ERROR_HELPER(ret, "Impossibile connettersi al server");
+    fprintf(stderr, "Connessione al server stabilita!\n");
+    int msg_len=0;
+    int buf_len=1000000;
+    char* buf=(char*)malloc(sizeof(char)*buf_len);
+
+    //Get ID
+    ret=send_request_type(socket_desc,Type.GetId);
+    ERROR_HELPER(ret,"[Main] Richiesta ID Fallita");
+    IdPacket* pk=get_next_IdPacket(socket_desc);
+    id=pk->id;
+    free(pk);
+
+    //Get map_elevation
+    ret=send_request_type(socket_desc,Type.GetElevation);
+    ERROR_HELPER(ret,"[Main] Richiesta ID Fallita");
+    ImagePacket* imgp=get_next_ImagePacket(socket_desc);
+    Image* map_elevation=imgp
+
+    //Get map_texture
+    ret=send_request_type(socket_desc,Type.GetTexture);
+    ERROR_HELPER(ret,"[Main] Richiesta ID Fallita");
+    ImagePacket* imgp=get_next_ImagePacket(socket_desc);
+    Image* map_texture=imgp;
+
+    //send texture
+    ret=send_client_Texture(socket,my_texture,id);
+    ERROR_HELPER(ret,"[Main] Invio texture fallito");
+
 
   // construct the world
-  World_init(&world, map_elevation, map_texture 0.5, 0.5, 0.5);
+  World_init(&world, map_elevation, map_texture,0.5, 0.5, 0.5);
   vehicle=(Vehicle*) malloc(sizeof(Vehicle));
   Vehicle_init(&vehicle, &world, my_id, my_texture_from_server);
   World_addVehicle(&world, v);
@@ -128,24 +174,8 @@ int main(int argc, char **argv) {
   // when the server notifies a new player has joined the game
   // request the texture and add the player to the pool
   /*FILLME*/
-  
-  // initialize GL and start the game
-  glutInit(&argc, argv);
-  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-  glutCreateWindow("main");
 
-  // set the callbacks
-  glutDisplayFunc(display);
-  glutIdleFunc(idle);
-  glutSpecialFunc(specialInput);
-  glutKeyboardFunc(keyPressed);
-  glutReshapeFunc(reshape);
-  
-  WorldViewer_init(&viewer, &world, vehicle);
-  
-  // run the main GL loop
-  glutMainLoop();
-
+    WorldViewer_runGlobal(&world, vehicle, &argc, argv);
   // check out the images not needed anymore
   Image_free(vehicle_texture);
   Image_free(surface_texture);
@@ -153,5 +183,5 @@ int main(int argc, char **argv) {
 
   // cleanup
   World_destroy(&world);
-  return 0;             
+  return 0;
 }

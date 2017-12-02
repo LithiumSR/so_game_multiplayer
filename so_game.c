@@ -37,9 +37,10 @@ int main(int argc, char **argv) {
     printf("usage: %s <elevation_image> <texture_image>\n", argv[1]);
     exit(-1);
   }
-  char* elevation_filename=argv[1];
-  char* texture_filename=argv[2];
+  char* elevation_filename="./images/test.pgm";
+  char* texture_filename="./images/test.ppm";
   char* vehicle_texture_filename="./images/arrow-right.ppm";
+
   printf("loading elevation image from %s ... ", elevation_filename);
 
   // load the images
@@ -82,14 +83,14 @@ int main(int argc, char **argv) {
     .run=1,
     .world=&world
   };
-  
+
   pthread_attr_init(&runner_attrs);
   pthread_create(&runner_thread, &runner_attrs, updater_thread, &runner_args);
   WorldViewer_runGlobal(&world, vehicle, &argc, argv);
   runner_args.run=0;
   void* retval;
   pthread_join(runner_thread, &retval);
-  
+
   // check out the images not needed anymore
   Image_free(vehicle_texture);
   Image_free(surface_texture);
@@ -97,5 +98,5 @@ int main(int argc, char **argv) {
 
   // cleanup
   World_destroy(&world);
-  return 0;             
+  return 0;
 }
