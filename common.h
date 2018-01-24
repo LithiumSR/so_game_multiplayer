@@ -1,6 +1,6 @@
 #ifndef COMMON_H
 #define COMMON_H
-
+#include "errno.h"
 // macro to simplify error handling
 #define GENERIC_ERROR_HELPER(cond, errCode, msg) do {               \
         if (cond) {                                                 \
