@@ -14,82 +14,12 @@
 #include "vehicle.h"
 #include "world_viewer.h"
 #include "client_op.h"
+#include "so_game_protocol.h"
+
 int window;
-WorldViewer viewer;
 World world;
 Vehicle* vehicle; // The vehicle
 int id;
-void keyPressed(unsigned char key, int x, int y)
-{
-  switch(key){
-  case 27:
-    glutDestroyWindow(window);
-    exit(0);
-  case ' ':
-    vehicle->translational_force_update = 0;
-    vehicle->rotational_force_update = 0;
-    break;
-  case '+':
-    viewer.zoom *= 1.1f;
-    break;
-  case '-':
-    viewer.zoom /= 1.1f;
-    break;
-  case '1':
-    viewer.view_type = Inside;
-    break;
-  case '2':
-    viewer.view_type = Outside;
-    break;
-  case '3':
-    viewer.view_type = Global;
-    break;
-  }
-}
-
-
-void specialInput(int key, int x, int y) {
-  switch(key){
-  case GLUT_KEY_UP:
-    vehicle->translational_force_update += 0.1;
-    break;
-  case GLUT_KEY_DOWN:
-    vehicle->translational_force_update -= 0.1;
-    break;
-  case GLUT_KEY_LEFT:
-    vehicle->rotational_force_update += 0.1;
-    break;
-  case GLUT_KEY_RIGHT:
-    vehicle->rotational_force_update -= 0.1;
-    break;
-  case GLUT_KEY_PAGE_UP:
-    viewer.camera_z+=0.1;
-    break;
-  case GLUT_KEY_PAGE_DOWN:
-    viewer.camera_z-=0.1;
-    break;
-  }
-}
-
-
-void display(void) {
-  WorldViewer_draw(&viewer);
-}
-
-
-void reshape(int width, int height) {
-  WorldViewer_reshapeViewport(&viewer, width, height);
-}
-
-void idle(void) {
-  World_update(&world);
-  usleep(30000);
-  glutPostRedisplay();
-
-  // decay the commands
-  vehicle->translational_force_update *= 0.999;
-  vehicle->rotational_force_update *= 0.7;
-}
 
 int main(int argc, char **argv) {
   if (argc<4) {
@@ -105,18 +35,13 @@ int main(int argc, char **argv) {
     printf("Fail! \n");
   }
 
-  Image* my_texture_for_server;
   // todo: connect to the server
   //   -get ad id
   //   -send your texture to the server (so that all can see you)
   //   -get an elevation map
   //   -get the texture of the surface
 
-  // these come from the server
-  int my_id;
-  Image* map_elevation;
-  Image* map_texture;
-  Image* my_texture_from_server;
+  //Image* my_texture_from_server;
   long tmp = strtol(argv[1], NULL, 0);
   if (tmp < 1024 || tmp > 49151) {
 	  fprintf(stderr, "Use a port number between 1024 and 49151.\n");
@@ -133,39 +58,40 @@ int main(int argc, char **argv) {
 	int ret= connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
     ERROR_HELPER(ret, "Impossibile connettersi al server");
     fprintf(stderr, "Connessione al server stabilita!\n");
-    int msg_len=0;
-    int buf_len=1000000;
-    char* buf=(char*)malloc(sizeof(char)*buf_len);
+    //We will see if are needed
+    //int msg_len=0;
+    //int buf_len=1000000;
+    //char* buf=(char*)malloc(sizeof(char)*buf_len);
 
     //Get ID
-    ret=send_request_type(socket_desc,Type.GetId);
+    ret=send_request_type(socket_desc,GetId);
     ERROR_HELPER(ret,"[Main] Richiesta ID Fallita");
     IdPacket* pk=get_next_IdPacket(socket_desc);
     id=pk->id;
     free(pk);
 
     //Get map_elevation
-    ret=send_request_type(socket_desc,Type.GetElevation);
-    ERROR_HELPER(ret,"[Main] Richiesta ID Fallita");
-    ImagePacket* imgp=get_next_ImagePacket(socket_desc);
-    Image* map_elevation=imgp
+    ret=send_request_type(socket_desc,GetElevation);
+    ERROR_HELPER(ret,"[Main] Richiesta GetElevation Fallita");
+    ImagePacket* packet_elevation=get_next_ImagePacket(socket_desc);
+    Image* map_elevation=packet_elevation->image;
 
     //Get map_texture
-    ret=send_request_type(socket_desc,Type.GetTexture);
-    ERROR_HELPER(ret,"[Main] Richiesta ID Fallita");
-    ImagePacket* imgp=get_next_ImagePacket(socket_desc);
-    Image* map_texture=imgp;
+    ret=send_request_type(socket_desc,GetTexture);
+    ERROR_HELPER(ret,"[Main] Richiesta GetTexture Fallita");
+    ImagePacket* packet_map_texture=get_next_ImagePacket(socket_desc);
+    Image* map_texture=packet_map_texture->image;
 
     //send texture
-    ret=send_client_Texture(socket,my_texture,id);
+    ret=send_client_Texture(socket_desc,my_texture,id);
     ERROR_HELPER(ret,"[Main] Invio texture fallito");
 
 
   // construct the world
   World_init(&world, map_elevation, map_texture,0.5, 0.5, 0.5);
   vehicle=(Vehicle*) malloc(sizeof(Vehicle));
-  Vehicle_init(&vehicle, &world, my_id, my_texture_from_server);
-  World_addVehicle(&world, v);
+  Vehicle_init(vehicle, &world, id, my_texture);
+  World_addVehicle(&world, vehicle);
 
   // spawn a thread that will listen the update messages from
   // the server, and sends back the controls
@@ -177,11 +103,12 @@ int main(int argc, char **argv) {
 
     WorldViewer_runGlobal(&world, vehicle, &argc, argv);
   // check out the images not needed anymore
-  Image_free(vehicle_texture);
-  Image_free(surface_texture);
-  Image_free(surface_elevation);
+  Image_free(my_texture);
+  Image_free(map_elevation);
+  Image_free(map_texture);
 
-  // cleanup
+  // world cleanup
+  //Vehicle_destroy(vehicle); Not needed because world destroy does that for me
   World_destroy(&world);
   return 0;
 }
