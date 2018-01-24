@@ -97,12 +97,18 @@ int main(int argc, char const *argv[]) {
   w_head.type = WorldUpdate;
 
   world_packet->header = w_head;
-  world_packet->num_vehicles = 2;
+  world_packet->num_vehicles = 1;
   world_packet->updates = update_block;
   
-  printf("world_packet with:\ntype\t%d\nsize\t%d\n",
+  printf("world_packet with:\ntype\t%d\nsize\t%d\nnum_v\t%d\n",
       world_packet->header.type,
-      world_packet->header.size);
+      world_packet->header.size,
+      world_packet->num_vehicles);
+  printf("update_block:\nid\t\t%d\n(x,y,theta)\t(%f,%f,%f)\n", 
+    world_packet->updates->id,
+    world_packet->updates->x,
+    world_packet->updates->y,
+    world_packet->updates->theta);
 
 
   printf("serialize\n");
@@ -113,9 +119,15 @@ int main(int argc, char const *argv[]) {
   printf("deserialize\n");
   WorldUpdatePacket* deserialized_wu_packet = (WorldUpdatePacket*)Packet_deserialize(world_buffer, world_buffer_size);
 
-  printf("deserialized packet with:\ntype\t%d\nsize\t%d\n",
+  printf("deserialized packet with:\ntype\t%d\nsize\t%d\nnum_v\t%d\n",
       deserialized_wu_packet->header.type,
-      deserialized_wu_packet->header.size);
+      deserialized_wu_packet->header.size,
+      deserialized_wu_packet->num_vehicles);
+  printf("update_block:\nid\t\t%d\n(x,y,theta)\t(%f,%f,%f)\n", 
+      deserialized_wu_packet->updates->id,
+      deserialized_wu_packet->updates->x,
+      deserialized_wu_packet->updates->y,
+      deserialized_wu_packet->updates->theta);
 
   Packet_free(&world_packet->header);
   Packet_free(&deserialized_wu_packet->header);

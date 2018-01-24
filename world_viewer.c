@@ -255,8 +255,24 @@ void Surface_draw(Surface* s) {
 }
 
 
+void Vehicle_applyTexture(Vehicle* v) {
+  printf("applying texture %p to vehicle %p\n", v->texture, v);
+  v->_destructor=Vehicle_destructor;
+  if (v->gl_list>-1)
+    glDeleteLists(v->gl_list, 1);
+  v->gl_list = -1;
+  if (v->gl_texture>-1)
+    glDeleteTextures(1, (unsigned int*) &v->gl_texture);
+  v->gl_texture = -1;
+  if (v->texture)
+    v->gl_texture=Image_toTexture(v->texture);
+}
+
 void Vehicle_draw(Vehicle* v){
   if (v->gl_list<0){
+    if (v->texture) {
+      Vehicle_applyTexture(v);
+    }
     v->gl_list = glGenLists(1);
     glNewList(v->gl_list, GL_COMPILE);
     if (v->gl_texture>-1){
@@ -277,20 +293,6 @@ void Vehicle_draw(Vehicle* v){
   glPopMatrix();
 }
 
-
-void Vehicle_applyTexture(Vehicle* v, Image* img) {
-  v->texture=img;
-  printf("applying texture %p to vehicle %p\n", img, v);
-  v->_destructor=Vehicle_destructor;
-  if (v->gl_list>-1)
-    glDeleteLists(v->gl_list, 1);
-  v->gl_list = -1;
-  if (v->gl_texture>-1)
-    glDeleteTextures(1, (unsigned int*) &v->gl_texture);
-  v->gl_texture = -1;
-  if (img)
-    v->gl_texture=Image_toTexture(img);
-}
 
 void WorldViewer_init(WorldViewer* viewer,
 		      World* w,
@@ -317,7 +319,7 @@ void WorldViewer_init(WorldViewer* viewer,
   ListItem* item=viewer->world->vehicles.first;
   while(item){
     Vehicle* v=(Vehicle*)item;
-    Vehicle_applyTexture(v, v->texture);
+    Vehicle_applyTexture(v);
     if (v==self){
       viewer->self=self;
     }
