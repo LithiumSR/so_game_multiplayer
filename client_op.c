@@ -17,83 +17,97 @@
 // converts a well formed packet into a string in dest.
 // returns the written bytes
 // h is the packet to write
-int send_request_type(int socket,Type tp){
-    PacketHeader* ph=(PacketHeader*)malloc(sizeof(PacketHeader));
-    ph->type=GetId;
-    char* packet_to_send=malloc(sizeof(PacketHeader));
-    int ret=Packet_serialize(packet_to_send,ph);
-    if (ret==-1) ERROR_HELPER(ret,"Errore serializzazione idPacket");
+int get_Client_ID(int socket, char* buf_send, int buf_send_len, char* buf_recv, int buf_recv_len){
+    int ret;
+    PacketHeader ph;
+    ph.type=GetId;
+
+    int size=Packet_serialize(buf_send, &ph);
+    if (size==-1) ERROR_HELPER(ret,"Errore serializzazione idPacket");
     int bytes_sent=0;
-    int bytes_to_send=strlen(packet_to_send);
 
-    while(bytes_sent<bytes_to_send){
-        ret=send(socket,packet_to_send+bytes_sent,bytes_to_send-bytes_sent,0);
+    while(bytes_sent<size){
+        ret=send(socket,buf_send+bytes_sent,size-bytes_sent,0);
         if (ret==-1 && errno==EINTR) continue;
-			ERROR_HELPER(ret,"Errore invio");
-			if (ret==0) break;
-			bytes_sent+=ret;
+        ERROR_HELPER(ret,"Errore invio");
+        if (ret==0) break;
+        bytes_sent+=ret;
 		}
-    Packet_free(ph);
-    free(packet_to_send);
-    return ret;
-}
+    int bytes_read=0;
 
-IdPacket* get_next_IdPacket(int socket){
-    char buf[sizeof(IdPacket)]={0};
-    int packet_len=sizeof(IdPacket);
-    int bytes_received=0;
-    int ret=0;
-    while (bytes_received<packet_len) {
-        ret = recv(socket, buf + bytes_received, 1, 0);
-        if (ret == -1 && errno == EINTR) continue;
-        ERROR_HELPER(ret, "Cannot read from socket");
-        bytes_received+=ret;
+    while(1){
+        ret= recv(socket, buf_recv + bytes_read ,1,0);
+        if( ret==-1 && errno==EINTR){
+            continue;
+            ERROR_HELPER(ret,"Errore nella recv dell'ID");
+        }
+        if(ret==0){
+            break;
+        }
+        if( buf_send[bytes_read++]== '\n') break;
     }
-    PacketHeader* ph=Packet_deserialize(buf,packet_len);
-    IdPacket* ip= (IdPacket*)ph;
-    return ip;
+
+    IdPacket* received = (ImagePacket*)Packet_deserialize(buf_recv,bytes_read);
+    return received->id;
 }
 
-ImagePacket* get_next_ImagePacket(int socket_desc){
-    char buf[sizeof(ImagePacket)]={0};
-    int packet_len=sizeof(ImagePacket);
+ImagePacket* get_image_elevation(int socket,int id,char* buf_send, int buf_send_len, char* buf_recv, int buf_recv_len){
+    PacketHeader ph;
+    ph.type=PostElevation;
+
     int ret=0;
-    int bytes_received=0;
-    while (bytes_received<packet_len) {
-        ret = recv(socket_desc, buf + bytes_received, 1, 0);
+    int bytes_sent=0;
+    int bytes_read=0;
+
+    int size=Packet_serialize(buf_send, &ph);
+
+    while(bytes_sent<size){
+        ret=send(socket,buf_send+bytes_sent,size-bytes_sent,0);
+        if (ret==-1 && errno==EINTR) continue;
+        ERROR_HELPER(ret,"Failed sending map elevation request");
+        if (ret==0) break;
+        bytes_sent+=ret;
+		}
+
+    while (1) {
+        ret = recv(socket_desc, buf_recv + bytes_read, 1, 0);
         if (ret == -1 && errno == EINTR) continue;
-        ERROR_HELPER(ret, "Cannot read from socket");
-        bytes_received+=ret;
+        ERROR_HELPER(ret, "Error while receiving map elevation");
+        if( buf_send[bytes_read++]== '\n') break;
     }
-    //More work is needed here
-    PacketHeader* ph=Packet_deserialize(buf,packet_len);
-    ImagePacket* ip=(ImagePacket*) ph;
-    return ip;
+
+    ImagePacket* received= (ImagePacket*)Packet_deserialize(buf_recv, bytes_read);
+
+    return received->image;
 }
 
-int send_client_Texture(int socket, Image* my_texture, int id){
+int get_image_texture(int socket,int id,char* buf_send, int buf_send_len, char* buf_recv, int buf_recv_len){
     PacketHeader ph;
     ph.type=PostTexture;
-    ImagePacket* imgp= malloc(sizeof(ImagePacket));
-    imgp->header=ph;
-    imgp->id=id;
-    imgp->image=my_texture;
-    char* packet_to_send = malloc(sizeof(ImagePacket*)+sizeof(Image));
+    int bytes_sent=0;
+    int bytes_read=0;
+
+    int size=Packet_serialize(buf_send, &ph);
     int ret=0;
+
     //More work needed here
 
-    if (ret==-1) return -1;
-    int bytes_sent=0;
-    int bytes_to_send=strlen(packet_to_send);
-
-    while(bytes_sent<bytes_to_send){
-        ret=send(socket,packet_to_send+bytes_sent,bytes_to_send-bytes_sent,0);
+    while(bytes_sent<size){
+        ret=send(socket,buf_send+bytes_sent,size-bytes_sent,0);
         if (ret==-1 && errno==EINTR) continue;
-			ERROR_HELPER(ret,"Errore invio");
-			if (ret==0) break;
-			bytes_sent+=ret;
+        ERROR_HELPER(ret,"Failed sending map elevation request");
+        if (ret==0) break;
+        bytes_sent+=ret;
 		}
-    //Packet_free(ph);
-    free(packet_to_send);
-    return ret;
+
+    while (1) {
+        ret = recv(socket_desc, buf_recv + bytes_read, 1, 0);
+        if (ret == -1 && errno == EINTR) continue;
+        ERROR_HELPER(ret, "Error while receiving map elevation");
+        if( buf_send[bytes_read++]== '\n') break;
+    }
+
+    ImagePacket* received= (ImagePacket*)Packet_deserialize(buf_recv, bytes_read);
+
+    return received->image;
 }
