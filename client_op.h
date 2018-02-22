@@ -4,7 +4,6 @@
 // converts a well formed packet into a string in dest.
 // returns the written bytes
 // h is the packet to write
-int send_request_type(int socket,Type tp);
-IdPacket* get_next_IdPacket(int socket);
-ImagePacket* get_next_ImagePacket(int socket_desc);
-int send_client_Texture(int socket, Image* my_texture, int id);
+int get_Client_ID(int socket, char* buf_send, int buf_send_len, char* buf_recv, int buf_recv_len)
+Image* get_image_elevation(int socket,int id,char* buf_send, int buf_send_len, char* buf_recv, int buf_recv_len)
+Image* get_image_texture(int socket,int id,char* buf_send, int buf_send_len, char* buf_recv, int buf_recv_len)

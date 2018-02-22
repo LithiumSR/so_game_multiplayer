@@ -51,7 +51,7 @@ int get_Client_ID(int socket, char* buf_send, int buf_send_len, char* buf_recv, 
     return received->id;
 }
 
-ImagePacket* get_image_elevation(int socket,int id,char* buf_send, int buf_send_len, char* buf_recv, int buf_recv_len){
+Image* get_image_elevation(int socket,int id,char* buf_send, int buf_send_len, char* buf_recv, int buf_recv_len){
     PacketHeader ph;
     ph.type=PostElevation;
 
@@ -70,7 +70,7 @@ ImagePacket* get_image_elevation(int socket,int id,char* buf_send, int buf_send_
 		}
 
     while (1) {
-        ret = recv(socket_desc, buf_recv + bytes_read, 1, 0);
+        ret = recv(socket, buf_recv + bytes_read, 1, 0);
         if (ret == -1 && errno == EINTR) continue;
         ERROR_HELPER(ret, "Error while receiving map elevation");
         if( buf_send[bytes_read++]== '\n') break;
@@ -81,7 +81,7 @@ ImagePacket* get_image_elevation(int socket,int id,char* buf_send, int buf_send_
     return received->image;
 }
 
-int get_image_texture(int socket,int id,char* buf_send, int buf_send_len, char* buf_recv, int buf_recv_len){
+Image* get_image_texture(int socket,int id,char* buf_send, int buf_send_len, char* buf_recv, int buf_recv_len){
     PacketHeader ph;
     ph.type=PostTexture;
     int bytes_sent=0;
@@ -101,7 +101,7 @@ int get_image_texture(int socket,int id,char* buf_send, int buf_send_len, char* 
 		}
 
     while (1) {
-        ret = recv(socket_desc, buf_recv + bytes_read, 1, 0);
+        ret = recv(socket, buf_recv + bytes_read, 1, 0);
         if (ret == -1 && errno == EINTR) continue;
         ERROR_HELPER(ret, "Error while receiving map elevation");
         if( buf_send[bytes_read++]== '\n') break;
