@@ -17,6 +17,7 @@ int Packet_serialize(char* dest, const PacketHeader* h){
       break;
     }
     case PostTexture:
+    case PostDisconnect:
     case PostElevation:
     {
       printf("cast\n");
@@ -69,6 +70,7 @@ PacketHeader* Packet_deserialize(const char* buffer, int size){
       return (PacketHeader*)id_packet;
     }
     case PostTexture:
+    case PostDisconnect:
     case PostElevation:
     {
       ImagePacket* img_packet=(ImagePacket*) malloc(sizeof(ImagePacket));
@@ -94,7 +96,7 @@ PacketHeader* Packet_deserialize(const char* buffer, int size){
       return (PacketHeader*) world_packet;
     }
     case VehicleUpdate:
-    { 
+    {
       VehicleUpdatePacket* vehicle_packet=(VehicleUpdatePacket*) malloc(sizeof(VehicleUpdatePacket));
       memcpy(vehicle_packet, buffer, sizeof(VehicleUpdatePacket));
       return(PacketHeader*) vehicle_packet;
