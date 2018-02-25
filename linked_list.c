@@ -1,6 +1,5 @@
 #include "linked_list.h"
 #include <assert.h>
-
 void List_init(ListHead* head) {
   head->first=0;
   head->last=0;
@@ -18,10 +17,19 @@ ListItem* List_find(ListHead* head, ListItem* item) {
   return 0;
 }
 
+ListItem* List_find_by_id(ListHead* head, int id){
+	ListItem* tmp=head->first;
+	while(tmp){
+		if(tmp->id==id) return tmp;
+		else tmp=tmp->next;
+	}
+	return 0;
+}
+
 ListItem* List_insert(ListHead* head, ListItem* prev, ListItem* item) {
   if (item->next || item->prev)
     return 0;
-  
+
 #ifdef _LIST_DEBUG_
   // we check that the element is not in the list
   ListItem* instance=List_find(head, item);
