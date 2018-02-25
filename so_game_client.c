@@ -16,60 +16,31 @@
 #include "world_viewer.h"
 #include "client_op.h"
 #include "so_game_protocol.h"
+#include <fcntl.h>
+
 #define PORT 8888
 #define SERVER "127.0.0.1"
-#define BUFLEN 3000
+#define WORLDSIZE 512
 int window;
 World world;
 Vehicle* vehicle; // The vehicle
 int id;
 uint16_t  port_number_no;
 
-void getUpdates(void){
-    int nBytes;
-    struct sockaddr_in serverAddr;
-    socklen_t addr_size;
-    char buffer[BUFLEN];
-    int clientSocket=socket(AF_INET, SOCK_DGRAM, 0);
-    ERROR_HELPER(clientSocket,"Errore creazione socket UDP");
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(PORT);
-    serverAddr.sin_addr.s_addr = inet_addr(SERVER);
-    memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);
-    addr_size = sizeof serverAddr;
-    while(1){
-        printf("Type a sentence to send to server:\n");
-        char* ret=fgets(buffer,1024,stdin);
-        if (ret==NULL) ERROR_HELPER(-1,"Errore fgets");
-        printf("You typed: %s",buffer);
-        nBytes = strlen(buffer) + 1;
-        nBytes = recvfrom(clientSocket,buffer,1024,0,NULL, NULL);
-        printf("Received from server: %s\n",buffer);
-  }
+typedef struct localWorld{
+    int  ids[512];
+    char v_textures[512];
+    int users_online;
+}localWord;
+
+
+void* listen_routine(void* args){
+    //WIP
 }
 
-void sendUpdates(void){
-    int nBytes;
-    struct sockaddr_in serverAddr;
-    socklen_t addr_size;
-    char buffer[BUFLEN];
-    int clientSocket=socket(AF_INET, SOCK_DGRAM, 0);
-    ERROR_HELPER(clientSocket,"Errore creazione socket UDP");
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(PORT);
-    serverAddr.sin_addr.s_addr = inet_addr(SERVER);
-    memset(serverAddr.sin_zero, '\0', sizeof serverAddr.sin_zero);
-    addr_size = sizeof serverAddr;
-
-    while(1){
-        //VehicleForces* vf=malloc(sizeof(VehicleForces);
-        sendto(clientSocket,buffer,nBytes,0,(struct sockaddr *)&serverAddr,addr_size);
-    }
-
-}
 
 int main(int argc, char **argv) {
-    if (argc<4) {
+    if (argc<5) {
         printf("usage: %s <server_address> <player texture> <port-server>\n", argv[1]);
         exit(-1);
         }
@@ -89,7 +60,7 @@ int main(int argc, char **argv) {
   //   -get the texture of the surface
 
   //Image* my_texture_from_server;
-    long tmp = strtol(argv[1], NULL, 0);
+    long tmp = strtol(argv[4], NULL, 0);
     if (tmp < 1024 || tmp > 49151) {
         fprintf(stderr, "Use a port number between 1024 and 49151.\n");
         exit(EXIT_FAILURE);
@@ -107,18 +78,22 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret, "Impossibile connettersi al server");
     printf("Connessione al server stabilita!\n");
 
-    //We will see if are needed
-    //int msg_len=0;
-    //int buf_len=1000000;
-    //char* buf=(char*)malloc(sizeof(char)*buf_len);
+    fcntl(socket_desc, F_SETFL, fcntl(socket_desc, F_GETFL) | O_NONBLOCK);
 
-    //Get ID
+    printf("Inizio richiesta al server stabilita!\n");
     int id=get_client_ID(socket_desc);
-    printf("[Main] Richiesta ID Completata");
+    printf("[Main] Richiesta ID Completata \n");
     Image* map_elevation=get_image_elevation(socket_desc,id);
-    printf("[Main] Richiesta map_elevation completata");
+    printf("[Main] Richiesta map_elevation completata \n");
     Image* map_texture = get_image_texture(socket_desc,id);
-    printf("[Main] Richiesta map_texture completata");
+    printf("[Main] Richiesta map_texture completata \n");
+    send_vehicle_texture(socket_desc,id);
+    printf("[Main] Client Vehicle texture sent \n");
+
+
+
+    localWord* myLocalWorld = (localWord*)malloc(sizeof(localWord));
+    memset(myLocalWorld->v_textures,0,512);
 
     // construct the world
     World_init(&world, map_elevation, map_texture,0.5, 0.5, 0.5);
@@ -126,7 +101,7 @@ int main(int argc, char **argv) {
     Vehicle_init(vehicle, &world, id, my_texture);
     World_addVehicle(&world, vehicle);
 
-    close(socket_desc);
+    //close(socket_desc);
     //No longer needed
     // spawn a thread that will listen the update messages from
   // the server, and sends back the controls
@@ -136,15 +111,18 @@ int main(int argc, char **argv) {
   // request the texture and add the player to the pool
   /*FILLME*/
 
-    pthread_t thread_background1, thread_background2;
-    ret = pthread_create(&thread_background1,NULL, (void*)&getUpdates, NULL);
-    if (ret!=0) ERROR_HELPER(-1,"Something went wrong when creating the thread");
-    ret = pthread_create(&thread_background2, NULL, (void*)&sendUpdates, NULL);
-    if (ret!=0) ERROR_HELPER(-1,"Something went wrong when creating the thread");
+   pthread_t background_thread;
+
+    //ret= pthread_create(&background_thread, NULL, (void *) listen_routine, (void*) &SOMETHING); WIP
 
 
     WorldViewer_runGlobal(&world, vehicle, &argc, argv);
+
   // check out the images not needed anymore
+
+
+    //ret= pthread_join(background_thread,NULL);
+
     Image_free(my_texture);
     Image_free(map_elevation);
     Image_free(map_texture);
