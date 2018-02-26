@@ -1,6 +1,8 @@
 #ifndef COMMON_H
 #define COMMON_H
 #include "errno.h"
+
+#define DEBUG 1
 // macro to simplify error handling
 #define GENERIC_ERROR_HELPER(cond, errCode, msg) do {               \
         if (cond) {                                                 \
@@ -11,6 +13,14 @@
 
 #define ERROR_HELPER(ret, msg)          GENERIC_ERROR_HELPER((ret < 0), errno, msg)
 #define PTHREAD_ERROR_HELPER(ret, msg)  GENERIC_ERROR_HELPER((ret != 0), ret, msg)
+
+/**
+#define debug_printf(fmt, ...) \
+           do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
+**/
+
+#define debug_print(fmt, ...) \
+            do { if (DEBUG) fprintf(stderr, fmt, ##__VA_ARGS__); } while (0)
 
 /* Configuration parameters */
 #define MAX_CONN_QUEUE  3   // max number of connections the server can queue
