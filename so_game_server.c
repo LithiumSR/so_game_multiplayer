@@ -39,8 +39,7 @@ typedef struct {
 } auth_args;
 
 
-
-int TCP_Packet_handler(char* buf_rcv, char* buf_send, int socket, Image* elevation_map, Image* surface_texture, Image* vehicle_texture){
+int TCP_Packet_handler(char* buf_rcv, char* buf_send, int socket, Image* elevation_map, Image* surface_texture, Image* vehicle_texture, int* isActive){
     PacketHeader* ph_rcv = (PacketHeader*)buf_rcv;
     switch(ph_rcv->type){
         case(GetId): {
@@ -120,6 +119,11 @@ int TCP_Packet_handler(char* buf_rcv, char* buf_send, int socket, Image* elevati
 
             return 0;
         }
+
+        case(PostDisconnect):{
+            *isActive=0;
+            return 0;
+        }
         default: return -1;
     }
     }
@@ -139,15 +143,15 @@ void* auth_routine(void* args){
     user->v_texture = authArgs.args.v_texture;
     List_insert(users, 0, user);
     pthread_mutex_unlock(&mutex);
-
-    while(connectivity){
-        printf("Aspetto un pacchetto \n");
+    int isActive=1;
+    while(connectivity && isActive){
+        debug_print("Waiting for a data packet \n");
         int bytes_read = recv(client_sock,buf_rcv, BUFFSIZE, 0);
         if (bytes_read==0) continue;
         else if (bytes_read<0) break;
-        int size = TCP_Packet_handler(buf_rcv, buf_send,client_sock, authArgs.args.e_texture,authArgs.args.s_texture,authArgs.args.v_texture);
+        int size = TCP_Packet_handler(buf_rcv, buf_send,client_sock, authArgs.args.e_texture,authArgs.args.s_texture,authArgs.args.v_texture,&isActive);
         if(size <= 0 ) continue;
-        printf("Ho ricevuto %d bytes \n. Invio la risposta... \n",size);
+        debug_print("Received %d bytes \n. Sending response... \n",size);
         int bytes_sent=0;
         int ret=0;
         while(bytes_sent<size){
@@ -158,10 +162,7 @@ void* auth_routine(void* args){
             bytes_sent+=ret;
 		}
 
-
-        //int bytes_sent = send(client_sock, buf_send, size,0);
-
-        printf("Risposta inviata. \n");
+        debug_print("Response sent. \n");
         memset((void*)buf_rcv,'\0',BUFFSIZE);
         memset((void*)buf_send,'\0',BUFFSIZE);
 
@@ -178,7 +179,7 @@ void* auth_routine(void* args){
 void* tcp_flow(void* args){
     tcp_args tcpArgs = *(tcp_args*)args;
     int server_tcp=tcpArgs.server_tcp;
-    printf("Inizio ad aspettare i client");
+    debug_print("Waiting for a client");
     while(connectivity==1){
         int addrlen = sizeof(struct sockaddr_in);
 		struct sockaddr_in client;
@@ -200,6 +201,22 @@ void* tcp_flow(void* args){
 
 
 
+void list_cleanup(ListHead* users){
+
+    ListItem* user = users->first;
+    ListItem* tmp;
+    int i=0;
+    while(i<users->size){
+		List_detach(users, user);
+		tmp = user;
+        Image_free(tmp->v_texture);
+		close(tmp->id);
+        if(i!= users->size-1) user = user->next; //prevent seg.fault
+        free(tmp);
+        i++;
+	}
+    free(users);
+}
 
 
 int main(int argc, char **argv) {
@@ -261,8 +278,8 @@ int main(int argc, char **argv) {
     int reuseaddr_opt = 1; // recover server if a crash occurs
     ret = setsockopt(server_tcp, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_opt, sizeof(reuseaddr_opt));
     ERROR_HELPER(ret, "[MAIN THREAD] Impossibile settare l'opzione SO_REUSEADDR per socket server_tcp");
-    //ret = SetSocketBlockingEnabled(server_tcp,1);
-	//ERROR_HELPER(ret, "[MAIN THREAD] Impossibile rendere la socket non bloccante con  SetSocketBlockingEnabled()");
+    ret = SetSocketBlockingEnabled(server_tcp,1);
+	ERROR_HELPER(ret, "[MAIN THREAD] Impossibile rendere la socket non bloccante con  SetSocketBlockingEnabled()");
 
     int sockaddr_len = sizeof(struct sockaddr_in);
     ret = bind(server_tcp, (struct sockaddr*) &server_addr, sockaddr_len); // binding dell'indirizzo
@@ -286,10 +303,10 @@ int main(int argc, char **argv) {
     //preparing 2 threads (1 for udp socket, 1 for tcp socket)
     tcp_args tcpArgs;
 
-    tcpArgs.server_tcp= server_tcp;
-    tcpArgs.e_texture= surface_elevation;
-    tcpArgs.s_texture 	= surface_texture;
-    tcpArgs.v_texture 	= vehicle_texture;
+    tcpArgs.server_tcp = server_tcp;
+    tcpArgs.e_texture = surface_elevation;
+    tcpArgs.s_texture = surface_texture;
+    tcpArgs.v_texture = vehicle_texture;
 
     pthread_t threadTCP,threadUDP;
 
@@ -299,11 +316,13 @@ int main(int argc, char **argv) {
     //ret = pthread_create(&threadUDP, NULL, udp_flow, (void*) &socket_udp);
     //PTHREAD_ERROR_HELPER(ret, "[Main Thread] Creazione thread udp fallita");
 
-    pthread_join(threadTCP,NULL);
-    fprintf(stdout,"[MAIN THREAD] Chiudo server \n");
+    ret= pthread_join(threadTCP,NULL);
+    PTHREAD_ERROR_HELPER(ret,"[Main Thread] Failed threadTCP join");
     //pthread_join(threadUDP,NULL);
 
     //WIP  SERVER CLEANUP
+    debug_print("Closing the server...");
+    list_cleanup(users);
     close(server_tcp);
 	close(server_udp);
 
