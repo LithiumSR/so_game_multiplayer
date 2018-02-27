@@ -2,7 +2,7 @@
 #include "surface.h"
 #include "image.h"
 #include "linked_list.h"
-
+#include <semaphore.h>
 
 struct World;
 struct Vehicle;
@@ -13,6 +13,7 @@ typedef struct Vehicle {
   int id;
   struct World* world;
   Image* texture;
+  sem_t vsem;
 
   // these are the forces that will be applied after the update
   float translational_force_update;
@@ -40,6 +41,10 @@ typedef struct Vehicle {
 void Vehicle_init(Vehicle* v, struct World* w, int id, Image* texture);
 
 void Vehicle_reset(Vehicle* v);
+
+void getForces(Vehicle* v, float* translational_update, float* rotational_update);
+
+void getXYTheta(Vehicle* v,float* x, float* y, float* theta);
 
 int Vehicle_update(Vehicle* v, float dt);
 
