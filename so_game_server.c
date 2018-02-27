@@ -24,6 +24,7 @@
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
+int checkUpdate=1;
 ListHead* users;
 
 typedef struct {
@@ -38,6 +39,31 @@ typedef struct {
     int id_client; //I will use the socket as ID
 } auth_args;
 
+int UDP_Packet_handler(char* buf_rcv,struct sockaddr_in client_addr){
+    PacketHeader* ph=(PacketHeader*)buf_rcv;
+    switch(ph->type){
+        case(VehicleUpdate):{
+            int flag=0;
+            VehicleUpdatePacket* vup=(VehicleUpdatePacket*)Packet_deserialize(buf_rcv, ph->size);
+            pthread_mutex_lock(&mutex);
+            ListItem* client = List_find_by_id(users, vup->id);
+            if(client == NULL) {
+                flag=1;
+                goto END;
+            }
+            client->x=vup->x;
+            client->y=vup->y;
+            client->theta=vup->theta;
+            client->user_addr=client_addr;
+            client->isAddrReady=1;
+            pthread_mutex_unlock(&mutex);
+            END: Packet_free(&vup->header);
+            if(flag) return -1; else return 0;
+        }
+        default: return -1;
+
+    }
+}
 
 int TCP_Packet_handler(char* buf_rcv, char* buf_send, int socket, Image* elevation_map, Image* surface_texture, Image* vehicle_texture, int* isActive){
     PacketHeader* ph_rcv = (PacketHeader*)buf_rcv;
@@ -169,10 +195,9 @@ void* auth_routine(void* args){
     }
 
     pthread_mutex_lock(&mutex);
-    List_detach(users,user);
+    ListItem* el=List_detach(users,user);
     pthread_mutex_unlock(&mutex);
-
-    free(user);
+    free(el);
     pthread_exit(NULL);
 }
 
@@ -201,58 +226,105 @@ void* tcp_flow(void* args){
 
 
 
-void list_cleanup(ListHead* users){
+void* udp_send(void* args){
+    int socket_udp=*(int*)args;
+    char buf_send[BUFFSIZE];
+    char buf_recv[BUFFSIZE];
+    while(connectivity && checkUpdate){
+            PacketHeader ph;
+            ph.type=WorldUpdate;
+            WorldUpdatePacket* wup=(WorldUpdatePacket*)malloc(sizeof(WorldUpdatePacket));
+            wup->header=ph;
+            wup->num_vehicles=users->size;
+            wup->updates=(ClientUpdate*)malloc(sizeof(ClientUpdate)*wup->num_vehicles);
+            pthread_mutex_lock(&mutex);
+            ListItem* client= users->first;
+            int i=0;
+            while(i<(wup->num_vehicles)){
+                ClientUpdate* cup= &(wup->updates[i]);
+                cup->y=client->y;
+                cup->x=client->x;
+                cup->theta=client->theta;
+                cup->id=client->id;
+                if(i<=wup->num_vehicles-1) client = client->next;
+                i++;
+            }
+            pthread_mutex_unlock(&mutex);
+            int size=Packet_serialize(buf_recv,&wup->header);
 
-    ListItem* user = users->first;
-    ListItem* tmp;
-    int i=0;
-    while(i<users->size){
-		List_detach(users, user);
-		tmp = user;
-        Image_free(tmp->v_texture);
-		close(tmp->id);
-        if(i!= users->size-1) user = user->next; //prevent seg.fault
-        free(tmp);
-        i++;
-	}
-    free(users);
+            if(size==0 || size==-1){
+                sleep(1000);
+				continue;
+			}
+
+            pthread_mutex_lock(&mutex);
+            i=0;
+            client=users->first;
+            while(i<(wup->num_vehicles)){
+                if(client->isAddrReady==1){
+                    int ret = sendto(socket_udp, buf_send, size, 0, (struct sockaddr*) &client->user_addr, (socklen_t) sizeof(client->user_addr));
+                    debug_print("Inviato update di %d bytes",ret);
+                }
+                if(i!=wup->num_vehicles - 1) client = client->next;
+                i++;
+            }
+            pthread_mutex_unlock(&mutex);
+        }
+
+    pthread_exit(NULL);
 }
 
+void* udp_receive(void* args){
+    int socket_udp=*(int*)args;
+    char buf_recv[BUFFSIZE];
+    struct sockaddr_in client_addr;
+    while(connectivity){
+        memset(&client_addr, 0, sizeof(client_addr));
+        int ret=recvfrom(socket_udp, buf_recv, BUFFSIZE, 0, (struct sockaddr*) &client_addr, (socklen_t*) sizeof(client_addr));
+        if(ret==-1) connectivity=0;
+		if(ret == 0) continue;
+
+		ret = UDP_Packet_handler(buf_recv,client_addr);
+        sleep(1000);
+    }
+    pthread_exit(NULL);
+}
 
 int main(int argc, char **argv) {
     int ret=0;
   if (argc<4) {
-    printf("usage: %s <elevation_image> <texture_image> <port_number>\n", argv[1]);
+    debug_print("usage: %s <elevation_image> <texture_image> <port_number>\n", argv[1]);
     exit(-1);
   }
   char* elevation_filename=argv[1];
   char* texture_filename=argv[2];
   char* vehicle_texture_filename="./images/arrow-right.ppm";
-  printf("loading elevation image from %s ... ", elevation_filename);
+
 
   // load the images
+debug_print("loading elevation image from %s ... ", elevation_filename);
   Image* surface_elevation = Image_load(elevation_filename);
   if (surface_elevation) {
-    printf("Done! \n");
+    debug_print("Done! \n");
   } else {
-    printf("Fail! \n");
+    debug_print("Fail! \n");
   }
 
 
-  printf("loading texture image from %s ... ", texture_filename);
+  debug_print("loading texture image from %s ... ", texture_filename);
   Image* surface_texture = Image_load(texture_filename);
   if (surface_texture) {
-    printf("Done! \n");
+    debug_print("Done! \n");
   } else {
-    printf("Fail! \n");
+    debug_print("Fail! \n");
   }
 
-  printf("loading vehicle texture (default) from %s ... ", vehicle_texture_filename);
+  debug_print("loading vehicle texture (default) from %s ... ", vehicle_texture_filename);
   Image* vehicle_texture = Image_load(vehicle_texture_filename);
   if (vehicle_texture) {
-    printf("Done! \n");
+    debug_print("Done! \n");
   } else {
-    printf("Fail! \n");
+    debug_print("Fail! \n");
   }
 
 
@@ -308,21 +380,27 @@ int main(int argc, char **argv) {
     tcpArgs.s_texture = surface_texture;
     tcpArgs.v_texture = vehicle_texture;
 
-    pthread_t threadTCP,threadUDP;
+    pthread_t threadTCP,threadUDPReceive,threadUDPSend;
 
     ret = pthread_create(&threadTCP, NULL,tcp_flow, &tcpArgs);
-    PTHREAD_ERROR_HELPER(ret, "[Main Thread] Creazione thread tcp fallita");
+    PTHREAD_ERROR_HELPER(ret, "[MAIN THREAD] Creazione thread tcp fallita");
 
-    //ret = pthread_create(&threadUDP, NULL, udp_flow, (void*) &socket_udp);
-    //PTHREAD_ERROR_HELPER(ret, "[Main Thread] Creazione thread udp fallita");
+    ret = pthread_create(&threadUDPReceive, NULL, udp_receive, (void*) &server_udp);
+    PTHREAD_ERROR_HELPER(ret, "[MAIN THREAD] Creazione thread udp fallita");
+
+    ret = pthread_create(&threadUDPSend, NULL, udp_send, (void*) &server_udp);
+    PTHREAD_ERROR_HELPER(ret, "[MAIN THREAD] Creazione thread udp fallita");
 
     ret= pthread_join(threadTCP,NULL);
-    PTHREAD_ERROR_HELPER(ret,"[Main Thread] Failed threadTCP join");
-    //pthread_join(threadUDP,NULL);
+    PTHREAD_ERROR_HELPER(ret,"[MAIN THREAD] Failed threadTCP join");
+    ret= pthread_join(threadUDPReceive,NULL);
+    PTHREAD_ERROR_HELPER(ret,"[MAIN THREAD] Failed threadUDPReceive join");
+    ret= pthread_join(threadUDPSend,NULL);
+    PTHREAD_ERROR_HELPER(ret,"[MAIN THREAD] Failed threadUDPSend join");
 
     //WIP  SERVER CLEANUP
     debug_print("Closing the server...");
-    list_cleanup(users);
+    List_destroy(users);
     close(server_tcp);
 	close(server_udp);
 
