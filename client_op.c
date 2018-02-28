@@ -14,7 +14,7 @@
 #include "vehicle.h"
 #include "world_viewer.h"
 #include "so_game_protocol.h"
-#define BUFFSIZE 3000
+
 //Used to get ID from server
 int get_client_ID(int socket){
     char buf_send[BUFFSIZE];
@@ -25,7 +25,7 @@ int get_client_ID(int socket){
     ph.type=GetId;
     idpckt->id=-1;
     idpckt->header=ph;
-    printf("Creato pacchetto");
+    debug_print("Creato pacchetto");
 
     int size=Packet_serialize(buf_send, &(idpckt->header));
     if (size==-1) ERROR_HELPER(-1,"Packet serialize didn't worked on ID packet");
@@ -52,7 +52,7 @@ int get_client_ID(int socket){
         else break;
     }
     IdPacket* received = (IdPacket*)Packet_deserialize(buf_recv,bytes_read);
-    printf("Ricevuto %d \n",received->id);
+    debug_print("Ricevuto %d \n",received->id);
     return received->id;
 }
 
