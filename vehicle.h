@@ -46,6 +46,10 @@ void getForces(Vehicle* v, float* translational_update, float* rotational_update
 
 void getXYTheta(Vehicle* v,float* x, float* y, float* theta);
 
+void setForces(Vehicle* v, float translational_update, float rotational_update);
+
+void setXYTheta(Vehicle* v, float x, float y, float theta);
+
 int Vehicle_update(Vehicle* v, float dt);
 
 void Vehicle_destroy(Vehicle* v);

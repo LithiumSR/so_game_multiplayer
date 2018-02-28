@@ -116,6 +116,26 @@ void getXYTheta(Vehicle* v,float* x, float* y, float* theta){
     if (ret==-1)debug_print("Post on vsem didn't worked as expected");
 }
 
+void setXYTheta(Vehicle* v, float x, float y, float theta){
+    int ret= sem_wait(&(v->vsem));
+    if (ret==-1)debug_print("Wait on vsem didn't worked as expected");
+    v->x=x;
+    v->y=y;
+    v->theta=theta;
+    ret=sem_post(&(v->vsem));
+    if (ret==-1)debug_print("Post on vsem didn't worked as expected");
+}
+
+void setForces(Vehicle* v, float translational_update, float rotational_update){
+    int ret= sem_wait(&(v->vsem));
+    if (ret==-1)debug_print("Wait on vsem didn't worked as expected");
+    v->translational_force_update=translational_update;
+    v->rotational_force_update=rotational_update;
+    ret=sem_post(&(v->vsem));
+    if (ret==-1)debug_print("Post on vsem didn't worked as expected");
+}
+
+
 void getForces(Vehicle* v, float* translational_update, float* rotational_update){
     int ret= sem_wait(&(v->vsem));
     if (ret==-1) debug_print("Wait on vsem didn't worked as expected");
