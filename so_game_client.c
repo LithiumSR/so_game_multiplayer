@@ -26,7 +26,7 @@ Vehicle* vehicle; // The vehicle
 int id;
 uint16_t  port_number_no;
 int connectivity=1;
-pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
+int checkUpdate=1:
 
 typedef struct localWorld{
     int  ids[512];
@@ -41,6 +41,21 @@ typedef struct listenArgs{
     int socket_tcp;
 }udpArgs;
 
+void handle_signal(int signal){
+    sigset_t pending;
+    // Find out which signal we're handling
+    switch (signal) {
+        case SIGHUP:
+            break;
+        case SIGINT:
+            connectivity=0;
+            checkUpdate=0:
+            break;
+        default:
+            fprintf(stderr, "Caught wrong signal: %d\n", signal);
+            return;
+    }
+}
 
 int add_user_id(int ids[] , int size , int id, int* position){
 
@@ -78,7 +93,7 @@ void* sender_routine(void* args){
     struct sockaddr_in server_addr=udp_args.server_addr;
     int socket_udp =udp_args.socket_udp;
     int serverlen=sizeof(server_addr);
-    while(connectivity){
+    while(connectivity && checkUpdate){
         int ret=sendUpdates(socket_udp,udp_args.lw,server_addr,serverlen);
         ERROR_HELPER(ret,"Send over UDP failed");
         sleep(1000);
@@ -93,7 +108,7 @@ void* receiver_routine(void* args){
     int serverlen=sizeof(server_addr);
     localWorld* lw=udp_args.lw;
     int socket_tcp=udp_args.socket_tcp;
-    while(connectivity){
+    while(connectivity && checkUpdate){
         char buf_rcv[BUFFSIZE];
         int bytes_read=recvfrom(socket_udp, buf_rcv, BUFFSIZE, 0, (struct sockaddr*) &server_addr, (socklen_t*) &serverlen);
         if(bytes_read==-1){
@@ -177,6 +192,19 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret, "Impossibile connettersi al server");
     printf("Connessione al server stabilita!\n");
 
+    //seting signal handlers
+    struct sigaction sa;
+    sa.sa_handler = &handle_signal;
+    // Restart the system call, if at all possible
+    sa.sa_flags = SA_RESTART;
+    // Block every signal during the handler
+    sigfillset(&sa.sa_mask);
+    ret=sigaction(SIGHUP, &sa, NULL);
+    ERROR_HELPER("Error: cannot handle SIGHUP");
+    ret=sigaction(SIGINT, &sa, NULL);
+    ERROR_HELPER("Error: cannot handle SIGINT");
+
+    //setting non-blocking socket
     fcntl(socket_desc, F_SETFL, fcntl(socket_desc, F_GETFL) | O_NONBLOCK);
 
     printf("Inizio richiesta al server stabilita!\n");

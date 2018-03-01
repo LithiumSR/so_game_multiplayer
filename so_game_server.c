@@ -19,7 +19,6 @@
 #include "server_op.h"
 #include "so_game_protocol.h"
 #include "linked_list.h"
-#define BUFFSIZE 4096
 
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
@@ -38,6 +37,22 @@ typedef struct {
     tcp_args args;
     int id_client; //I will use the socket as ID
 } auth_args;
+
+void handle_signal(int signal){
+    sigset_t pending;
+    // Find out which signal we're handling
+    switch (signal) {
+        case SIGHUP:
+            break;
+        case SIGINT:
+            connectivity=0;
+            checkUpdate=0;
+            break;
+        default:
+            fprintf(stderr, "Caught wrong signal: %d\n", signal);
+            return;
+    }
+}
 
 int UDP_Packet_handler(char* buf_rcv,struct sockaddr_in client_addr){
     PacketHeader* ph=(PacketHeader*)buf_rcv;
@@ -371,6 +386,18 @@ debug_print("loading elevation image from %s ... ", elevation_filename);
     //init List structure
     users = malloc(sizeof(ListHead));
 	List_init(users);
+
+    //seting signal handlers
+    struct sigaction sa;
+    sa.sa_handler = &handle_signal;
+    // Restart the system call, if at all possible
+    sa.sa_flags = SA_RESTART;
+    // Block every signal during the handler
+    sigfillset(&sa.sa_mask);
+    ret=sigaction(SIGHUP, &sa, NULL);
+    ERROR_HELPER("Error: cannot handle SIGHUP");
+    ret=sigaction(SIGINT, &sa, NULL);
+    ERROR_HELPER("Error: cannot handle SIGINT");
 
     //preparing 2 threads (1 for udp socket, 1 for tcp socket)
     tcp_args tcpArgs;
