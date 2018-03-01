@@ -8,6 +8,7 @@
 #include <netinet/in.h> // struct sockaddr_in
 #include <sys/socket.h>
 #include <pthread.h>
+#include <signal.h>
 #include "common.h"
 #include "image.h"
 #include "surface.h"
@@ -26,7 +27,7 @@ Vehicle* vehicle; // The vehicle
 int id;
 uint16_t  port_number_no;
 int connectivity=1;
-int checkUpdate=1:
+int checkUpdate=1;
 
 typedef struct localWorld{
     int  ids[512];
@@ -42,14 +43,13 @@ typedef struct listenArgs{
 }udpArgs;
 
 void handle_signal(int signal){
-    sigset_t pending;
     // Find out which signal we're handling
     switch (signal) {
         case SIGHUP:
             break;
         case SIGINT:
             connectivity=0;
-            checkUpdate=0:
+            checkUpdate=0;
             break;
         default:
             fprintf(stderr, "Caught wrong signal: %d\n", signal);
@@ -200,9 +200,9 @@ int main(int argc, char **argv) {
     // Block every signal during the handler
     sigfillset(&sa.sa_mask);
     ret=sigaction(SIGHUP, &sa, NULL);
-    ERROR_HELPER("Error: cannot handle SIGHUP");
+    ERROR_HELPER(ret,"Error: cannot handle SIGHUP");
     ret=sigaction(SIGINT, &sa, NULL);
-    ERROR_HELPER("Error: cannot handle SIGINT");
+    ERROR_HELPER(ret,"Error: cannot handle SIGINT");
 
     //setting non-blocking socket
     fcntl(socket_desc, F_SETFL, fcntl(socket_desc, F_GETFL) | O_NONBLOCK);

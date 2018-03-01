@@ -8,6 +8,7 @@
 #include <arpa/inet.h>  // htons() and inet_addr()
 #include <netinet/in.h> // struct sockaddr_in
 #include <sys/socket.h>
+#include <signal.h>
 #include <pthread.h>
 #include "common.h"
 #include "image.h"
@@ -39,7 +40,6 @@ typedef struct {
 } auth_args;
 
 void handle_signal(int signal){
-    sigset_t pending;
     // Find out which signal we're handling
     switch (signal) {
         case SIGHUP:
@@ -395,9 +395,9 @@ debug_print("loading elevation image from %s ... ", elevation_filename);
     // Block every signal during the handler
     sigfillset(&sa.sa_mask);
     ret=sigaction(SIGHUP, &sa, NULL);
-    ERROR_HELPER("Error: cannot handle SIGHUP");
+    ERROR_HELPER(ret,"Error: cannot handle SIGHUP");
     ret=sigaction(SIGINT, &sa, NULL);
-    ERROR_HELPER("Error: cannot handle SIGINT");
+    ERROR_HELPER(ret,"Error: cannot handle SIGINT");
 
     //preparing 2 threads (1 for udp socket, 1 for tcp socket)
     tcp_args tcpArgs;
