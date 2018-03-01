@@ -1,18 +1,20 @@
 #pragma once
 #include "image.h"
 #include <netinet/in.h>
+#include <time.h>
 
 typedef struct ListItem {
   struct ListItem* prev;
   struct ListItem* next;
-  float rotational_force;    //is that needed?
-  float translational_force; //is that needed?
+  float rotational_force;
+  float translational_force;
   float x;
   float y;
   float theta;
   Image * v_texture;
   int id;
   struct sockaddr_in user_addr;
+  time_t current_time;
   int isAddrReady;
 } ListItem;
 

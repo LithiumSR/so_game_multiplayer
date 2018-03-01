@@ -28,6 +28,7 @@ int id;
 uint16_t  port_number_no;
 int connectivity=1;
 int checkUpdate=1;
+int socket_desc; //socket tcp
 
 typedef struct localWorld{
     int  ids[512];
@@ -50,6 +51,7 @@ void handle_signal(int signal){
         case SIGINT:
             connectivity=0;
             checkUpdate=0;
+            send_goodbye(socket_desc, id);
             break;
         default:
             fprintf(stderr, "Caught wrong signal: %d\n", signal);
@@ -58,11 +60,9 @@ void handle_signal(int signal){
 }
 
 int add_user_id(int ids[] , int size , int id, int* position){
-
     for(int i=0;i<size;i++){
         if(ids[i]==id) return i;
     }
-
     for (int i=0 ; i < size ; i++){
         if(ids[i]!=0){
             ids[i]=id;
@@ -131,8 +131,13 @@ void* receiver_routine(void* args){
                 Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                 lw->vehicles[new_position]=new_vehicle;
                 setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                setForces(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
             }
-            else setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+            else {
+                setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+            }
+
         }
         sleep(1000);
     }
@@ -181,7 +186,7 @@ int main(int argc, char **argv) {
         }
     printf("Inizio");
     port_number_no = htons((uint16_t)tmp); // we use network byte order
-	int socket_desc = socket(AF_INET, SOCK_STREAM, 0);
+	socket_desc = socket(AF_INET, SOCK_STREAM, 0);
     in_addr_t ip_addr = inet_addr(SERVER_ADDRESS);
     ERROR_HELPER(socket_desc, "Impossibile creare una socket");
 	struct sockaddr_in server_addr = {0}; // some fields are required to be filled with 0
@@ -229,12 +234,12 @@ int main(int argc, char **argv) {
 
     //No longer needed
     // spawn a thread that will listen the update messages from
-  // the server, and sends back the controls
-  // the update for yourself are written in the desired_*_force
-  // fields of the vehicle variable
-  // when the server notifies a new player has joined the game
-  // request the texture and add the player to the pool
-  /*FILLME*/
+    // the server, and sends back the controls
+    // the update for yourself are written in the desired_*_force
+    // fields of the vehicle variable
+    // when the server notifies a new player has joined the game
+    // request the texture and add the player to the pool
+    /*FILLME*/
 
     struct sockaddr_in udp_addr;
     int socket_udp=createUDPSocket(&udp_addr,tmp);

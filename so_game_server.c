@@ -71,6 +71,7 @@ int UDP_Packet_handler(char* buf_rcv,struct sockaddr_in client_addr){
             client->theta=vup->theta;
             client->user_addr=client_addr;
             client->isAddrReady=1;
+            client->current_time=vup->time;
             pthread_mutex_unlock(&mutex);
             END: Packet_free(&vup->header);
             if(flag) return -1; else return 0;
@@ -298,7 +299,6 @@ void* udp_receive(void* args){
         int ret=recvfrom(socket_udp, buf_recv, BUFFSIZE, 0, (struct sockaddr*) &client_addr, (socklen_t*) sizeof(client_addr));
         if(ret==-1) connectivity=0;
 		if(ret == 0) continue;
-
 		ret = UDP_Packet_handler(buf_recv,client_addr);
         sleep(1000);
     }

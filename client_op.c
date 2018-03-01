@@ -191,7 +191,7 @@ Image* get_vehicle_texture(int socket, int id){
     return received->image;
 }
 
-Image* send_vehicle_texture(int socket, int id){
+void send_vehicle_texture(int socket, int id){
     char buf_send[BUFFSIZE];
     char buf_recv[BUFFSIZE];
     int ret;
@@ -217,6 +217,34 @@ Image* send_vehicle_texture(int socket, int id){
 
     Packet_free(&(imagepckt->header));
 }
+
+
+void send_goodbye(int socket, int id){
+    char buf_send[BUFFSIZE];
+    char buf_recv[BUFFSIZE];
+    int ret;
+    int bytes_read=0;
+    int bytes_sent=0;
+
+    PacketHeader ph;
+    ph.type=PostDisconnect;
+    IdPacket* idpckt=(IdPacket*)malloc(sizeof(IdPacket));
+    idpckt->id=id;
+    idpckt->header=ph;
+
+    int size=Packet_serialize(buf_send, &(idpckt->header));
+    if (size==-1) ERROR_HELPER(-1,"Packet serialize didn't worked on image packet");
+
+    while(bytes_sent<size){
+        ret=send(socket,buf_send+bytes_sent,size-bytes_sent,0);
+        if (ret==-1 && errno==EINTR) continue;
+        ERROR_HELPER(ret,"Failed sending of vehicle texture");
+        if (ret==0) break;
+        bytes_sent+=ret;
+    }
+    Packet_free(&(idpckt->header));
+}
+
 
 
 

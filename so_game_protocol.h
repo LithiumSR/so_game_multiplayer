@@ -1,6 +1,6 @@
 #pragma once
 #include "vehicle.h"
-
+#include <time.h>
 //ia brief desription required
 typedef enum {
   GetId=0x1,
@@ -53,6 +53,7 @@ typedef struct {
   float x;
   float y;
   float theta;
+  time_t time;
 } VehicleUpdatePacket;
 
 // block of the client updates, id of vehicle
@@ -63,6 +64,8 @@ typedef struct {
   float x;
   float y;
   float theta;
+  float rotational_force;
+  float translational_force;
 } ClientUpdate;
 
 // server world update, send by server (UDP)
