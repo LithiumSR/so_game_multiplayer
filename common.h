@@ -2,7 +2,7 @@
 #define COMMON_H
 #include "errno.h"
 #include <stdio.h>
-
+#define WORLDSIZE 512
 #define DEBUG 1
 #define BUFFSIZE 4096
 // macro to simplify error handling
