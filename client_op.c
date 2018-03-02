@@ -191,7 +191,7 @@ Image* get_vehicle_texture(int socket, int id){
     return received->image;
 }
 
-void send_vehicle_texture(int socket, int id){
+void send_vehicle_texture(int socket, int id, Image* texture){
     char buf_send[BUFFSIZE];
     char buf_recv[BUFFSIZE];
     int ret;
@@ -203,7 +203,7 @@ void send_vehicle_texture(int socket, int id){
     ph.type=PostTexture;
     imagepckt->id=id;
     imagepckt->header=ph;
-
+    imagepckt->image=texture;
     int size=Packet_serialize(buf_send, &(imagepckt->header));
     if (size==-1) ERROR_HELPER(-1,"Packet serialize didn't worked on image packet");
 
