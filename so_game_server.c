@@ -25,6 +25,7 @@
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
 int checkUpdate=1;
+int hasUsers=0;
 ListHead* users;
 
 typedef struct {
@@ -102,6 +103,7 @@ int TCP_Packet_handler(char* buf_rcv, char* buf_send, int socket, Image* elevati
             int size = Packet_serialize(buf_send, &response->header);
             Packet_free(&response->header);
             Packet_free(&idpckt->header);
+            hasUsers=1;
             return size;
         }
 
@@ -190,13 +192,20 @@ void* auth_routine(void* args){
     List_insert(users, 0, user);
     pthread_mutex_unlock(&mutex);
     int isActive=1;
+    int failCount=0;
     while(connectivity && isActive){
         debug_print("[Auth_Thread] Waiting for a data packet \n");
         int bytes_read = recv(client_sock,buf_rcv, BUFFSIZE, 0);
         if (bytes_read==0) continue;
         else if (bytes_read<0) break;
         int size = TCP_Packet_handler(buf_rcv, buf_send,client_sock, authArgs.args.e_texture,authArgs.args.s_texture,authArgs.args.v_texture,&isActive);
-        if(size <= 0 ) continue;
+        if(size <= 0 ) {
+            failCount++;
+            sleep(1000);
+            if(failCount==MAXCONSECUTIVEFAIL) isActive=0;
+            continue;
+        }
+        failCount=0;
         debug_print("[Auth_Thread] Received %d bytes from client %d. Sending response... \n",size,client_sock);
         int bytes_sent=0;
         int ret=0;
@@ -228,6 +237,7 @@ void* tcp_flow(void* args){
         int addrlen = sizeof(struct sockaddr_in);
 		struct sockaddr_in client;
         int client_sock = accept(server_tcp, (struct sockaddr*) &client, (socklen_t*) &addrlen);
+        hasUsers=1;
         debug_print("[TCP_Thread] Found a new client with id %d. Starting authentication... \n",client_sock);
         if (client_sock==-1) continue;
         pthread_t auth_thread;
@@ -250,6 +260,10 @@ void* udp_send(void* args){
     char buf_send[BUFFSIZE];
     char buf_recv[BUFFSIZE];
     while(connectivity && checkUpdate){
+            if(!hasUsers){
+                sleep(1000);
+                continue;
+            }
             debug_print("[UDP_Sender] Creating WorldUpdatePacket \n");
             PacketHeader ph;
             ph.type=WorldUpdate;
@@ -301,6 +315,10 @@ void* udp_receive(void* args){
     char buf_recv[BUFFSIZE];
     struct sockaddr_in client_addr;
     while(connectivity){
+        if(!hasUsers){
+            sleep(1000);
+            continue;
+        }
         debug_print("[UDP_Receiver] Waiting for an update packet over UDP");
         memset(&client_addr, 0, sizeof(client_addr));
         int ret=recvfrom(socket_udp, buf_recv, BUFFSIZE, 0, (struct sockaddr*) &client_addr, (socklen_t*) sizeof(client_addr));
@@ -384,6 +402,7 @@ debug_print("[Main] loading elevation image from %s ... ", elevation_filename);
     debug_print("[MAIN] TCP socket successfully created \n");
 
     //setup udp socket
+
     int server_udp = socket(AF_INET, SOCK_DGRAM, 0);
     ERROR_HELPER(server_udp, "[MAIN] Cannot create socket_udp");
     ret = bind(server_udp, (struct sockaddr*) &server_addr, sockaddr_len);
@@ -397,8 +416,7 @@ debug_print("[Main] loading elevation image from %s ... ", elevation_filename);
 
     //seting signal handlers
     struct sigaction sa;
-    sa.sa_handler = &handle_signal;
-    // Restart the system call, if at all possible
+    sa.sa_handler = handle_signal;
     sa.sa_flags = SA_RESTART;
     // Block every signal during the handler
     sigfillset(&sa.sa_mask);
@@ -406,6 +424,7 @@ debug_print("[Main] loading elevation image from %s ... ", elevation_filename);
     ERROR_HELPER(ret,"Error: cannot handle SIGHUP");
     ret=sigaction(SIGINT, &sa, NULL);
     ERROR_HELPER(ret,"Error: cannot handle SIGINT");
+
     debug_print("[MAIN] Custom signal handlers are now enabled \n");
     //preparing 2 threads (1 for udp socket, 1 for tcp socket)
     tcp_args tcpArgs;
