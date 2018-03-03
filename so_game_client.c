@@ -199,7 +199,7 @@ int main(int argc, char **argv) {
 
     //seting signal handlers
     struct sigaction sa;
-    sa.sa_handler = &handle_signal;
+    sa.sa_handler = handle_signal;
     // Restart the system call, if at all possible
     sa.sa_flags = SA_RESTART;
     // Block every signal during the handler
