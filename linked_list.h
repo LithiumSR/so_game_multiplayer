@@ -16,6 +16,7 @@ typedef struct ListItem {
   struct sockaddr_in user_addr;
   time_t current_time;
   int isAddrReady;
+  time_t creation_time;
 } ListItem;
 
 typedef struct ListHead {
