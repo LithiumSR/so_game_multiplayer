@@ -21,13 +21,13 @@
 #include "so_game_protocol.h"
 #include "linked_list.h"
 
-
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
 int checkUpdate=1;
 int hasUsers=0;
 ListHead* users;
-
+long SERVER_PORT;
+uint16_t  port_number_no;
 typedef struct {
     int server_tcp;
     Image* e_texture;
@@ -84,17 +84,22 @@ int UDP_Packet_handler(char* buf_rcv,struct sockaddr_in client_addr){
     }
 }
 
-int TCP_Packet_handler(char* buf_rcv, char* buf_send, int socket, Image* elevation_map, Image* surface_texture, Image* vehicle_texture, int* isActive){
+int TCP_Packet_handler(char* buf_rcv, char* buf_send, int socket, Image* elevation_map, Image* surface_texture, Image* vehicle_texture, int* isActive, ListItem* user){
     PacketHeader* ph_rcv = (PacketHeader*)buf_rcv;
     switch(ph_rcv->type){
         case(GetId): {
+            pthread_mutex_lock(&mutex);
+            if (user->id!=-1) {
+                return -1;
+                pthread_mutex_unlock(&mutex);
+            }
+            pthread_mutex_unlock(&mutex);
             debug_print("[TCP_Handler] Found getID \n");
             IdPacket* idpckt = (IdPacket*)Packet_deserialize(buf_rcv, ph_rcv->size);
             if(idpckt->id != -1){
                 Packet_free(&idpckt->header);
                 return -1;
             }
-
             IdPacket* response = malloc(sizeof(IdPacket));
             PacketHeader ph;
             ph.type=GetId;
@@ -103,6 +108,9 @@ int TCP_Packet_handler(char* buf_rcv, char* buf_send, int socket, Image* elevati
             int size = Packet_serialize(buf_send, &response->header);
             Packet_free(&response->header);
             Packet_free(&idpckt->header);
+            pthread_mutex_lock(&mutex);
+            user->id=socket;
+            pthread_mutex_unlock(&mutex);
             hasUsers=1;
             return size;
         }
@@ -178,6 +186,7 @@ int TCP_Packet_handler(char* buf_rcv, char* buf_send, int socket, Image* elevati
 
 
 void* auth_routine(void* args){
+    debug_print("[Auth Thread] New auth thread spawned \n");
     auth_args authArgs = *(auth_args*)args;
     int client_sock=authArgs.id_client;
     char buf_rcv[BUFFSIZE];
@@ -185,20 +194,23 @@ void* auth_routine(void* args){
 
     memset((void*)buf_rcv,'\0',BUFFSIZE);
     memset((void*)buf_send,'\0',BUFFSIZE);
-
+    debug_print("[Auth Thread] 1...");
     pthread_mutex_lock(&mutex);
     ListItem* user=malloc(sizeof(ListItem));
     user->v_texture = authArgs.args.v_texture;
+    user->creation_time=time(NULL);
+    user->id=-1;
     List_insert(users, 0, user);
     pthread_mutex_unlock(&mutex);
     int isActive=1;
     int failCount=0;
+    debug_print("[Auth Thread] 2...");
     while(connectivity && isActive){
         debug_print("[Auth_Thread] Waiting for a data packet \n");
         int bytes_read = recv(client_sock,buf_rcv, BUFFSIZE, 0);
         if (bytes_read==0) continue;
         else if (bytes_read<0) break;
-        int size = TCP_Packet_handler(buf_rcv, buf_send,client_sock, authArgs.args.e_texture,authArgs.args.s_texture,authArgs.args.v_texture,&isActive);
+        int size = TCP_Packet_handler(buf_rcv, buf_send,client_sock, authArgs.args.e_texture,authArgs.args.s_texture,authArgs.args.v_texture,&isActive,user);
         if(size <= 0 ) {
             failCount++;
             sleep(1000);
@@ -297,12 +309,12 @@ void* udp_send(void* args){
             while(i<(wup->num_vehicles)){
                 if(client->isAddrReady==1){
                     int ret = sendto(socket_udp, buf_send, size, 0, (struct sockaddr*) &client->user_addr, (socklen_t) sizeof(client->user_addr));
-                    debug_print("[UDP_Send] Sent update of %d bytes to client %d",ret,client->id);
+                    debug_print("[UDP_Send] Sent update of %d bytes to client %d \n",ret,client->id);
                 }
                 if(i!=wup->num_vehicles - 1) client = client->next;
                 i++;
             }
-            debug_print("[UDP_Send] WorldUpdatePacket sent to every client");
+            debug_print("[UDP_Send] WorldUpdatePacket sent to every client \n");
             pthread_mutex_unlock(&mutex);
             sleep(1000);
         }
@@ -319,7 +331,7 @@ void* udp_receive(void* args){
             sleep(1000);
             continue;
         }
-        debug_print("[UDP_Receiver] Waiting for an update packet over UDP");
+        debug_print("[UDP_Receiver] Waiting for an update packet over UDP \n");
         memset(&client_addr, 0, sizeof(client_addr));
         int ret=recvfrom(socket_udp, buf_recv, BUFFSIZE, 0, (struct sockaddr*) &client_addr, (socklen_t*) sizeof(client_addr));
         if(ret==-1) connectivity=0;
@@ -339,6 +351,11 @@ int main(int argc, char **argv) {
   char* elevation_filename=argv[1];
   char* texture_filename=argv[2];
   char* vehicle_texture_filename="./images/arrow-right.ppm";
+  SERVER_PORT = strtol(argv[3], NULL, 0);
+  if (SERVER_PORT < 1024 || SERVER_PORT > 49151) {
+      fprintf(stderr, "Use a port number between 1024 and 49151.\n");
+      exit(EXIT_FAILURE);
+      }
 
 
   // load the images
@@ -367,14 +384,7 @@ debug_print("[Main] loading elevation image from %s ... ", elevation_filename);
     debug_print("Fail! \n");
   }
 
-
-    uint16_t port_number_no;
-    long tmp = strtol(argv[3], NULL, 0); // convert a string to long
-    if (tmp < 1024 || tmp > 49151) {
-        fprintf(stderr, "Utilizzare un numero di porta compreso tra 1024 e 49151.\n");
-        exit(EXIT_FAILURE);
-    }
-    port_number_no = htons((uint16_t)tmp);
+    port_number_no = htons((uint16_t)SERVER_PORT);
 
     // setup tcp socket
     debug_print("[MAIN] Starting TCP socket \n");
@@ -422,8 +432,8 @@ debug_print("[Main] loading elevation image from %s ... ", elevation_filename);
     sigfillset(&sa.sa_mask);
     ret=sigaction(SIGHUP, &sa, NULL);
     ERROR_HELPER(ret,"Error: cannot handle SIGHUP");
-    ret=sigaction(SIGINT, &sa, NULL);
-    ERROR_HELPER(ret,"Error: cannot handle SIGINT");
+    //ret=sigaction(SIGINT, &sa, NULL);
+    //ERROR_HELPER(ret,"Error: cannot handle SIGINT");
 
     debug_print("[MAIN] Custom signal handlers are now enabled \n");
     //preparing 2 threads (1 for udp socket, 1 for tcp socket)

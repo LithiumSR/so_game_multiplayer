@@ -57,13 +57,18 @@ void handle_signal(int signal){
     }
 }
 
-int add_user_id(int ids[] , int size , int id, int* position){
+int add_user_id(int ids[] , int size , int id, int* position,int* users_online){
+    if(*users_online==WORLDSIZE){
+        *position=-1;
+        return -1;
+    }
     for(int i=0;i<size;i++){
         if(ids[i]==id) return i;
     }
     for (int i=0 ; i < size ; i++){
-        if(ids[i]!=0){
+        if(ids[i]==-1){
             ids[i]=id;
+            *users_online+=1;
             *position=i;
             break;
         }
@@ -123,12 +128,16 @@ void* receiver_routine(void* args){
         PacketHeader* ph=(PacketHeader*)buf_rcv;
         if(ph->type!=WorldUpdate) continue;
         WorldUpdatePacket* wup = (WorldUpdatePacket*)Packet_deserialize(buf_rcv, bytes_read);
-        if ( wup->num_vehicles <= lw->users_online ) continue;
+        //if ( wup->num_vehicles <= lw->users_online ) continue;
+        char mask[WORLDSIZE];
+        memset((void*)lw->ids,0,WORLDSIZE);
         for(int i=0; i < wup -> num_vehicles ; i++){
             if(wup->updates[i].id==id) continue;
             int new_position=-1;
-            int id_struct=add_user_id(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position);
+            int id_struct=add_user_id(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position,&(lw->users_online));
             if(id_struct==-1){
+                if(new_position==-1) continue;
+                mask[new_position]=1;
                 Image * img = get_vehicle_texture(socket_tcp,wup->updates[i].id);
                 Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                 Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
@@ -137,9 +146,18 @@ void* receiver_routine(void* args){
                 setForces(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
             }
             else {
+                mask[id_struct]=1;
                 setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
             }
+        }
+
+        for(int i=0; i < lw->users_online ; i++){
+            if(mask[i]==1) continue;
+            lw->users_online=lw->users_online-1;
+            World_detachVehicle(&world,lw->vehicles[i]);
+            Vehicle_destroy(lw->vehicles[i]);
+            lw->ids[i]=-1;
 
         }
         sleep(1000);
@@ -162,8 +180,8 @@ int createUDPSocket(struct sockaddr_in* si_me, int port){
 }
 
 int main(int argc, char **argv) {
-    if (argc<2) {
-        printf("usage: %s <player texture> \n", argv[1]);
+    if (argc<3) {
+        printf("usage: %s <player texture> <port_number> \n", argv[1]);
         exit(-1);
         }
     debug_print("[Main] loading texture image from %s ... ", argv[1]);
@@ -174,16 +192,11 @@ int main(int argc, char **argv) {
     else {
         printf("Fail! \n");
         }
-
-
-    /**
-    long tmp = strtol(argv[4], NULL, 0);
+    long tmp= strtol(argv[2], NULL, 0);
     if (tmp < 1024 || tmp > 49151) {
-        fprintf(stderr, "Use a port number between 1024 and 49151.\n");
-        exit(EXIT_FAILURE);
-        }
-    **/
-    long tmp=SERVER_PORT;
+      fprintf(stderr, "Use a port number between 1024 and 49151.\n");
+      exit(EXIT_FAILURE);
+      }
     debug_print("[Main] Starting... \n");
     port_number_no = htons((uint16_t)tmp); // we use network byte order
 	socket_desc = socket(AF_INET, SOCK_STREAM, 0);
@@ -212,6 +225,14 @@ int main(int argc, char **argv) {
     //setting non-blocking socket
     fcntl(socket_desc, F_SETFL, fcntl(socket_desc, F_GETFL) | O_NONBLOCK);
 
+    //setting up localWorld
+    localWorld* myLocalWorld = (localWorld*)malloc(sizeof(localWorld));
+    myLocalWorld->vehicles=(Vehicle**)malloc(sizeof(Vehicle*)*WORLDSIZE);
+    for(int i=0;i<WORLDSIZE;i++){
+        myLocalWorld->ids[i]=-1;
+    }
+
+
     debug_print("[Main] Starting ID,map_elevation,map_texture requests \n");
     int id=get_client_ID(socket_desc);
     debug_print("[Main] ID received \n");
@@ -224,8 +245,7 @@ int main(int argc, char **argv) {
     debug_print("[Main] Client Vehicle texture sent \n");
 
 
-    localWorld* myLocalWorld = (localWorld*)malloc(sizeof(localWorld));
-    myLocalWorld->vehicles=(Vehicle**)malloc(sizeof(Vehicle*)*WORLDSIZE);
+
 
     // construct the world
     World_init(&world, map_elevation, map_texture,0.5, 0.5, 0.5);

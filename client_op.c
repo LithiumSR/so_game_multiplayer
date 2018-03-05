@@ -25,7 +25,6 @@ int get_client_ID(int socket){
     ph.type=GetId;
     idpckt->id=-1;
     idpckt->header=ph;
-    debug_print("Creato pacchetto");
 
     int size=Packet_serialize(buf_send, &(idpckt->header));
     if (size==-1) ERROR_HELPER(-1,"Packet serialize didn't worked on ID packet");
@@ -34,7 +33,7 @@ int get_client_ID(int socket){
     while(bytes_sent<size){
         ret=send(socket,buf_send+bytes_sent,size-bytes_sent,0);
         if (ret==-1 && errno==EINTR) continue;
-        ERROR_HELPER(ret,"Errore invio");
+        ERROR_HELPER(ret,"Send over TCP of IDPacket gave an error");
         if (ret==0) break;
         bytes_sent+=ret;
 		}
@@ -44,7 +43,7 @@ int get_client_ID(int socket){
         ret= recv(socket, buf_recv,BUFFSIZE,0);
         if( ret==-1 && errno==EINTR){
             continue;
-            ERROR_HELPER(ret,"Errore nella recv dell'ID");
+            ERROR_HELPER(ret,"Receive over TCP of IDPacket gave an error");
         }
         if(ret==0){
             break;
