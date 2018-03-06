@@ -8,22 +8,79 @@
 #include <sys/socket.h>
 #include <errno.h>
 #include "common.h"
-
+#include "so_game_protocol.h"
 #define SERVER_PORT     3000
-
+int id;
 void session(int sock_fd) {
     int ret;
-    char buf[1024]= "test :)";
+    char buf_id[3000];
+    printf("allocate an IDPacket\n");
+    IdPacket* id_packet = (IdPacket*)malloc(sizeof(IdPacket));
+    PacketHeader id_head;
+    id_head.type = GetId;
+
+    id_packet->header = id_head;
+    id_packet->id = id++;
+    
+    //RICEVO ID
+    
+  printf("build packet with:\ntype\t%d\nsize\t%d\nid\t%d\n",
+      id_packet->header.type,
+      id_packet->header.size,
+      id_packet->id);
+    int msg_len=Packet_serialize(buf_id,&(id_packet->header));
+    printf("Sto per inviare un pacchetto con %d bytes \n",msg_len);
     int bytes_sent=0;
-    int msg_len=strlen(buf);
     while(bytes_sent<msg_len){
-			ret=send(sock_fd,buf+bytes_sent,msg_len-bytes_sent,0);
+			ret=send(sock_fd,buf_id+bytes_sent,msg_len-bytes_sent,0);
 			if (ret==-1 && errno==EINTR) continue;
 			ERROR_HELPER(ret,"Errore invio");
 			if (ret==0) break;
 			bytes_sent+=ret;
     }
-    printf("[SESSION] Messaggio inviato");
+    printf("[SESSION] IdPacket inviato \n");
+    bytes_sent=0;
+    
+    //Attendo ricerca Immagine 
+    char buf_rcv[10000];
+    msg_len=0;
+    int buf_len=10000;
+    while(1){
+        msg_len=recv(sock_fd, buf_rcv, buf_len, 0);
+        if (msg_len==-1 && errno == EINTR) continue;
+        ERROR_HELPER(msg_len, "Cannot read from socket");
+        if(msg_len!=0) break;
+        }
+    
+    printf("Ricevuta richiesta di %d bytes \n",msg_len);
+    PacketHeader* pheader=Packet_deserialize(buf_rcv,buf_len);
+    if(pheader->type==GetTexture){
+        printf("HO RICEVUTA UNA GETTEXTURE \n");
+        return;
+    }
+    //Invio map texture
+    char buf_img[1000000];
+    Image* im;
+    im = Image_load("./images/test.pgm");
+    if(im!=NULL) printf("Image loaded \n");
+    ImagePacket* image_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
+    PacketHeader im_head;
+    im_head.type=PostTexture;
+    image_packet->image=im;
+    image_packet->header=im_head;
+    msg_len= Packet_serialize(buf_img, &image_packet->header);
+    printf("bytes written in the buffer: %d\n", msg_len);
+    bytes_sent=0;
+    while(bytes_sent<msg_len){
+			ret=send(sock_fd,buf_img+bytes_sent,msg_len-bytes_sent,0);
+			if (ret==-1 && errno==EINTR) continue;
+			ERROR_HELPER(ret,"Errore invio");
+			if (ret==0) break;
+			bytes_sent+=ret;
+    }
+    printf("[SESSION] Image sent \n");
+    
+
 }
 
 
@@ -35,7 +92,7 @@ int main(int argc, char **argv) {
     }
 
     int ret;
-
+    id=0;
     // Get port number
     uint16_t port_number_no;
     long tmp = strtol(argv[1], NULL, 0); // convert a string to long

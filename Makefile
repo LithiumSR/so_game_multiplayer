@@ -7,6 +7,8 @@ AR=ar
 BINS=libso_game.a\
      so_game_server\
      so_game_client\
+     test_Client\
+     test_Server\
 
 OBJS = vec3.o\
        linked_list.o\
@@ -19,6 +21,8 @@ OBJS = vec3.o\
        so_game_client.o\
        server_op.o\
        client_op.o\
+       testServer.o\
+       testClient.o\
        so_game_protocol.o\
 
 HEADERS=helpers.h\
@@ -50,3 +54,12 @@ so_game_client: so_game_client.c libso_game.a
 
 so_game_server: so_game_server.c libso_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
+
+test_Server: testServer.c libso_game.a
+	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
+
+test_Client: testClient.c libso_game.a
+	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
+	
+	
+	
