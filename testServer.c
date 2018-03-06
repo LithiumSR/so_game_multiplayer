@@ -8,79 +8,107 @@
 #include <sys/socket.h>
 #include <errno.h>
 #include "common.h"
+#include <pthread.h>
 #include "so_game_protocol.h"
-#define SERVER_PORT     3000
+#define BUFFERSIZE 1000000
 int id;
-void session(int sock_fd) {
-    int ret;
-    char buf_id[3000];
-    printf("allocate an IDPacket\n");
-    IdPacket* id_packet = (IdPacket*)malloc(sizeof(IdPacket));
-    PacketHeader id_head;
-    id_head.type = GetId;
 
-    id_packet->header = id_head;
-    id_packet->id = id++;
-    
-    //RICEVO ID
-    
-  printf("build packet with:\ntype\t%d\nsize\t%d\nid\t%d\n",
-      id_packet->header.type,
-      id_packet->header.size,
-      id_packet->id);
-    int msg_len=Packet_serialize(buf_id,&(id_packet->header));
-    printf("Sto per inviare un pacchetto con %d bytes \n",msg_len);
-    int bytes_sent=0;
-    while(bytes_sent<msg_len){
-			ret=send(sock_fd,buf_id+bytes_sent,msg_len-bytes_sent,0);
+typedef struct {
+    int server_tcp;
+    Image* elevation_map;
+    Image* texture_map;
+} tcp_args;
+
+
+int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevation_map){
+    PacketHeader* header=(PacketHeader*)buf_rcv;
+    if(header->type==GetId){
+        char buf_send[BUFFERSIZE];
+        IdPacket* response=(IdPacket*)malloc(sizeof(IdPacket));
+        PacketHeader ph;
+        ph.type=GetId;
+        response->header=ph;
+        response->id=id++;
+        int msg_len=Packet_serialize(buf_send,&(response->header));
+        printf("[Get ID] bytes written in the buffer: %d\n", msg_len);
+        int ret=0;
+        int bytes_sent=0;
+        while(bytes_sent<msg_len){
+			ret=send(socket_desc,buf_send+bytes_sent,msg_len-bytes_sent,0);
 			if (ret==-1 && errno==EINTR) continue;
 			ERROR_HELPER(ret,"Errore invio");
 			if (ret==0) break;
 			bytes_sent+=ret;
+        }
+
+        printf("Inviati %d bytes \n",bytes_sent);
+        return 0;
     }
-    printf("[SESSION] IdPacket inviato \n");
-    bytes_sent=0;
-    
-    //Attendo ricerca Immagine 
-    char buf_rcv[10000];
-    msg_len=0;
-    int buf_len=10000;
+    else if(header->type==GetTexture){
+        char buf_send[BUFFERSIZE];
+        ImagePacket* image_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
+        PacketHeader im_head;
+        im_head.type=PostTexture;
+        image_packet->image=texture_map;
+        image_packet->header=im_head;
+        int msg_len= Packet_serialize(buf_send, &image_packet->header);
+        printf("[Map Texture] bytes written in the buffer: %d\n", msg_len);
+        int bytes_sent=0;
+        int ret=0;
+        while(bytes_sent<msg_len){
+			ret=send(socket_desc,buf_send+bytes_sent,msg_len-bytes_sent,0);
+			if (ret==-1 && errno==EINTR) continue;
+            if (ret==-1 && errno==ECONNRESET) return -1;
+			ERROR_HELPER(ret,"Errore invio");
+			if (ret==0) break;
+			bytes_sent+=ret;
+            }
+        printf("Inviati %d bytes \n",bytes_sent);
+        return 0;
+    }
+
+    else if(header->type==GetElevation){
+        char buf_send[BUFFERSIZE];
+        ImagePacket* image_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
+        PacketHeader im_head;
+        im_head.type=PostElevation;
+        image_packet->image=elevation_map;
+        image_packet->header=im_head;
+        int msg_len= Packet_serialize(buf_send, &image_packet->header);
+        printf("[Map Elevation] bytes written in the buffer: %d\n", msg_len);
+        buf_send[msg_len]='\n';
+        int bytes_sent=0;
+        int ret=0;
+        while(bytes_sent<msg_len){
+			ret=send(socket_desc,buf_send+bytes_sent,msg_len-bytes_sent,0);
+			if (ret==-1 && errno==EINTR) continue;
+			ERROR_HELPER(ret,"Errore invio");
+			if (ret==0) break;
+			bytes_sent+=ret;
+            }
+        printf("Inviati %d bytes \n",msg_len);
+        return 0;
+    }
+
+    else return 0;
+}
+
+void* session(void* args) {
+    int buf_len=BUFFERSIZE;
+    tcp_args* arg=(tcp_args*)args;
+    int sock_fd=arg->server_tcp;
+    int msg_len=0;
     while(1){
+        char buf_rcv[BUFFERSIZE];
         msg_len=recv(sock_fd, buf_rcv, buf_len, 0);
         if (msg_len==-1 && errno == EINTR) continue;
         ERROR_HELPER(msg_len, "Cannot read from socket");
-        if(msg_len!=0) break;
+        if(msg_len!=0) {
+            int ret=TCP_Handler(sock_fd,buf_rcv,arg->texture_map,arg->elevation_map);
+            if (ret==-1) break;
         }
-    
-    printf("Ricevuta richiesta di %d bytes \n",msg_len);
-    PacketHeader* pheader=Packet_deserialize(buf_rcv,buf_len);
-    if(pheader->type==GetTexture){
-        printf("HO RICEVUTA UNA GETTEXTURE \n");
-        return;
     }
-    //Invio map texture
-    char buf_img[1000000];
-    Image* im;
-    im = Image_load("./images/test.pgm");
-    if(im!=NULL) printf("Image loaded \n");
-    ImagePacket* image_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
-    PacketHeader im_head;
-    im_head.type=PostTexture;
-    image_packet->image=im;
-    image_packet->header=im_head;
-    msg_len= Packet_serialize(buf_img, &image_packet->header);
-    printf("bytes written in the buffer: %d\n", msg_len);
-    bytes_sent=0;
-    while(bytes_sent<msg_len){
-			ret=send(sock_fd,buf_img+bytes_sent,msg_len-bytes_sent,0);
-			if (ret==-1 && errno==EINTR) continue;
-			ERROR_HELPER(ret,"Errore invio");
-			if (ret==0) break;
-			bytes_sent+=ret;
-    }
-    printf("[SESSION] Image sent \n");
-    
-
+    pthread_exit(NULL);
 }
 
 
@@ -121,22 +149,30 @@ int main(int argc, char **argv) {
 
     ret = listen(server_desc, 16); // flag socket as passive
     ERROR_HELPER(ret, "[MAIN THREAD] Impossibile eseguire listen() su server_desc");
+    Image* texture_map=Image_load("./images/test.pgm");
+    if (texture_map==NULL) ERROR_HELPER(-1,"Errore caricamento texture map");
+    Image* elevation_map=Image_load("./images/test.ppm");
+    if (elevation_map==NULL) ERROR_HELPER(-1,"Errore caricamento elevation map");
+
+
     while (1) {
         struct sockaddr_in client_addr = {0};
-
         // Setup to accept client connection
         int client_desc = accept(server_desc, (struct sockaddr*)&client_addr, (socklen_t*) &sockaddr_len);
         if (client_desc == -1 && errno == EINTR) continue;
         ERROR_HELPER(client_desc, "[MAIN THREAD] Impossibile eseguire accept() su server_desc");
 
-        // Process request
-        session(client_desc);
-
-        // Close connection
-        ret = close(client_desc);
-        ERROR_HELPER(ret, "[MAIN THREAD] Impossibile chiudere la socket client_desc per la connessione accettata");
+        tcp_args tcpArgs;
+        tcpArgs.server_tcp=client_desc;
+        tcpArgs.elevation_map=elevation_map;
+        tcpArgs.texture_map=texture_map;
+        pthread_t threadTCP;
+        ret = pthread_create(&threadTCP, NULL,session, &tcpArgs);
+        PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
+        ret = pthread_detach(threadTCP);
 
     }
+    printf("Esco");
 
 }
 
