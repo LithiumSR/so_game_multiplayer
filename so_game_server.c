@@ -90,8 +90,9 @@ int TCP_Packet_handler(char* buf_rcv, char* buf_send, int socket, Image* elevati
         case(GetId): {
             pthread_mutex_lock(&mutex);
             if (user->id!=-1) {
-                return -1;
+                debug_print("[TCP_Handler] Received multiple request for an id from the same client");
                 pthread_mutex_unlock(&mutex);
+                return -1;
             }
             pthread_mutex_unlock(&mutex);
             debug_print("[TCP_Handler] Found getID \n");
