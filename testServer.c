@@ -96,7 +96,16 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         printf("Texture veicolo deserializzato \n");
         return 0;
     }
-    else return 0;
+    else if(header->type==PostDisconnect){
+        printf("Trovato tentativo disconnessione");
+        fflush(stdout);
+        return 0;
+    }
+        
+    else {
+        printf("Pacchetto non riconosciuto \n");
+        return -1;
+    }
 }
 
 void* session(void* args) {

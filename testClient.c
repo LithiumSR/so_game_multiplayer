@@ -178,6 +178,30 @@ int sendTexture(int socket,Image* texture, int id){
     return 0;
 }
 
+int sendGoodbye(int socket,int id){
+    printf("[Goodbye] Sto per inviare qualcosa \n");
+    char buf_send[BUFFERSIZE];
+    IdPacket* idpckt=(IdPacket*)malloc(sizeof(IdPacket));
+    PacketHeader ph;
+    ph.type=PostDisconnect;
+    idpckt->id;
+    idpckt->header=ph;
+    int size=Packet_serialize(buf_send,&(idpckt->header));
+    printf("[Goodbye] Sto per inviare %d \n",size);
+    int msg_len=0;
+    while(msg_len<size){
+        int ret=send(socket,buf_send+msg_len,size-msg_len,0);
+        if (ret==-1 && errno==EINTR) continue;
+        ERROR_HELPER(ret,"Errore invio");
+        if (ret==0) break;
+        msg_len+=ret;
+    }
+    printf("[Goodbye] Bytes inviati %d \n",msg_len);
+    return 0;
+    
+    
+    
+}
 int main(int argc, char **argv) {
     long tmp = strtol(argv[1], NULL, 0);
     if (tmp < 1024 || tmp > 49151) {
@@ -208,6 +232,8 @@ int main(int argc, char **argv) {
     printf("Terminato ricezione Elevation Map \n");
     ret=sendTexture(socket_desc,vehicle_texture,id);
     printf("Terminato invio vehicle texture \n");
+    ret=sendGoodbye(socket_desc,id);
+    
     return 0;
 }
 
