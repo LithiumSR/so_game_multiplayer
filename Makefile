@@ -60,6 +60,5 @@ test_Server: testServer.c libso_game.a
 
 test_Client: testClient.c libso_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
-	
-	
-	
+
+
