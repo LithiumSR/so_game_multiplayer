@@ -105,41 +105,36 @@ int main(int argc, char **argv) {
     sigfillset(&sa.sa_mask);
     ret=sigaction(SIGHUP, &sa, NULL);
     ERROR_HELPER(ret,"Error: cannot handle SIGHUP");
-    //ret=sigaction(SIGINT, &sa, NULL);
-    //ERROR_HELPER(ret,"Error: cannot handle SIGINT");
+    ret=sigaction(SIGINT, &sa, NULL);
+    ERROR_HELPER(ret,"Error: cannot handle SIGINT");
 
-
+    //Talk with server
     debug_print("[Main] Starting ID,map_elevation,map_texture requests \n");
     int id=getID(socket_desc);
-    debug_print("[Main] ID received \n");
-    Image* map_elevation=getElevationMap(socket_desc);
+    debug_print("[Main] ID number %d received \n",id);
+    Image* surface_elevation=getElevationMap(socket_desc);
     debug_print("[Main] Map elevation received \n");
-    Image* map_texture = getTextureMap(socket_desc);
+    Image* surface_texture = getTextureMap(socket_desc);
     debug_print("[Main] Map texture received \n");
     debug_print("[Main] Sending vehicle texture");
     sendVehicleTexture(socket_desc,my_texture,id);
     debug_print("[Main] Client Vehicle texture sent \n");
 
-
-    // construct the world
-    World_init(&world, map_elevation, map_texture,0.5, 0.5, 0.5);
+    //Go offline
+    //sendGoodbye(socket_desc,id);
+    World_init(&world, surface_elevation, surface_texture,0.5, 0.5, 0.5);
     vehicle=(Vehicle*) malloc(sizeof(Vehicle));
     Vehicle_init(vehicle, &world, id, my_texture);
     World_addVehicle(&world, vehicle);
-
-    // spawn a thread that will listen the update messages from
-    // the server, and sends back the controls
-    // the update for yourself are written in the desired_*_force
-    // fields of the vehicle variable
-    // when the server notifies a new player has joined the game
-    // request the texture and add the player to the pool
-
     WorldViewer_runGlobal(&world, vehicle, &argc, argv);
-    // check out the images not needed anymore
+    // construct the world
 
+    printf("Cleaning up... \n");
+    fflush(stdout);
+    sendGoodbye(socket_desc,id);
     Image_free(my_texture);
-    Image_free(map_elevation);
-    Image_free(map_texture);
+    Image_free(surface_elevation);
+    Image_free(surface_texture);
     // world cleanup
     World_destroy(&world);
     return 0;

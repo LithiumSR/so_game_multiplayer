@@ -73,7 +73,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 			if (ret==0) break;
 			bytes_sent+=ret;
         }
-
+        Packet_free(&(response->header));
         printf("Inviati %d bytes \n",bytes_sent);
         return 0;
     }
@@ -96,6 +96,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 			if (ret==0) break;
 			bytes_sent+=ret;
             }
+        free(image_packet);
         printf("Inviati %d bytes \n",bytes_sent);
         return 0;
     }
@@ -118,14 +119,24 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 			if (ret==0) break;
 			bytes_sent+=ret;
             }
+        free(image_packet);
         printf("Inviati %d bytes \n",msg_len);
         return 0;
     }
     else if(header->type==PostTexture){
-        if(id==-1) return -1;
         ImagePacket* deserialized_packet = (ImagePacket*)Packet_deserialize(buf_rcv, header->size);
         Image* user_texture=deserialized_packet->image;
-        printf("Texture veicolo deserializzato \n");
+
+        pthread_mutex_lock(&mutex);
+        ListItem* user= List_find_by_id(users,id);
+        if (user==NULL){
+            debug_print("USER NOT FOUND");
+            return -1;
+        }
+        user->v_texture=user_texture;
+        pthread_mutex_unlock(&mutex);
+        debug_print("Texture veicolo aggiunta alla lista \n");
+        free(deserialized_packet);
         return 0;
     }
     else if(header->type==PostDisconnect){
@@ -145,6 +156,14 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 void* tcp_flow(void* args){
     tcp_args* arg=(tcp_args*)args;
     int sock_fd=arg->client_desc;
+    pthread_mutex_lock(&mutex);
+    ListItem* user=malloc(sizeof(ListItem));
+    user->v_texture = NULL;
+    user->creation_time=time(NULL);
+    user->id=sock_fd;
+    List_insert(users, 0, user);
+    pthread_mutex_unlock(&mutex);
+
     int ph_len=sizeof(PacketHeader);
     int isActive=1;
     int count=0;
@@ -171,6 +190,15 @@ void* tcp_flow(void* args){
         ERROR_HELPER(ret,"TCP Handler failed");
         count++;
     }
+    debug_print("Removing disconnected user....");
+    pthread_mutex_lock(&mutex);
+    ListItem* el=List_detach(users,user);
+    if(el==NULL) goto END;
+    Image* user_texture=el->v_texture;
+    if(user_texture!=NULL) Image_free(user_texture);
+    free(el);
+    END:pthread_mutex_unlock(&mutex);
+    debug_print("Done \n");
     pthread_exit(NULL);
 }
 
@@ -206,6 +234,7 @@ int main(int argc, char **argv) {
     else {
         debug_print("Fail! \n");
     }
+
     debug_print("[Main] loading vehicle texture (default) from %s ... ", vehicle_texture_filename);
     Image* vehicle_texture = Image_load(vehicle_texture_filename);
     if (vehicle_texture) {
@@ -281,7 +310,6 @@ int main(int argc, char **argv) {
         ret = pthread_detach(threadTCP);
     }
 
-    //WIP  SERVER CLEANUP
     debug_print("[Main] Closing the server...");
     List_destroy(users);
     close(server_tcp);
