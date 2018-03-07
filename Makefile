@@ -7,8 +7,6 @@ AR=ar
 BINS=libso_game.a\
      so_game_server\
      so_game_client\
-     test_Client\
-     test_Server\
 
 OBJS = vec3.o\
        linked_list.o\
