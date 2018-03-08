@@ -62,12 +62,18 @@ void handle_signal(int signal){
 int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
     char buf_send[BUFFERSIZE]="Ciao test test test test :) \n \0";
     int len= strlen(buf_send);
-    debug_print("Sto per inviare %d bytes \n",len);
-    int bytes_sent = sendto(socket_udp, buf_send, len, 0, (struct sockaddr *) &server_addr,(socklen_t) serverlen);
+    debug_print("[UDP]Sto per inviare %d bytes \n",len);
+    PacketHeader ph;
+    ph.type=GetId;
+    IdPacket* ip=(IdPacket*)malloc(sizeof(IdPacket));
+    ip->header=ph;
+    ip->id=0;
+    int size=Packet_serialize(buf_send,&(ip->header));
+    int bytes_sent = sendto(socket_udp, buf_send, size, 0, (const struct sockaddr *) &server_addr,(socklen_t) serverlen);
     debug_print("[UDP] Ho inviato %d \n",bytes_sent);
     if(bytes_sent<0) return -1;
     else {
-        debug_print("[UDP_Sender] VehicleUpdatePacket sent");
+        debug_print("[UDP_Sender] TestUpdatePacket sent \n");
         return 0;
     }
 }
@@ -78,11 +84,9 @@ void* udp_test(void* args){
     int socket_udp =udp_args.socket_udp;
     int serverlen=sizeof(server_addr);
     while(connectivity && checkUpdate){
-        debug_print("[UDP_Test] Sto per inviare una stringa... \n");
         int ret=sendUpdates(socket_udp,server_addr,serverlen);
-        if(ret==-1) debug_print("[UDP_Sender] Cannot send VehicleUpdatePacket");
-        debug_print("[UDP_Test] Going to sleep");
-        sleep(1000);
+        if(ret==-1) debug_print("[UDP_Sender] Cannot send VehicleUpdatePacket \n");
+        sleep(1);
     }
     pthread_exit(NULL);
 }
@@ -114,7 +118,12 @@ int main(int argc, char **argv) {
     server_addr.sin_addr.s_addr = ip_addr;
     server_addr.sin_family      = AF_INET;
     server_addr.sin_port        = port_number_no;
-	int ret= connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
+
+    int reuseaddr_opt = 1; // recover server if a crash occurs
+    int ret = setsockopt(socket_desc, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_opt, sizeof(reuseaddr_opt));
+    ERROR_HELPER(ret, "[MAIN THREAD] Impossibile settare l'opzione SO_REUSEADDR per socket server_desc");
+
+	ret= connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
     ERROR_HELPER(ret, "Cannot connect to remote server \n");
     debug_print("[Main] TCP connection established... \n");
 
@@ -141,26 +150,25 @@ int main(int argc, char **argv) {
     debug_print("[Main] Sending vehicle texture");
     sendVehicleTexture(socket_desc,my_texture,id);
     debug_print("[Main] Client Vehicle texture sent \n");
-    
-    struct sockaddr_in udp_addr;
+
     //UDP Init
-    int socket_udp=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    ERROR_HELPER(socket_udp,"Something went wrong during the creation of the udp socket");
-    memset((char *) &udp_addr, 0, sizeof(udp_addr));
-    udp_addr.sin_family = AF_INET;
-    udp_addr.sin_port = htons(++tmp);
-    udp_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    ret=bind(socket_udp, (struct sockaddr*)&udp_addr, sizeof(udp_addr) );
-    ERROR_HELPER(ret,"Error during bind");
+    uint16_t port_number_udp = htons((uint16_t)UDPPORT); // we use network byte order
+	int socket_udp = socket(AF_INET, SOCK_DGRAM, 0);
+    ERROR_HELPER(socket_desc, "Impossibile creare una socket");
+	struct sockaddr_in udp_server = {0}; // some fields are required to be filled with 0
+    udp_server.sin_addr.s_addr = ip_addr;
+    udp_server.sin_family      = AF_INET;
+    udp_server.sin_port        = port_number_udp;
     debug_print("Socket UDP created and ready to work \n");
-    
+
     pthread_t UDP_test;
     udpArgs udp_args;
     udp_args.socket_tcp=socket_desc;
-    udp_args.server_addr=udp_addr;
+    udp_args.server_addr=udp_server;
     udp_args.socket_udp=socket_udp;
     ret = pthread_create(&UDP_test, NULL,udp_test, &udp_args);
     PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
+
     //Go offline if macro in common.h is set to 1
     if(OFFLINE) sendGoodbye(socket_desc,id);
     World_init(&world, surface_elevation, surface_texture,0.5, 0.5, 0.5);

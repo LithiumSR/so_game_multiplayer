@@ -205,25 +205,26 @@ void* tcp_flow(void* args){
 
 void* udp_setup(void* args){
     int socket_udp=*(int*)args;
-    char buf_recv[BUFFERSIZE];
-    struct sockaddr_in client_addr;
     while(connectivity){
         if(!hasUsers){
-            sleep(1000);
+            sleep(1);
             continue;
         }
         debug_print("[UDP_Receiver] Waiting for an update packet over UDP \n");
-        memset(&client_addr, 0, sizeof(client_addr));
-        int ret=recvfrom(socket_udp, buf_recv, BUFFERSIZE, 0, (struct sockaddr*) &client_addr, (socklen_t*) sizeof(client_addr));
-        debug_print("[UDP] Letti %d bytes",ret);
+        char buf_recv[BUFFERSIZE];
+        struct sockaddr_in client_addr = {0};
+        socklen_t addrlen= sizeof(struct sockaddr_in);
+        int ret=recvfrom(socket_udp,buf_recv,BUFFERSIZE,0, (struct sockaddr*)&client_addr,&addrlen);
+        debug_print("[UDP] Letti %d bytes \n",ret);
+        ERROR_HELPER(ret,"Errore");
         if(ret==-1) {
             connectivity=0;
             debug_print("UDP Error :( \n");
         }
-        
+
 		if(ret == 0) continue;
 		//ret = UDP_Packet_handler(buf_recv,client_addr);
-        sleep(1000);
+        sleep(1);
     }
     pthread_exit(NULL);
 }
@@ -317,16 +318,30 @@ int main(int argc, char **argv) {
     //preparing 2 threads (1 for udp socket, 1 for tcp socket)
 
     //Creating UDP Socket
-    debug_print("Creating UDP socket \n...");
+
+    uint16_t port_number_no_udp= htons((uint16_t)UDPPORT);
+
+    // setup server
     int server_udp = socket(AF_INET, SOCK_DGRAM, 0);
-    ERROR_HELPER(server_udp, "[MAIN] Cannot create socket_udp");
-    ret = bind(server_udp, (struct sockaddr*) &server_addr, sockaddr_len);
-    ERROR_HELPER(ret, "[MAIN] Bind on server_udp socket failed");
+    ERROR_HELPER(server_udp, "[MAIN THREAD] Impossibile creare socket server_desc");
+
+    struct sockaddr_in udp_server = {0};
+    udp_server.sin_addr.s_addr = INADDR_ANY;
+    udp_server.sin_family      = AF_INET;
+    udp_server.sin_port        = port_number_no_udp;
+
+    int reuseaddr_opt_udp = 1; // recover server if a crash occurs
+    ret = setsockopt(server_udp, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_opt_udp, sizeof(reuseaddr_opt_udp));
+    ERROR_HELPER(ret, "[MAIN THREAD] Impossibile settare l'opzione SO_REUSEADDR per socket server_desc");
+
+    ret = bind(server_udp, (struct sockaddr*) &udp_server, sizeof(udp_server)); // binding dell'indirizzo
+    ERROR_HELPER(ret, "[MAIN THREAD] Impossibile eseguire bind() su server_desc");
+
     debug_print("UDP socket created \n");
     pthread_t UDP_setup;
     ret = pthread_create(&UDP_setup, NULL,udp_setup, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
-    
+
     while (connectivity) {
         struct sockaddr_in client_addr = {0};
         // Setup to accept client connection
@@ -346,7 +361,7 @@ int main(int argc, char **argv) {
         PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
         ret = pthread_detach(threadTCP);
     }
-    
+
     ret=pthread_join(UDP_setup,NULL);
     ERROR_HELPER(ret,"Something went wrong with the join on UDP_setup thread");
     debug_print("[Main] Closing the server...");
