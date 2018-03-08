@@ -130,7 +130,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         pthread_mutex_lock(&mutex);
         ListItem* user= List_find_by_id(users,id);
         if (user==NULL){
-            debug_print("USER NOT FOUND");
+            debug_print("[TCP Handler] USER NOT FOUND \n");
             return -1;
         }
         user->v_texture=user_texture;
@@ -148,7 +148,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 
     else {
         *isActive=0;
-        printf("Pacchetto non riconosciuto \n");
+        printf("[TCP Handler] Pacchetto non riconosciuto \n");
         return -1;
     }
 }
@@ -162,6 +162,7 @@ void* tcp_flow(void* args){
     user->creation_time=time(NULL);
     user->id=sock_fd;
     List_insert(users, 0, user);
+    hasUsers=1;
     pthread_mutex_unlock(&mutex);
 
     int ph_len=sizeof(PacketHeader);
@@ -199,6 +200,31 @@ void* tcp_flow(void* args){
     free(el);
     END:pthread_mutex_unlock(&mutex);
     debug_print("Done \n");
+    pthread_exit(NULL);
+}
+
+void* udp_setup(void* args){
+    int socket_udp=*(int*)args;
+    char buf_recv[BUFFERSIZE];
+    struct sockaddr_in client_addr;
+    while(connectivity){
+        if(!hasUsers){
+            sleep(1000);
+            continue;
+        }
+        debug_print("[UDP_Receiver] Waiting for an update packet over UDP \n");
+        memset(&client_addr, 0, sizeof(client_addr));
+        int ret=recvfrom(socket_udp, buf_recv, BUFFERSIZE, 0, (struct sockaddr*) &client_addr, (socklen_t*) sizeof(client_addr));
+        debug_print("[UDP] Letti %d bytes",ret);
+        if(ret==-1) {
+            connectivity=0;
+            debug_print("UDP Error :( \n");
+        }
+        
+		if(ret == 0) continue;
+		//ret = UDP_Packet_handler(buf_recv,client_addr);
+        sleep(1000);
+    }
     pthread_exit(NULL);
 }
 
@@ -290,7 +316,18 @@ int main(int argc, char **argv) {
     debug_print("[MAIN] Custom signal handlers are now enabled \n");
     //preparing 2 threads (1 for udp socket, 1 for tcp socket)
 
-    while (1) {
+    //Creating UDP Socket
+    debug_print("Creating UDP socket \n...");
+    int server_udp = socket(AF_INET, SOCK_DGRAM, 0);
+    ERROR_HELPER(server_udp, "[MAIN] Cannot create socket_udp");
+    ret = bind(server_udp, (struct sockaddr*) &server_addr, sockaddr_len);
+    ERROR_HELPER(ret, "[MAIN] Bind on server_udp socket failed");
+    debug_print("UDP socket created \n");
+    pthread_t UDP_setup;
+    ret = pthread_create(&UDP_setup, NULL,udp_setup, &server_udp);
+    PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
+    
+    while (connectivity) {
         struct sockaddr_in client_addr = {0};
         // Setup to accept client connection
         int client_desc = accept(server_tcp, (struct sockaddr*)&client_addr, (socklen_t*) &sockaddr_len);
@@ -309,7 +346,9 @@ int main(int argc, char **argv) {
         PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
         ret = pthread_detach(threadTCP);
     }
-
+    
+    ret=pthread_join(UDP_setup,NULL);
+    ERROR_HELPER(ret,"Something went wrong with the join on UDP_setup thread");
     debug_print("[Main] Closing the server...");
     List_destroy(users);
     close(server_tcp);

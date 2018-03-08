@@ -34,6 +34,14 @@ typedef struct localWorld{
     Vehicle** vehicles;
 }localWorld;
 
+
+typedef struct listenArgs{
+    localWorld* lw;
+    struct sockaddr_in server_addr;
+    int socket_udp;
+    int socket_tcp;
+}udpArgs;
+
 void handle_signal(int signal){
     // Find out which signal we're handling
     switch (signal) {
@@ -42,7 +50,8 @@ void handle_signal(int signal){
         case SIGINT:
             connectivity=0;
             checkUpdate=0;
-            sendGoodbye(socket_desc, id);
+            //sendGoodbye(socket_desc, id);
+            exit(0);
             break;
         default:
             fprintf(stderr, "Caught wrong signal: %d\n", signal);
@@ -50,19 +59,32 @@ void handle_signal(int signal){
     }
 }
 
+int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
+    char buf_send[BUFFERSIZE]="Ciao test test test test :) \n \0";
+    int len= strlen(buf_send);
+    debug_print("Sto per inviare %d bytes \n",len);
+    int bytes_sent = sendto(socket_udp, buf_send, len, 0, (struct sockaddr *) &server_addr,(socklen_t) serverlen);
+    debug_print("[UDP] Ho inviato %d \n",bytes_sent);
+    if(bytes_sent<0) return -1;
+    else {
+        debug_print("[UDP_Sender] VehicleUpdatePacket sent");
+        return 0;
+    }
+}
 
-int createUDPSocket(struct sockaddr_in* si_me, int port){
-    int socket_udp;
-    socket_udp=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    ERROR_HELPER(socket_udp,"Something went wrong during the creation of the udp socket");
-    memset((char *) &si_me, 0, sizeof(si_me));
-    in_addr_t ip_addr = inet_addr(SERVER_ADDRESS);
-    si_me->sin_family = AF_INET;
-    si_me->sin_port = htons(port);
-    si_me->sin_addr.s_addr = ip_addr;
-    int ret=bind(socket_udp, (struct sockaddr*)&si_me, sizeof(si_me) );
-    ERROR_HELPER(ret,"Error during bind");
-    return socket_udp;
+void* udp_test(void* args){
+    udpArgs udp_args =*(udpArgs*)args;
+    struct sockaddr_in server_addr=udp_args.server_addr;
+    int socket_udp =udp_args.socket_udp;
+    int serverlen=sizeof(server_addr);
+    while(connectivity && checkUpdate){
+        debug_print("[UDP_Test] Sto per inviare una stringa... \n");
+        int ret=sendUpdates(socket_udp,server_addr,serverlen);
+        if(ret==-1) debug_print("[UDP_Sender] Cannot send VehicleUpdatePacket");
+        debug_print("[UDP_Test] Going to sleep");
+        sleep(1000);
+    }
+    pthread_exit(NULL);
 }
 
 int main(int argc, char **argv) {
@@ -119,16 +141,34 @@ int main(int argc, char **argv) {
     debug_print("[Main] Sending vehicle texture");
     sendVehicleTexture(socket_desc,my_texture,id);
     debug_print("[Main] Client Vehicle texture sent \n");
-
-    //Go offline
-    //sendGoodbye(socket_desc,id);
+    
+    struct sockaddr_in udp_addr;
+    //UDP Init
+    int socket_udp=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    ERROR_HELPER(socket_udp,"Something went wrong during the creation of the udp socket");
+    memset((char *) &udp_addr, 0, sizeof(udp_addr));
+    udp_addr.sin_family = AF_INET;
+    udp_addr.sin_port = htons(++tmp);
+    udp_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    ret=bind(socket_udp, (struct sockaddr*)&udp_addr, sizeof(udp_addr) );
+    ERROR_HELPER(ret,"Error during bind");
+    debug_print("Socket UDP created and ready to work \n");
+    
+    pthread_t UDP_test;
+    udpArgs udp_args;
+    udp_args.socket_tcp=socket_desc;
+    udp_args.server_addr=udp_addr;
+    udp_args.socket_udp=socket_udp;
+    ret = pthread_create(&UDP_test, NULL,udp_test, &udp_args);
+    PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
+    //Go offline if macro in common.h is set to 1
+    if(OFFLINE) sendGoodbye(socket_desc,id);
     World_init(&world, surface_elevation, surface_texture,0.5, 0.5, 0.5);
     vehicle=(Vehicle*) malloc(sizeof(Vehicle));
     Vehicle_init(vehicle, &world, id, my_texture);
     World_addVehicle(&world, vehicle);
     WorldViewer_runGlobal(&world, vehicle, &argc, argv);
     // construct the world
-
     printf("Cleaning up... \n");
     fflush(stdout);
     sendGoodbye(socket_desc,id);
