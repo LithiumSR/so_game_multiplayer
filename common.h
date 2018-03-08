@@ -4,7 +4,9 @@
 #include <stdio.h>
 #define WORLDSIZE 512
 #define DEBUG 1
+#define OFFLINE 0
 #define BUFFERSIZE 1000000
+#define UDPPORT 9000
 #define MAXCONSECUTIVEFAIL 15
 // macro to simplify error handling
 #define GENERIC_ERROR_HELPER(cond, errCode, msg) do {               \
