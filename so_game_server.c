@@ -77,8 +77,9 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
             if(client == NULL) {
                 debug_print("[UDP_Handler] Can't find the user to apply the update \n");
                 Packet_free(&vup->header);
-                pthread_mutex_unlock(&mutex);
+                printf("Non ho trovato l'ID %d \n",vup->id);
                 sendDisconnect(socket_udp,client_addr);
+                pthread_mutex_unlock(&mutex);
                 return -1;
             }
             client->x=vup->x;
@@ -122,8 +123,41 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         return 0;
     }
     else if(header->type==GetTexture){
+        debug_print("Sono qui");
         char buf_send[BUFFERSIZE];
-        ImagePacket* image_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
+        ImagePacket* image_request = (ImagePacket*)buf_rcv;
+        printf("ID DELLA RICHIESTA IMMAGINE %d \n",image_request->id);
+        if(image_request->id>0){
+            debug_print("Dentro l'if");
+            char buf_send[BUFFERSIZE];
+            ImagePacket* image_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
+            PacketHeader im_head;
+            im_head.type=PostTexture;
+            pthread_mutex_lock(&mutex);
+            ListItem* el=List_find_by_id(users,image_request->id);
+            if (el==NULL) {
+                pthread_mutex_unlock(&mutex);
+                return -1;
+            }
+            image_packet->image=el->v_texture;
+            pthread_mutex_unlock(&mutex);
+            image_packet->header=im_head;
+            int msg_len= Packet_serialize(buf_send, &image_packet->header);
+            debug_print("[Send Vehicle Texture] bytes written in the buffer: %d\n", msg_len);
+            int bytes_sent=0;
+            int ret=0;
+            while(bytes_sent<msg_len){
+                ret=send(socket_desc,buf_send+bytes_sent,msg_len-bytes_sent,0);
+                if (ret==-1 && errno==EINTR) continue;
+                ERROR_HELPER(ret,"Can't send map texture over TCP");
+                bytes_sent+=ret;
+            }
+
+            free(image_packet);
+            debug_print("[Send Vehicle Texture] Sent %d bytes \n",bytes_sent);
+            return 0;
+        }
+        ImagePacket* image_packet =(ImagePacket*)malloc(sizeof(ImagePacket));
         PacketHeader im_head;
         im_head.type=PostTexture;
         image_packet->image=texture_map;
@@ -256,11 +290,10 @@ void* udp_receiver(void* args){
         struct sockaddr_in client_addr = {0};
         socklen_t addrlen= sizeof(struct sockaddr_in);
         int bytes_read=recvfrom(socket_udp,buf_recv,BUFFERSIZE,0, (struct sockaddr*)&client_addr,&addrlen);
-        if(bytes_read==-1)  goto END;
+        if(bytes_read==-1)  continue;
 		if(bytes_read == 0) continue;
 		int ret = UDP_Handler(socket_udp,buf_recv,client_addr);
         if (ret==-1) debug_print("[UDP_Receiver] UDP Handler couldn't manage to apply the VehicleUpdate \n");
-        END: sleep(1);
     }
     pthread_exit(NULL);
 }
@@ -290,7 +323,18 @@ void* udp_sender(void* args){
             cup->x=client->x;
             cup->theta=client->theta;
             cup->id=client->id;
+            cup->rotational_force=client->rotational_force;
+            cup->translational_force=client->translational_force;
+            printf("--- Veicolo con id: %d x: %f y:%f z:%f rf:%f tf:%f --- \n",cup->id,cup->x,cup->y,cup->theta,cup->rotational_force,cup->translational_force);
             client = client->next;
+            i++;
+        }
+
+        printf("Sto inviando un aggiornamento con: \n");
+        int k=0;
+        while(k<wup->num_vehicles){
+            printf("n. %d: ID: %d, x:%f, y:%f, theta:%f \n",k,wup->updates[k].id,wup->updates[k].x,wup->updates[k].y,wup->updates[k].theta);
+            k++;
         }
 
         int size=Packet_serialize(buf_send,&wup->header);
@@ -302,10 +346,10 @@ void* udp_sender(void* args){
         client=users->first;
         while(client!=NULL){
             if(client->isAddrReady==1){
-                int ret = sendto(socket_udp, buf_send, size, 0, (struct sockaddr*) &client->user_addr, (socklen_t) sizeof(client->user_addr));
-                debug_print("[UDP_Send] Sent WorldUpdate of %d bytes to client with id %d \n",ret,client->id);
+                    int ret = sendto(socket_udp, buf_send, size, 0, (struct sockaddr*) &client->user_addr, (socklen_t) sizeof(client->user_addr));
+                    debug_print("[UDP_Send] Sent WorldUpdate of %d bytes to client with id %d \n",ret,client->id);
                 }
-                client=client->next;
+            client=client->next;
             }
         fprintf(stdout,"[UDP_Send] WorldUpdatePacket sent to each client \n");
         pthread_mutex_unlock(&mutex);
