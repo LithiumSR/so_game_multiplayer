@@ -25,7 +25,7 @@ Vehicle* vehicle; // The vehicle
 int id;
 uint16_t  port_number_no;
 int connectivity=1;
-int checkUpdate=1;
+int exchangeUpdate=1;
 int socket_desc; //socket tcp
 
 typedef struct localWorld{
@@ -49,7 +49,7 @@ void handle_signal(int signal){
             break;
         case SIGINT:
             connectivity=0;
-            checkUpdate=0;
+            exchangeUpdate=0;
             //sendGoodbye(socket_desc, id);
             exit(0);
             break;
@@ -69,16 +69,11 @@ int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
     getXYTheta(vehicle,&(vup->x),&(vup->y),&(vup->theta));
     vup->id=id;
     vup->time=time(NULL);
-    debug_print("Sto preparando un VehicleUpdatePacket...");
     int size=Packet_serialize(buf_send, &vup->header);
-
     int bytes_sent = sendto(socket_udp, buf_send, size, 0, (const struct sockaddr *) &server_addr,(socklen_t) serverlen);
-    debug_print("[UDP] Sent %d bytes \n",bytes_sent);
+    debug_print("[UDP_Sender] Sent a VehicleUpdatePacket of %d bytes \n",bytes_sent);
     if(bytes_sent<0) return -1;
-    else {
-        debug_print("[UDP_Sender] VehicleUpdatePacket sent \n");
-        return 0;
-    }
+    return 0;
 }
 
 void* udp_sender(void* args){
@@ -86,7 +81,7 @@ void* udp_sender(void* args){
     struct sockaddr_in server_addr=udp_args.server_addr;
     int socket_udp =udp_args.socket_udp;
     int serverlen=sizeof(server_addr);
-    while(connectivity){
+    while(connectivity && exchangeUpdate){
         int ret=sendUpdates(socket_udp,server_addr,serverlen);
         if(ret==-1) debug_print("[UDP_Sender] Cannot send VehicleUpdatePacket \n");
         sleep(1);
@@ -99,7 +94,7 @@ int main(int argc, char **argv) {
         printf("usage: %s <player texture> <port_number> \n", argv[1]);
         exit(-1);
         }
-    debug_print("[Main] loading vehicle texture from %s ... ", argv[1]);
+    fprintf(stdout,"[Main] loading vehicle texture from %s ... ", argv[1]);
     Image* my_texture = Image_load(argv[1]);
     if (my_texture) {
         printf("Done! \n");
@@ -108,11 +103,13 @@ int main(int argc, char **argv) {
         printf("Fail! \n");
         }
     long tmp= strtol(argv[2], NULL, 0);
+
     if (tmp < 1024 || tmp > 49151) {
       fprintf(stderr, "Use a port number between 1024 and 49151.\n");
       exit(EXIT_FAILURE);
       }
-    debug_print("[Main] Starting... \n");
+
+    fprintf(stdout,"[Main] Starting... \n");
     port_number_no = htons((uint16_t)tmp); // we use network byte order
 	socket_desc = socket(AF_INET, SOCK_STREAM, 0);
     in_addr_t ip_addr = inet_addr(SERVER_ADDRESS);
@@ -124,7 +121,7 @@ int main(int argc, char **argv) {
 
     int reuseaddr_opt = 1; // recover server if a crash occurs
     int ret = setsockopt(socket_desc, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_opt, sizeof(reuseaddr_opt));
-    ERROR_HELPER(ret, "[MAIN THREAD] Impossibile settare l'opzione SO_REUSEADDR per socket server_desc");
+    ERROR_HELPER(ret, "Can't set SO_REUSEADDR flag");
 
 	ret= connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
     ERROR_HELPER(ret, "Cannot connect to remote server \n");
@@ -143,32 +140,33 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret,"Error: cannot handle SIGINT");
 
     //Talk with server
-    debug_print("[Main] Starting ID,map_elevation,map_texture requests \n");
+    fprintf(stdout,"[Main] Starting ID,map_elevation,map_texture requests \n");
     id=getID(socket_desc);
-    debug_print("[Main] ID number %d received \n",id);
+    fprintf(stdout,"[Main] ID number %d received \n",id);
     Image* surface_elevation=getElevationMap(socket_desc);
-    debug_print("[Main] Map elevation received \n");
+    fprintf(stdout,"[Main] Map elevation received \n");
     Image* surface_texture = getTextureMap(socket_desc);
-    debug_print("[Main] Map texture received \n");
+    fprintf(stdout,"[Main] Map texture received \n");
     debug_print("[Main] Sending vehicle texture");
     sendVehicleTexture(socket_desc,my_texture,id);
-    debug_print("[Main] Client Vehicle texture sent \n");
+    fprintf(stdout,"[Main] Client Vehicle texture sent \n");
+
+    //create Vehicle
+    World_init(&world, surface_elevation, surface_texture,0.5, 0.5, 0.5);
+    vehicle=(Vehicle*) malloc(sizeof(Vehicle));
+    Vehicle_init(vehicle, &world, id, my_texture);
+    World_addVehicle(&world, vehicle);
+    if(OFFLINE) goto SKIP;
 
     //UDP Init
     uint16_t port_number_udp = htons((uint16_t)UDPPORT); // we use network byte order
 	int socket_udp = socket(AF_INET, SOCK_DGRAM, 0);
-    ERROR_HELPER(socket_desc, "Impossibile creare una socket");
+    ERROR_HELPER(socket_desc, "Can't create an UDP socket");
 	struct sockaddr_in udp_server = {0}; // some fields are required to be filled with 0
     udp_server.sin_addr.s_addr = ip_addr;
     udp_server.sin_family      = AF_INET;
     udp_server.sin_port        = port_number_udp;
-    debug_print("Socket UDP created and ready to work \n");
-
-    //create Vehicle
-     World_init(&world, surface_elevation, surface_texture,0.5, 0.5, 0.5);
-    vehicle=(Vehicle*) malloc(sizeof(Vehicle));
-    Vehicle_init(vehicle, &world, id, my_texture);
-    World_addVehicle(&world, vehicle);
+    debug_print("[Main] Socket UDP created and ready to work \n");
 
     //Create UDP Threads
     pthread_t UDP_sender;
@@ -179,17 +177,24 @@ int main(int argc, char **argv) {
     ret = pthread_create(&UDP_sender, NULL, udp_sender, &udp_args);
     PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_sender");
 
-    //Go offline if required by macro
-    if(OFFLINE) sendGoodbye(socket_desc,id);
+    //Disconnect from server if required by macro
+    SKIP: if(OFFLINE) sendGoodbye(socket_desc,id);
 
     WorldViewer_runGlobal(&world, vehicle, &argc, argv);
+
+    // Waiting threads to end and cleaning resources
     debug_print("[Main] Disabling and joining on UDP and TCP threads \n");
     connectivity=0;
-    checkUpdate=0;
-    ret=pthread_join(UDP_sender,NULL);
-    PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_join on thread UDP_sender failed");
-    // Waiting thread to end
-    printf("Cleaning up... \n");
+    exchangeUpdate=0;
+    if(!OFFLINE){
+        ret=pthread_join(UDP_sender,NULL);
+        PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_sender failed");
+        ret= close(socket_udp);
+        ERROR_HELPER(ret,"Failed to close UDP socket");
+        }
+    fprintf(stdout,"[Main] Cleaning up... \n");
+    ret=close(socket_desc);
+    ERROR_HELPER(ret,"Failed to close TCP socket");
     fflush(stdout);
     sendGoodbye(socket_desc,id);
     Image_free(my_texture);
