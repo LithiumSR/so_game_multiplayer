@@ -14,7 +14,7 @@ typedef struct ListItem {
   Image * v_texture;
   int id;
   struct sockaddr_in user_addr;
-  time_t current_time;
+  time_t last_update_time;
   int isAddrReady;
   time_t creation_time;
 } ListItem;

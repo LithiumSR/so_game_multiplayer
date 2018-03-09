@@ -22,6 +22,7 @@
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
 int checkUpdate=1;
+int cleanGarbage=1;
 int hasUsers=0;
 ListHead* users;
 long SERVER_PORT;
@@ -53,7 +54,20 @@ void handle_signal(int signal){
     }
 }
 
-int UDP_Handler(char* buf_rcv,struct sockaddr_in client_addr){
+void sendDisconnect(int socket_udp, struct sockaddr_in client_addr){
+    char buf_send[BUFFERSIZE];
+    PacketHeader ph;
+    ph.type=PostDisconnect;
+    IdPacket* ip=(IdPacket*)malloc(sizeof(IdPacket));
+    ip->id=-1;
+    ip->header=ph;
+    int size=Packet_serialize(buf_send,&(ip->header));
+    int ret=sendto(socket_udp, buf_send, size, 0, (struct sockaddr*) &client_addr, (socklen_t) sizeof(client_addr));
+    debug_print("[UDP_Receiver] Sent PostDisconnect packet of %d bytes to unrecognized user \n",ret);
+}
+
+
+int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
     PacketHeader* ph=(PacketHeader*)buf_rcv;
     switch(ph->type){
         case(VehicleUpdate):{
@@ -65,6 +79,7 @@ int UDP_Handler(char* buf_rcv,struct sockaddr_in client_addr){
                 debug_print("[UDP_Handler] Can't find the user to apply the update \n");
                 Packet_free(&vup->header);
                 pthread_mutex_unlock(&mutex);
+                sendDisconnect(socket_udp,client_addr);
                 return -1;
             }
             client->x=vup->x;
@@ -72,7 +87,7 @@ int UDP_Handler(char* buf_rcv,struct sockaddr_in client_addr){
             client->theta=vup->theta;
             client->user_addr=client_addr;
             client->isAddrReady=1;
-            client->current_time=vup->time;
+            client->last_update_time=vup->time;
             pthread_mutex_unlock(&mutex);
             debug_print("[UDP_Handler] VehicleUpdatePacket applied \n");
             Packet_free(&vup->header);
@@ -250,8 +265,90 @@ void* udp_receiver(void* args){
         ERROR_HELPER(ret,"Errore");
         if(ret==-1)  goto END;
 		if(ret == 0) continue;
-		ret = UDP_Handler(buf_recv,client_addr);
+		ret = UDP_Handler(socket_udp,buf_recv,client_addr);
         END: sleep(1);
+    }
+    pthread_exit(NULL);
+}
+
+void* udp_sender(void* args){
+    int socket_udp=*(int*)args;
+    while(connectivity && checkUpdate){
+        if(!hasUsers){
+            sleep(1);
+            continue;
+        }
+        char buf_send[BUFFERSIZE];
+        debug_print("[UDP_Sender] Creating WorldUpdatePacket \n");
+        PacketHeader ph;
+        ph.type=WorldUpdate;
+        WorldUpdatePacket* wup=(WorldUpdatePacket*)malloc(sizeof(WorldUpdatePacket));
+        wup->header=ph;
+        pthread_mutex_lock(&mutex);
+        wup->num_vehicles=users->size;
+        debug_print("[UDP_Sender] Found %d users \n",wup->num_vehicles);
+        wup->updates=(ClientUpdate*)malloc(sizeof(ClientUpdate)*wup->num_vehicles);
+        ListItem* client= users->first;
+        int i=0;
+        while(client!=NULL){
+            ClientUpdate* cup= &(wup->updates[i]);
+            cup->y=client->y;
+            cup->x=client->x;
+            cup->theta=client->theta;
+            cup->id=client->id;
+            client = client->next;
+        }
+
+        int size=Packet_serialize(buf_send,&wup->header);
+        debug_print("[UDP_Sender] Devo inviare un pacchetto con %d bytes ad ogni client \n",size);
+        if(size==0 || size==-1){
+            pthread_mutex_unlock(&mutex);
+            sleep(1);
+            continue;
+			}
+        client=users->first;
+        while(client!=NULL){
+            if(client->isAddrReady==1){
+                int ret = sendto(socket_udp, buf_send, size, 0, (struct sockaddr*) &client->user_addr, (socklen_t) sizeof(client->user_addr));
+                debug_print("[UDP_Send] Sent update of %d bytes to client %d \n",ret,client->id);
+                }
+                client=client->next;
+            }
+        debug_print("[UDP_Send] WorldUpdatePacket sent to every client \n");
+        pthread_mutex_unlock(&mutex);
+        sleep(1);
+    }
+    pthread_exit(NULL);
+}
+
+void* garbage_collector(void* args){
+    debug_print("[GC] Garbage collector initialized \n");
+    int socket_udp=*(int*)args;
+    while(cleanGarbage){
+        if(hasUsers==0) goto END;
+        pthread_mutex_lock(&mutex);
+        ListItem* client=users->first;
+        long current_time=(long)time(NULL);
+        int count=0;
+        while(client!=NULL){
+            long creation_time=(long)client->creation_time;
+            long last_update_time=(long)client->last_update_time;
+            if((client->isAddrReady==1 && (current_time-last_update_time)>30) || (client->isAddrReady!=1 && (current_time-creation_time)>30)){
+                ListItem* tmp=client;
+                client=client->next;
+                if (tmp->isAddrReady==1) sendDisconnect(socket_udp,tmp->user_addr);
+                ListItem* del=List_detach(users,tmp);
+                if (del==NULL) continue;
+                Image* user_texture=del->v_texture;
+                if (user_texture!=NULL) Image_free(user_texture);
+                count++;
+                if(users->size==0) hasUsers=0;
+            }
+            else client=client->next;
+        }
+        if (count>0) fprintf(stdout,"[GC] Removed %d users from the client list \n",count);
+        END: pthread_mutex_unlock(&mutex);
+        sleep(15);
     }
     pthread_exit(NULL);
 }
@@ -365,9 +462,13 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret, "[MAIN THREAD] Impossibile eseguire bind() su server_desc");
 
     debug_print("UDP socket created \n");
-    pthread_t UDP_setup;
-    ret = pthread_create(&UDP_setup, NULL,udp_receiver, &server_udp);
+    pthread_t UDP_receiver,UDP_sender,GC_thread;
+    ret = pthread_create(&UDP_receiver, NULL,udp_receiver, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
+    ret = pthread_create(&UDP_sender, NULL,udp_sender, &server_udp);
+    PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
+    ret = pthread_create(&GC_thread, NULL,garbage_collector, &server_udp);
+    PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on garbace collector thread failed");
 
     while (connectivity) {
         struct sockaddr_in client_addr = {0};
@@ -389,8 +490,12 @@ int main(int argc, char **argv) {
         ret = pthread_detach(threadTCP);
     }
 
-    ret=pthread_join(UDP_setup,NULL);
-    ERROR_HELPER(ret,"Something went wrong with the join on UDP_setup thread");
+    ret=pthread_join(UDP_receiver,NULL);
+    ERROR_HELPER(ret,"Something went wrong with the join on UDP_receiver thread");
+    ret=pthread_join(UDP_sender,NULL);
+    ERROR_HELPER(ret,"Something went wrong with the join on UDP_sender thread");
+    ret=pthread_join(GC_thread,NULL);
+    ERROR_HELPER(ret,"Something went wrong with the join on garbage collector thread");
     debug_print("[Main] Closing the server...");
     List_destroy(users);
     close(server_tcp);
