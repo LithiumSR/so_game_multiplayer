@@ -60,30 +60,33 @@ void handle_signal(int signal){
 }
 
 int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
-    char buf_send[BUFFERSIZE]="Ciao test test test test :) \n \0";
-    int len= strlen(buf_send);
-    debug_print("[UDP]Sto per inviare %d bytes \n",len);
+    char buf_send[BUFFERSIZE];
     PacketHeader ph;
-    ph.type=GetId;
-    IdPacket* ip=(IdPacket*)malloc(sizeof(IdPacket));
-    ip->header=ph;
-    ip->id=0;
-    int size=Packet_serialize(buf_send,&(ip->header));
+    ph.type=VehicleUpdate;
+    VehicleUpdatePacket* vup=(VehicleUpdatePacket*)malloc(sizeof(VehicleUpdatePacket));
+    vup->header=ph;
+    getForces(vehicle,&(vup->translational_force),&(vup->rotational_force));
+    getXYTheta(vehicle,&(vup->x),&(vup->y),&(vup->theta));
+    vup->id=id;
+    vup->time=time(NULL);
+    debug_print("Sto preparando un VehicleUpdatePacket...");
+    int size=Packet_serialize(buf_send, &vup->header);
+
     int bytes_sent = sendto(socket_udp, buf_send, size, 0, (const struct sockaddr *) &server_addr,(socklen_t) serverlen);
-    debug_print("[UDP] Ho inviato %d \n",bytes_sent);
+    debug_print("[UDP] Sent %d bytes \n",bytes_sent);
     if(bytes_sent<0) return -1;
     else {
-        debug_print("[UDP_Sender] TestUpdatePacket sent \n");
+        debug_print("[UDP_Sender] VehicleUpdatePacket sent \n");
         return 0;
     }
 }
 
-void* udp_test(void* args){
+void* udp_sender(void* args){
     udpArgs udp_args =*(udpArgs*)args;
     struct sockaddr_in server_addr=udp_args.server_addr;
     int socket_udp =udp_args.socket_udp;
     int serverlen=sizeof(server_addr);
-    while(connectivity && checkUpdate){
+    while(connectivity){
         int ret=sendUpdates(socket_udp,server_addr,serverlen);
         if(ret==-1) debug_print("[UDP_Sender] Cannot send VehicleUpdatePacket \n");
         sleep(1);
@@ -141,7 +144,7 @@ int main(int argc, char **argv) {
 
     //Talk with server
     debug_print("[Main] Starting ID,map_elevation,map_texture requests \n");
-    int id=getID(socket_desc);
+    id=getID(socket_desc);
     debug_print("[Main] ID number %d received \n",id);
     Image* surface_elevation=getElevationMap(socket_desc);
     debug_print("[Main] Map elevation received \n");
@@ -161,22 +164,31 @@ int main(int argc, char **argv) {
     udp_server.sin_port        = port_number_udp;
     debug_print("Socket UDP created and ready to work \n");
 
-    pthread_t UDP_test;
+    //create Vehicle
+     World_init(&world, surface_elevation, surface_texture,0.5, 0.5, 0.5);
+    vehicle=(Vehicle*) malloc(sizeof(Vehicle));
+    Vehicle_init(vehicle, &world, id, my_texture);
+    World_addVehicle(&world, vehicle);
+
+    //Create UDP Threads
+    pthread_t UDP_sender;
     udpArgs udp_args;
     udp_args.socket_tcp=socket_desc;
     udp_args.server_addr=udp_server;
     udp_args.socket_udp=socket_udp;
-    ret = pthread_create(&UDP_test, NULL,udp_test, &udp_args);
-    PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
+    ret = pthread_create(&UDP_sender, NULL, udp_sender, &udp_args);
+    PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_sender");
 
-    //Go offline if macro in common.h is set to 1
+    //Go offline if required by macro
     if(OFFLINE) sendGoodbye(socket_desc,id);
-    World_init(&world, surface_elevation, surface_texture,0.5, 0.5, 0.5);
-    vehicle=(Vehicle*) malloc(sizeof(Vehicle));
-    Vehicle_init(vehicle, &world, id, my_texture);
-    World_addVehicle(&world, vehicle);
+
     WorldViewer_runGlobal(&world, vehicle, &argc, argv);
-    // construct the world
+    debug_print("[Main] Disabling and joining on UDP and TCP threads \n");
+    connectivity=0;
+    checkUpdate=0;
+    ret=pthread_join(UDP_sender,NULL);
+    PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_join on thread UDP_sender failed");
+    // Waiting thread to end
     printf("Cleaning up... \n");
     fflush(stdout);
     sendGoodbye(socket_desc,id);
