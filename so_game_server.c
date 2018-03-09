@@ -53,6 +53,36 @@ void handle_signal(int signal){
     }
 }
 
+int UDP_Handler(char* buf_rcv,struct sockaddr_in client_addr){
+    PacketHeader* ph=(PacketHeader*)buf_rcv;
+    switch(ph->type){
+        case(VehicleUpdate):{
+            VehicleUpdatePacket* vup=(VehicleUpdatePacket*)Packet_deserialize(buf_rcv, ph->size);
+            pthread_mutex_lock(&mutex);
+            debug_print("[UDP_Handler] Received VehicleUpdatePacket from id  %d \n",vup->id);
+            ListItem* client = List_find_by_id(users, vup->id);
+            if(client == NULL) {
+                debug_print("[UDP_Handler] Can't find the user to apply the update \n");
+                Packet_free(&vup->header);
+                pthread_mutex_unlock(&mutex);
+                return -1;
+            }
+            client->x=vup->x;
+            client->y=vup->y;
+            client->theta=vup->theta;
+            client->user_addr=client_addr;
+            client->isAddrReady=1;
+            client->current_time=vup->time;
+            pthread_mutex_unlock(&mutex);
+            debug_print("[UDP_Handler] VehicleUpdatePacket applied \n");
+            Packet_free(&vup->header);
+            return 0;
+        }
+        default: return -1;
+
+    }
+}
+
 int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevation_map,int id,int* isActive){
     PacketHeader* header=(PacketHeader*)buf_rcv;
     if(header->type==GetId){
@@ -161,6 +191,7 @@ void* tcp_flow(void* args){
     user->v_texture = NULL;
     user->creation_time=time(NULL);
     user->id=sock_fd;
+    debug_print("Assegnato ID %d \n",sock_fd);
     List_insert(users, 0, user);
     hasUsers=1;
     pthread_mutex_unlock(&mutex);
@@ -203,28 +234,24 @@ void* tcp_flow(void* args){
     pthread_exit(NULL);
 }
 
-void* udp_setup(void* args){
+void* udp_receiver(void* args){
     int socket_udp=*(int*)args;
     while(connectivity){
         if(!hasUsers){
             sleep(1);
             continue;
         }
-        debug_print("[UDP_Receiver] Waiting for an update packet over UDP \n");
+        debug_print("[UDP_Receiver] Waiting for an VehicleUpdatePacket over UDP \n");
         char buf_recv[BUFFERSIZE];
         struct sockaddr_in client_addr = {0};
         socklen_t addrlen= sizeof(struct sockaddr_in);
         int ret=recvfrom(socket_udp,buf_recv,BUFFERSIZE,0, (struct sockaddr*)&client_addr,&addrlen);
         debug_print("[UDP] Letti %d bytes \n",ret);
         ERROR_HELPER(ret,"Errore");
-        if(ret==-1) {
-            connectivity=0;
-            debug_print("UDP Error :( \n");
-        }
-
+        if(ret==-1)  goto END;
 		if(ret == 0) continue;
-		//ret = UDP_Packet_handler(buf_recv,client_addr);
-        sleep(1);
+		ret = UDP_Handler(buf_recv,client_addr);
+        END: sleep(1);
     }
     pthread_exit(NULL);
 }
@@ -339,7 +366,7 @@ int main(int argc, char **argv) {
 
     debug_print("UDP socket created \n");
     pthread_t UDP_setup;
-    ret = pthread_create(&UDP_setup, NULL,udp_setup, &server_udp);
+    ret = pthread_create(&UDP_setup, NULL,udp_receiver, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
 
     while (connectivity) {
