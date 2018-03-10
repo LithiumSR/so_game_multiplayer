@@ -85,6 +85,8 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
             client->x=vup->x;
             client->y=vup->y;
             client->theta=vup->theta;
+            client->rotational_force=vup->rotational_force;
+            client->translational_force=vup->translational_force;
             client->user_addr=client_addr;
             client->isAddrReady=1;
             client->last_update_time=vup->time;
@@ -237,6 +239,8 @@ void* tcp_flow(void* args){
     user->v_texture = NULL;
     user->creation_time=time(NULL);
     user->id=sock_fd;
+    user->prev_x=-1;
+    user->prev_y=-1;
     List_insert(users, 0, user);
     hasUsers=1;
     pthread_mutex_unlock(&mutex);
@@ -370,10 +374,10 @@ void* garbage_collector(void* args){
         while(client!=NULL){
             long creation_time=(long)client->creation_time;
             long last_update_time=(long)client->last_update_time;
-            if((client->isAddrReady==1 && (current_time-last_update_time)>30) || (client->isAddrReady!=1 && (current_time-creation_time)>30)){
+            if((client->isAddrReady==1 && (current_time-last_update_time)>15) || (client->isAddrReady!=1 && (current_time-creation_time)>15)){
                 ListItem* tmp=client;
                 client=client->next;
-                if (tmp->isAddrReady==1) sendDisconnect(socket_udp,tmp->user_addr);
+                sendDisconnect(socket_udp,tmp->user_addr);
                 ListItem* del=List_detach(users,tmp);
                 if (del==NULL) continue;
                 Image* user_texture=del->v_texture;
@@ -381,6 +385,42 @@ void* garbage_collector(void* args){
                 count++;
                 if(users->size==0) hasUsers=0;
             }
+            else if (client->isAddrReady==1) {
+                int x,prev_x,y,prev_y;
+                x=(int)client->x;
+                y=(int)client->y;
+                prev_x=(int)client->prev_x;
+                prev_y=(int)client->prev_y;
+                if(prev_x==-1 || prev_y==-1) {
+                    client->prev_x=client->x;
+                    client->prev_y=client->y;
+                    client->afk_counter=0;
+                    client=client->next;
+                }
+                else if(abs(x-prev_x)<2 && abs(y-prev_y)<2) {
+                    client->afk_counter++;
+                    if(client->afk_counter>=5){
+                        ListItem* tmp=client;
+                        client=client->next;
+                        sendDisconnect(socket_udp,tmp->user_addr);
+                        ListItem* del=List_detach(users,tmp);
+                        if (del==NULL) continue;
+                        Image* user_texture=del->v_texture;
+                        if (user_texture!=NULL) Image_free(user_texture);
+                        count++;
+                        if(users->size==0) hasUsers=0;
+                        continue;
+                        }
+                    client=client->next;
+                    }
+                else {
+                    client->afk_counter=0;
+                    client->prev_x=client->x;
+                    client->prev_y=client->y;
+                    client=client->next;
+                    }
+            }
+
             else client=client->next;
         }
         if (count>0) fprintf(stdout,"[GC] Removed %d users from the client list \n",count);
