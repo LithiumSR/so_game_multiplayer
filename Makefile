@@ -53,3 +53,14 @@ so_game_client: so_game_client.c libso_game.a
 so_game_server: so_game_server.c libso_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
 
+test_ClientUDP: testClientUDP.c libso_game.a
+	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
+
+test_ServerUDP: testServerUDP.c libso_game.a
+	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
+
+test_ServerTCP: testServerTCP.c libso_game.a
+	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
+
+test_ClientTCP: testClientTCP.c libso_game.a
+	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
