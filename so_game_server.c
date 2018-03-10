@@ -47,6 +47,7 @@ void handle_signal(int signal){
         case SIGINT:
             connectivity=0;
             exchangeUpdate=0;
+            cleanGarbage=0;
             break;
         default:
             fprintf(stderr, "Caught wrong signal: %d\n", signal);
@@ -399,7 +400,7 @@ void* garbage_collector(void* args){
                 }
                 else if(abs(x-prev_x)<2 && abs(y-prev_y)<2) {
                     client->afk_counter++;
-                    if(client->afk_counter>=5){
+                    if(client->afk_counter>=10){
                         ListItem* tmp=client;
                         client=client->next;
                         sendDisconnect(socket_udp,tmp->user_addr);
