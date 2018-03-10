@@ -54,7 +54,7 @@ int getID(int socket_desc){
         ERROR_HELPER(msg_len, "Cannot read from socket");
         msg_len+=ret;
         }
-    IdPacket* deserialized_packet = (IdPacket*)Packet_deserialize(buf_rcv, msg_len);
+    IdPacket* deserialized_packet = (IdPacket*)Packet_deserialize(buf_rcv, msg_len+ph_len);
     printf("[Get Id] Ricevuto bytes %d \n",msg_len+ph_len);
     int id=deserialized_packet->id;
     Packet_free(&(deserialized_packet->header));
@@ -106,7 +106,7 @@ Image* getElevationMap(int socket){
     }
 
 
-    ImagePacket* deserialized_packet = (ImagePacket*)Packet_deserialize(buf_rcv, msg_len);
+    ImagePacket* deserialized_packet = (ImagePacket*)Packet_deserialize(buf_rcv, msg_len+ph_len);
     printf("[Elevation request] Ricevuto bytes %d \n",msg_len+ph_len);
     Packet_free(&(request->header));
     Image* ris=deserialized_packet->image;
@@ -153,7 +153,7 @@ Image* getTextureMap(int socket){
         ERROR_HELPER(ret, "Cannot read from socket");
         msg_len+=ret;
     }
-    ImagePacket* deserialized_packet = (ImagePacket*)Packet_deserialize(buf_rcv, msg_len);
+    ImagePacket* deserialized_packet = (ImagePacket*)Packet_deserialize(buf_rcv, msg_len+ph_len);
     printf("[Texture Request] Ricevuto bytes %d \n",msg_len+ph_len);
     Packet_free(&(request->header));
     Image* ris=deserialized_packet->image;
