@@ -137,8 +137,15 @@ void* udp_receiver(void* args){
         }
         debug_print("Ho letto %d bytes \n",bytes_read);
         PacketHeader* ph=(PacketHeader*)buf_rcv;
-        if(ph->type!=WorldUpdate){
-            debug_print("ERRORE \n");
+        if(ph->type==PostDisconnect){
+            debug_print("[UDP_Receiver] You were kicked out of the server for inactivity.. \n");
+            sendGoodbye(socket_desc, id);
+            exit(0);
+        }
+
+        if(ph->type!=PostDisconnect && ph->type!=WorldUpdate){
+            debug_print("[UDP_Receiver] Found an unknown udp packet. Terminating the client now... \n");
+            sendGoodbye(socket_desc, id);
             exit(-1);
         }
         WorldUpdatePacket* wup = (WorldUpdatePacket*)Packet_deserialize(buf_rcv, bytes_read);
@@ -149,7 +156,7 @@ void* udp_receiver(void* args){
             int id_struct=add_user_id(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position,&(lw->users_online));
             if(id_struct==-1){
                 if(new_position==-1) continue;
-                debug_print("Trovato client appena registrato \n");
+                printf("New Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
                 Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                 Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
@@ -159,7 +166,7 @@ void* udp_receiver(void* args){
                 World_addVehicle(&world, new_vehicle);
             }
             else {
-                printf("Veicolo con id %d e coordinate x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                printf("New Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
             }
