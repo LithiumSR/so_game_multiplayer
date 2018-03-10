@@ -396,7 +396,7 @@ void* garbage_collector(void* args){
                 if (user_texture!=NULL) Image_free(user_texture);
                 count++;
                 if(users->size==0) hasUsers=0;
-                //close(del->id);
+                close(del->id);
                 free(del);
             }
             else if (client->isAddrReady==1) {
@@ -411,9 +411,9 @@ void* garbage_collector(void* args){
                     client->afk_counter=0;
                     client=client->next;
                 }
-                else if(abs(x-prev_x)<2 && abs(y-prev_y)<2) {
+                else if(abs(x-prev_x)<1 && abs(y-prev_y)<1) {
                     client->afk_counter++;
-                    if(client->afk_counter>=10){
+                    if(client->afk_counter>=5){
                         ClientListItem* tmp=client;
                         client=client->next;
                         sendDisconnect(socket_udp,tmp->user_addr);
@@ -423,7 +423,7 @@ void* garbage_collector(void* args){
                         if (user_texture!=NULL) Image_free(user_texture);
                         count++;
                         if(users->size==0) hasUsers=0;
-                        //close(del->id);
+                        close(del->id);
                         free(del);
                         }
                     else client=client->next;
