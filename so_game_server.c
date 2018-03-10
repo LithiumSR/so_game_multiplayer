@@ -17,14 +17,14 @@
 #include "client_op.h"
 #include "server_op.h"
 #include "so_game_protocol.h"
-#include "linked_list.h"
+#include "client_list.h"
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
 int exchangeUpdate=1;
 int cleanGarbage=1;
 int hasUsers=0;
-ListHead* users;
+ClientListHead* users;
 uint16_t  port_number_no;
 
 typedef struct {
@@ -74,7 +74,7 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
         case(VehicleUpdate):{
             VehicleUpdatePacket* vup=(VehicleUpdatePacket*)Packet_deserialize(buf_rcv, ph->size);
             pthread_mutex_lock(&mutex);
-            ListItem* client = List_find_by_id(users, vup->id);
+            ClientListItem* client = ClientList_find_by_id(users, vup->id);
             if(client == NULL) {
                 debug_print("[UDP_Handler] Can't find the user to apply the update \n");
                 Packet_free(&vup->header);
@@ -129,7 +129,6 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         debug_print("Sono qui");
         char buf_send[BUFFERSIZE];
         ImagePacket* image_request = (ImagePacket*)buf_rcv;
-        printf("ID DELLA RICHIESTA IMMAGINE %d \n",image_request->id);
         if(image_request->id>0){
             debug_print("Dentro l'if");
             char buf_send[BUFFERSIZE];
@@ -137,7 +136,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
             PacketHeader im_head;
             im_head.type=PostTexture;
             pthread_mutex_lock(&mutex);
-            ListItem* el=List_find_by_id(users,image_request->id);
+            ClientListItem* el=ClientList_find_by_id(users,image_request->id);
             if (el==NULL) {
                 pthread_mutex_unlock(&mutex);
                 return -1;
@@ -208,7 +207,10 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         Image* user_texture=deserialized_packet->image;
 
         pthread_mutex_lock(&mutex);
-        ListItem* user= List_find_by_id(users,id);
+        ClientListItem* user= ClientList_find_by_id(users,deserialized_packet->id);
+        ClientList_print(users);
+        fflush(stdout);
+
         if (user==NULL){
             debug_print("[Set Texture] User not found \n");
             pthread_mutex_unlock(&mutex);
@@ -221,7 +223,8 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         return 0;
     }
     else if(header->type==PostDisconnect){
-        debug_print("[Notify Disconnect] User disconnected. Cleaning resources...");
+        debug_print("[Notify Disconnect] USER DISCONNECTED...");
+
         *isActive=0;
         return 0;
     }
@@ -229,7 +232,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
     else {
         *isActive=0;
         printf("[TCP Handler] Unknown packet. Cleaning resources...\n");
-        return -1;
+        return 0;
     }
 }
 
@@ -237,26 +240,28 @@ void* tcp_flow(void* args){
     tcp_args* arg=(tcp_args*)args;
     int sock_fd=arg->client_desc;
     pthread_mutex_lock(&mutex);
-    ListItem* user=malloc(sizeof(ListItem));
+    ClientListItem* user=malloc(sizeof(ClientListItem));
     user->v_texture = NULL;
     user->creation_time=time(NULL);
     user->id=sock_fd;
     user->prev_x=-1;
     user->prev_y=-1;
-    List_insert(users, 0, user);
+    user->isAddrReady=0;
+    user->v_texture=NULL;
+    printf("[New user] Adding client with id %d \n",sock_fd);
+    ClientList_insert(users,user);
+    ClientList_print(users);
     hasUsers=1;
     pthread_mutex_unlock(&mutex);
-
     int ph_len=sizeof(PacketHeader);
     int isActive=1;
-    int count=0;
     while (connectivity && isActive){
         int msg_len=0;
         char buf_rcv[BUFFERSIZE];
         while(msg_len<ph_len){
             int ret=recv(sock_fd, buf_rcv+msg_len, ph_len-msg_len, 0);
             if (ret==-1 && errno == EINTR) continue;
-            ERROR_HELPER(msg_len, "Cannot read from socket");
+            if (ret==-1) isActive=0;
             msg_len+=ret;
             }
         PacketHeader* header=(PacketHeader*)buf_rcv;
@@ -265,22 +270,15 @@ void* tcp_flow(void* args){
         while(msg_len<size_remaining){
             int ret=recv(sock_fd, buf_rcv+msg_len+ph_len, size_remaining-msg_len, 0);
             if (ret==-1 && errno == EINTR) continue;
-            ERROR_HELPER(msg_len, "Cannot read from socket");
+            if(ret==-1) isActive=0;
             msg_len+=ret;
         }
         //printf("Read %d bytes da socket TCP \n",msg_len+ph_len);
         int ret=TCP_Handler(sock_fd,buf_rcv,arg->surface_texture,arg->elevation_texture,arg->client_desc,&isActive);
+        if (ret==-1) ClientList_print(users);
         ERROR_HELPER(ret,"TCP Handler failed");
-        count++;
     }
-    pthread_mutex_lock(&mutex);
-    ListItem* el=List_detach(users,user);
-    if(el==NULL) goto END;
-    Image* user_texture=el->v_texture;
-    if(user_texture!=NULL) Image_free(user_texture);
-    free(el);
-    END:pthread_mutex_unlock(&mutex);
-    fprintf(stdout,"Done \n");
+    close(sock_fd);
     pthread_exit(NULL);
 }
 
@@ -296,10 +294,11 @@ void* udp_receiver(void* args){
         struct sockaddr_in client_addr = {0};
         socklen_t addrlen= sizeof(struct sockaddr_in);
         int bytes_read=recvfrom(socket_udp,buf_recv,BUFFERSIZE,0, (struct sockaddr*)&client_addr,&addrlen);
-        if(bytes_read==-1)  continue;
-		if(bytes_read == 0) continue;
+        if(bytes_read==-1)  goto END;
+		if(bytes_read == 0) goto END;
 		int ret = UDP_Handler(socket_udp,buf_recv,client_addr);
         if (ret==-1) debug_print("[UDP_Receiver] UDP Handler couldn't manage to apply the VehicleUpdate \n");
+        END: usleep(1);
     }
     pthread_exit(NULL);
 }
@@ -319,12 +318,17 @@ void* udp_sender(void* args){
         wup->header=ph;
         pthread_mutex_lock(&mutex);
         int n;
-        ListItem* client= users->first;
+        ClientListItem* client= users->first;
         for(n=0;client!=NULL;client=client->next){
             if(client->isAddrReady) n++;
         }
         wup->num_vehicles=n;
         fprintf(stdout,"[UDP_Sender] Creating WorldUpdatePacket containing info about %d users \n",n);
+        if(n==0){
+            pthread_mutex_unlock(&mutex);
+            sleep(1);
+            continue;
+        }
         wup->updates=(ClientUpdate*)malloc(sizeof(ClientUpdate)*n);
         client= users->first;
         for(int i=0;client!=NULL;i++){
@@ -367,22 +371,24 @@ void* garbage_collector(void* args){
     while(cleanGarbage){
         if(hasUsers==0) goto END;
         pthread_mutex_lock(&mutex);
-        ListItem* client=users->first;
+        ClientListItem* client=users->first;
         long current_time=(long)time(NULL);
         int count=0;
         while(client!=NULL){
             long creation_time=(long)client->creation_time;
             long last_update_time=(long)client->last_update_time;
             if((client->isAddrReady==1 && (current_time-last_update_time)>15) || (client->isAddrReady!=1 && (current_time-creation_time)>15)){
-                ListItem* tmp=client;
+                ClientListItem* tmp=client;
                 client=client->next;
                 sendDisconnect(socket_udp,tmp->user_addr);
-                ListItem* del=List_detach(users,tmp);
+                ClientListItem* del=ClientList_detach(users,tmp);
                 if (del==NULL) continue;
                 Image* user_texture=del->v_texture;
                 if (user_texture!=NULL) Image_free(user_texture);
                 count++;
                 if(users->size==0) hasUsers=0;
+                //close(del->id);
+                free(del);
             }
             else if (client->isAddrReady==1) {
                 int x,prev_x,y,prev_y;
@@ -398,19 +404,20 @@ void* garbage_collector(void* args){
                 }
                 else if(abs(x-prev_x)<2 && abs(y-prev_y)<2) {
                     client->afk_counter++;
-                    if(client->afk_counter>=10){
-                        ListItem* tmp=client;
+                    if(client->afk_counter>=2){
+                        ClientListItem* tmp=client;
                         client=client->next;
                         sendDisconnect(socket_udp,tmp->user_addr);
-                        ListItem* del=List_detach(users,tmp);
+                        ClientListItem* del=ClientList_detach(users,tmp);
                         if (del==NULL) continue;
                         Image* user_texture=del->v_texture;
                         if (user_texture!=NULL) Image_free(user_texture);
                         count++;
                         if(users->size==0) hasUsers=0;
-                        continue;
+                        //close(del->id);
+                        free(del);
                         }
-                    client=client->next;
+                    else client=client->next;
                     }
                 else {
                     client->afk_counter=0;
@@ -499,7 +506,7 @@ int main(int argc, char **argv) {
 
     //init List structure
     users = malloc(sizeof(ListHead));
-	List_init(users);
+	ClientList_init(users);
     fprintf(stdout,"[Main] Initialized users list \n");
 
     //seting signal handlers
@@ -552,15 +559,13 @@ int main(int argc, char **argv) {
         int client_desc = accept(server_tcp, (struct sockaddr*)&client_addr, (socklen_t*) &sockaddr_len);
         if (client_desc == -1 && errno == EINTR) continue;
         ERROR_HELPER(client_desc, "Failed accept() on server_tcp socket");
-
         tcp_args tcpArgs;
-
+        pthread_t threadTCP;
         tcpArgs.client_desc=client_desc;
         tcpArgs.elevation_texture = surface_elevation;
         tcpArgs.surface_texture = surface_texture;
         tcpArgs.vehicle_texture = vehicle_texture;
 
-        pthread_t threadTCP;
         ret = pthread_create(&threadTCP, NULL,tcp_flow, &tcpArgs);
         PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
         ret = pthread_detach(threadTCP);
@@ -574,7 +579,7 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret,"Join on garbage collector thread failed");
 
     fprintf(stdout,"[Main] Shutting down the server...");
-    List_destroy(users);
+    ClientList_destroy(users);
     ret = close(server_tcp);
     ERROR_HELPER(ret,"Failed close() on server_tcp socket");
     ret = close(server_udp);
