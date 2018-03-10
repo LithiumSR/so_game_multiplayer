@@ -211,6 +211,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         ListItem* user= List_find_by_id(users,id);
         if (user==NULL){
             debug_print("[Set Texture] User not found \n");
+            pthread_mutex_unlock(&mutex);
             return -1;
         }
         user->v_texture=user_texture;
