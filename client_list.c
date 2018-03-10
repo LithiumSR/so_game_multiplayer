@@ -65,7 +65,6 @@ void ClientList_destroy(ClientListHead* users){
 void ClientList_print(ClientListHead* users){
 
     ClientListItem* user = users->first;
-    ClientListItem* tmp;
     int i=0;
     printf("List elements: [");
     while(i<users->size){
