@@ -27,7 +27,7 @@ uint16_t  port_number_no;
 int connectivity=1;
 int exchangeUpdate=1;
 int socket_desc; //socket tcp
-
+time_t last_update_time=-1;
 typedef struct localWorld{
     int  ids[WORLDSIZE];
     int users_online;
@@ -50,7 +50,7 @@ void handle_signal(int signal){
         case SIGINT:
             connectivity=0;
             exchangeUpdate=0;
-            //sendGoodbye(socket_desc, id);
+            if(last_update_time!=1) sendGoodbye(socket_desc, id);
             exit(0);
             break;
         default:
@@ -98,6 +98,13 @@ int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
     int bytes_sent = sendto(socket_udp, buf_send, size, 0, (const struct sockaddr *) &server_addr,(socklen_t) serverlen);
     debug_print("[UDP_Sender] Sent a VehicleUpdatePacket of %d bytes with x: %f y: %f z: %f rf:%f tf:%f \n",bytes_sent,vup->x,vup->y,vup->theta,vup->rotational_force,vup->translational_force);
     Packet_free(&(vup->header));
+    time_t current_time=time(NULL);
+    if(last_update_time!=-1 && current_time-last_update_time>10){
+        connectivity=0;
+        exchangeUpdate=0;
+        fprintf(stdout,"[WARNING] Server is not avaiable. Terminating the client now...");
+        exit(0);
+    }
     if(bytes_sent<0) return -1;
     return 0;
 }
@@ -124,7 +131,6 @@ void* udp_receiver(void* args){
     int socket_tcp=udp_args.socket_tcp;
     while(connectivity && exchangeUpdate){
         char buf_rcv[BUFFERSIZE];
-        debug_print("Inizio a cercare WorldUpdatePacket\n");
         int bytes_read=recvfrom(socket_udp, buf_rcv, BUFFERSIZE, 0, (struct sockaddr*) &server_addr, &addrlen);
         if(bytes_read==-1){
             debug_print("[UDP_Receiver] Can't receive Packet over UDP \n");
@@ -138,24 +144,39 @@ void* udp_receiver(void* args){
         debug_print("Ho letto %d bytes \n",bytes_read);
         PacketHeader* ph=(PacketHeader*)buf_rcv;
         if(ph->type==PostDisconnect){
-            debug_print("[UDP_Receiver] You were kicked out of the server for inactivity.. \n");
+            fprintf(stdout,"[WARNING] You were kicked out of the server for inactivity... Closing the client now \n");
             sendGoodbye(socket_desc, id);
+            connectivity=0;
+            exchangeUpdate=0;
             exit(0);
         }
 
         if(ph->type!=PostDisconnect && ph->type!=WorldUpdate){
-            debug_print("[UDP_Receiver] Found an unknown udp packet. Terminating the client now... \n");
+            fprintf(stdout,"[UDP_Receiver] Found an unknown udp packet. Terminating the client now... \n");
             sendGoodbye(socket_desc, id);
+            connectivity=0;
+            exchangeUpdate=0;
             exit(-1);
         }
         WorldUpdatePacket* wup = (WorldUpdatePacket*)Packet_deserialize(buf_rcv, bytes_read);
-        debug_print("WorldUpdatePacket contiene %d vehicles \n",wup->num_vehicles);
+        debug_print("WorldUpdatePacket contains %d vehicles \n",wup->num_vehicles-1);
+        last_update_time=wup->time;
+        char mask[WORLDSIZE];
+        for(int k=0;k<WORLDSIZE;k++) mask[k]=-2;
+        float x,y,theta;
+        getXYTheta(vehicle,&x,&y,&theta);
+        int ignored=0;
         for(int i=0; i < wup -> num_vehicles ; i++){
             if(wup->updates[i].id==id) continue;
+            if(abs((int)x-(int)wup->updates[i].x)>10 && abs((int)y-(int)wup->updates[i].y)>10) {
+                ignored++;
+                continue;
+            }
             int new_position=-1;
             int id_struct=add_user_id(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position,&(lw->users_online));
             if(id_struct==-1){
                 if(new_position==-1) continue;
+                mask[new_position]=1;
                 printf("New Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
                 Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
@@ -166,11 +187,27 @@ void* udp_receiver(void* args){
                 World_addVehicle(&world, new_vehicle);
             }
             else {
+                mask[id_struct]=1;
                 printf("New Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
             }
         }
+        printf("[WorldUpdate] Ignored %d vehicles based on position \n",ignored);
+        for(int i=0; i < WORLDSIZE ; i++){
+            if(mask[i]==1) continue;
+            if(i==0) continue;
+            if(mask[i]==-2 && lw->ids[i]!=-1){
+                printf("[WorldUpdate] Removing Vehicles with ID %d \n",lw->ids[i]);
+                lw->users_online=lw->users_online-1;
+                Image* im=lw->vehicles[i]->texture;
+                World_detachVehicle(&world,lw->vehicles[i]);
+                if (im!=NULL) Image_free(im);
+                Vehicle_destroy(lw->vehicles[i]);
+                lw->ids[i]=-1;
+            }
+        }
+
         sleep(1);
     }
     pthread_exit(NULL);
@@ -294,14 +331,24 @@ int main(int argc, char **argv) {
         ret= close(socket_udp);
         ERROR_HELPER(ret,"Failed to close UDP socket");
         }
+
     fprintf(stdout,"[Main] Cleaning up... \n");
-    ret=close(socket_desc);
-    ERROR_HELPER(ret,"Failed to close TCP socket");
-    fflush(stdout);
     sendGoodbye(socket_desc,id);
-    Image_free(my_texture);
     Image_free(surface_elevation);
     Image_free(surface_texture);
+    for(int i=0;i<WORLDSIZE;i++){
+        if(myLocalWorld->ids[i]==-1) continue;
+        myLocalWorld->users_online--;
+        Image* im=myLocalWorld->vehicles[i]->texture;
+        World_detachVehicle(&world,myLocalWorld->vehicles[i]);
+        if (im!=NULL) Image_free(im);
+        Vehicle_destroy(myLocalWorld->vehicles[i]);
+    }
+    free(myLocalWorld->vehicles);
+    ret=close(socket_desc);
+    ERROR_HELPER(ret,"Failed to close TCP socket");
+    ret=close(socket_udp);
+    ERROR_HELPER(ret,"Failed to close UDP socket");
     // world cleanup
     World_destroy(&world);
     return 0;
