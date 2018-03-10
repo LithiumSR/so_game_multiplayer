@@ -22,6 +22,7 @@ OBJS = vec3.o\
        testServer.o\
        testClient.o\
        so_game_protocol.o\
+       client_list.o\
 
 HEADERS=helpers.h\
 	image.h\
@@ -35,6 +36,7 @@ HEADERS=helpers.h\
 	common.h\
 	client_op.h\
 	server_op.h\
+	client_list.h\
 
 %.o:	%.c $(HEADERS)
 	$(CC) $(CCOPTS) -c -o $@  $<
@@ -51,7 +53,7 @@ so_game_client: so_game_client.c libso_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
 
 so_game_server: so_game_server.c libso_game.a
-	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
+	$(CC) $(CCOPTS) -pg -Ofast -o $@ $^ $(LIBS)
 
 test_ClientUDP: testClientUDP.c libso_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
