@@ -177,7 +177,7 @@ void* udp_receiver(void* args){
             if(id_struct==-1){
                 if(new_position==-1) continue;
                 mask[new_position]=1;
-                printf("New Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                fprintf(stdout,"New Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
                 Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                 Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
@@ -188,17 +188,17 @@ void* udp_receiver(void* args){
             }
             else {
                 mask[id_struct]=1;
-                printf("New Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                fprintf(stdout,"Updating Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
             }
         }
-        printf("[WorldUpdate] Ignored %d vehicles based on position \n",ignored);
+        if (ignored>0) debug_print("[WorldUpdate] Ignored %d vehicles based on position \n",ignored);
         for(int i=0; i < WORLDSIZE ; i++){
             if(mask[i]==1) continue;
             if(i==0) continue;
             if(mask[i]==-2 && lw->ids[i]!=-1){
-                printf("[WorldUpdate] Removing Vehicles with ID %d \n",lw->ids[i]);
+                fprintf(stdout,"[WorldUpdate] Removing Vehicles with ID %d \n",lw->ids[i]);
                 lw->users_online=lw->users_online-1;
                 Image* im=lw->vehicles[i]->texture;
                 World_detachVehicle(&world,lw->vehicles[i]);
