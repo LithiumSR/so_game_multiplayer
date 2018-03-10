@@ -9,14 +9,17 @@ typedef struct ListItem {
   float rotational_force;
   float translational_force;
   float x;
+  float prev_x;
   float y;
+  float prev_y;
   float theta;
   Image * v_texture;
   int id;
   struct sockaddr_in user_addr;
   time_t last_update_time;
-  int isAddrReady;
   time_t creation_time;
+  int isAddrReady;
+  int afk_counter;
 } ListItem;
 
 typedef struct ListHead {
