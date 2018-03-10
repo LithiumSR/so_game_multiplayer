@@ -117,7 +117,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         while(bytes_sent<msg_len){
 			ret=send(socket_desc,buf_send+bytes_sent,msg_len-bytes_sent,0);
 			if (ret==-1 && errno==EINTR) continue;
-			ERROR_HELPER(ret,"Errore invio");
+			ERROR_HELPER(ret,"Can't assign ID");
 			if (ret==0) break;
 			bytes_sent+=ret;
         }
@@ -126,11 +126,9 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         return 0;
     }
     else if(header->type==GetTexture){
-        debug_print("Sono qui");
         char buf_send[BUFFERSIZE];
         ImagePacket* image_request = (ImagePacket*)buf_rcv;
         if(image_request->id>0){
-            debug_print("Dentro l'if");
             char buf_send[BUFFERSIZE];
             ImagePacket* image_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
             PacketHeader im_head;
@@ -223,8 +221,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         return 0;
     }
     else if(header->type==PostDisconnect){
-        debug_print("[Notify Disconnect] USER DISCONNECTED...");
-
+        debug_print("[Notify Disconnect] User disconnect...");
         *isActive=0;
         return 0;
     }
@@ -232,7 +229,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
     else {
         *isActive=0;
         printf("[TCP Handler] Unknown packet. Cleaning resources...\n");
-        return 0;
+        return -1;
     }
 }
 
@@ -276,8 +273,19 @@ void* tcp_flow(void* args){
         //printf("Read %d bytes da socket TCP \n",msg_len+ph_len);
         int ret=TCP_Handler(sock_fd,buf_rcv,arg->surface_texture,arg->elevation_texture,arg->client_desc,&isActive);
         if (ret==-1) ClientList_print(users);
-        ERROR_HELPER(ret,"TCP Handler failed");
     }
+    printf("Freeing resources...");
+    pthread_mutex_lock(&mutex);
+    ClientListItem* el=ClientList_find_by_id(users,sock_fd);
+    if(el==NULL) goto END;
+    ClientListItem* del=ClientList_detach(users,el);
+    if(del==NULL) goto END;
+    Image* user_texture=del->v_texture;
+    if (user_texture!=NULL) Image_free(user_texture);
+    if(users->size==0) hasUsers=0;
+    free(del);
+    ClientList_print(users);
+    END: pthread_mutex_unlock(&mutex);
     close(sock_fd);
     pthread_exit(NULL);
 }
@@ -331,6 +339,7 @@ void* udp_sender(void* args){
         }
         wup->updates=(ClientUpdate*)malloc(sizeof(ClientUpdate)*n);
         client= users->first;
+        wup->time=time(NULL);
         for(int i=0;client!=NULL;i++){
             if(!(client->isAddrReady)) continue;
             ClientUpdate* cup= &(wup->updates[i]);
@@ -340,7 +349,7 @@ void* udp_sender(void* args){
             cup->id=client->id;
             cup->rotational_force=client->rotational_force;
             cup->translational_force=client->translational_force;
-            printf("--- Veicolo con id: %d x: %f y:%f z:%f rf:%f tf:%f --- \n",cup->id,cup->x,cup->y,cup->theta,cup->rotational_force,cup->translational_force);
+            printf("--- Vehicle with id: %d x: %f y:%f z:%f rf:%f tf:%f --- \n",cup->id,cup->x,cup->y,cup->theta,cup->rotational_force,cup->translational_force);
             client = client->next;
         }
 
@@ -377,7 +386,7 @@ void* garbage_collector(void* args){
         while(client!=NULL){
             long creation_time=(long)client->creation_time;
             long last_update_time=(long)client->last_update_time;
-            if((client->isAddrReady==1 && (current_time-last_update_time)>15) || (client->isAddrReady!=1 && (current_time-creation_time)>15)){
+            if((client->isAddrReady==1 && (current_time-last_update_time)>10) || (client->isAddrReady!=1 && (current_time-creation_time)>10)){
                 ClientListItem* tmp=client;
                 client=client->next;
                 sendDisconnect(socket_udp,tmp->user_addr);
@@ -404,7 +413,7 @@ void* garbage_collector(void* args){
                 }
                 else if(abs(x-prev_x)<2 && abs(y-prev_y)<2) {
                     client->afk_counter++;
-                    if(client->afk_counter>=2){
+                    if(client->afk_counter>=10){
                         ClientListItem* tmp=client;
                         client=client->next;
                         sendDisconnect(socket_udp,tmp->user_addr);
@@ -431,7 +440,7 @@ void* garbage_collector(void* args){
         }
         if (count>0) fprintf(stdout,"[GC] Removed %d users from the client list \n",count);
         END: pthread_mutex_unlock(&mutex);
-        sleep(15);
+        sleep(10);
     }
     pthread_exit(NULL);
 }
