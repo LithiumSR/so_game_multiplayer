@@ -7,7 +7,8 @@ AR=ar
 BINS=libso_game.a\
      so_game_server\
      so_game_client\
-	test_packets_serialization
+	test_packets_serialization\
+	test_client_list
 OBJS = vec3.o\
        linked_list.o\
        surface.o\
@@ -55,6 +56,10 @@ so_game_server: so_game_server.c libso_game.a
 
 test_packets_serialization: test_packets_serialization.c libso_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^  $(LIBS)
+
+test_client_list: test_client_list.c libso_game.a
+	$(CC) $(CCOPTS) -Ofast -o $@ $^  $(LIBS)
+
 
 
 
