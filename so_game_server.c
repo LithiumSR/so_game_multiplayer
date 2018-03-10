@@ -317,12 +317,17 @@ void* udp_sender(void* args){
         WorldUpdatePacket* wup=(WorldUpdatePacket*)malloc(sizeof(WorldUpdatePacket));
         wup->header=ph;
         pthread_mutex_lock(&mutex);
-        wup->num_vehicles=users->size;
-        fprintf(stdout,"[UDP_Sender] Creating WorldUpdatePacket containing info about %d users \n",wup->num_vehicles);
-        wup->updates=(ClientUpdate*)malloc(sizeof(ClientUpdate)*wup->num_vehicles);
+        int n;
         ListItem* client= users->first;
-        int i=0;
-        while(client!=NULL){
+        for(n=0;client!=NULL;client=client->next){
+            if(client->isAddrReady) n++;
+        }
+        wup->num_vehicles=n;
+        fprintf(stdout,"[UDP_Sender] Creating WorldUpdatePacket containing info about %d users \n",n);
+        wup->updates=(ClientUpdate*)malloc(sizeof(ClientUpdate)*n);
+        client= users->first;
+        for(int i=0;client!=NULL;i++){
+            if(!(client->isAddrReady)) continue;
             ClientUpdate* cup= &(wup->updates[i]);
             cup->y=client->y;
             cup->x=client->x;
@@ -332,14 +337,6 @@ void* udp_sender(void* args){
             cup->translational_force=client->translational_force;
             printf("--- Veicolo con id: %d x: %f y:%f z:%f rf:%f tf:%f --- \n",cup->id,cup->x,cup->y,cup->theta,cup->rotational_force,cup->translational_force);
             client = client->next;
-            i++;
-        }
-
-        printf("Sto inviando un aggiornamento con: \n");
-        int k=0;
-        while(k<wup->num_vehicles){
-            printf("n. %d: ID: %d, x:%f, y:%f, theta:%f \n",k,wup->updates[k].id,wup->updates[k].x,wup->updates[k].y,wup->updates[k].theta);
-            k++;
         }
 
         int size=Packet_serialize(buf_send,&wup->header);
