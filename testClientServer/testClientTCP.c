@@ -7,8 +7,8 @@
 #include <netinet/in.h> // struct sockaddr_in
 #include <sys/socket.h>
 #include <errno.h>
-#include "common.h"
-#include "so_game_protocol.h"
+#include "../common.h"
+#include "../so_game_protocol.h"
 #define BUFFERSIZE 1000000
 
 int getID(int socket_desc){
@@ -198,9 +198,9 @@ int sendGoodbye(int socket,int id){
     }
     printf("[Goodbye] Bytes inviati %d \n",msg_len);
     return 0;
-    
-    
-    
+
+
+
 }
 int main(int argc, char **argv) {
     long tmp = strtol(argv[1], NULL, 0);
@@ -210,7 +210,7 @@ int main(int argc, char **argv) {
     }
     uint16_t port_number_no = htons((uint16_t)tmp); // we use network byte order
 	int socket_desc = socket(AF_INET, SOCK_STREAM, 0);
-    in_addr_t ip_addr = inet_addr("127.0.0.1");
+    in_addr_t ip_addr = inet_addr(SERVER_ADDRESS);
     ERROR_HELPER(socket_desc, "Impossibile creare una socket");
 	struct sockaddr_in server_addr = {0}; // some fields are required to be filled with 0
     server_addr.sin_addr.s_addr = ip_addr;
@@ -233,7 +233,7 @@ int main(int argc, char **argv) {
     ret=sendTexture(socket_desc,vehicle_texture,id);
     printf("Terminato invio vehicle texture \n");
     ret=sendGoodbye(socket_desc,id);
-    
+
     return 0;
 }
 

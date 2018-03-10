@@ -6,9 +6,9 @@
 #include <netinet/in.h> // struct sockaddr_in
 #include <sys/socket.h>
 #include <errno.h>
-#include "common.h"
+#include "../common.h"
 #include <pthread.h>
-#include "so_game_protocol.h"
+#include "../so_game_protocol.h"
 #define BUFFSIZE 1000000
 
 int main(int argc, char **argv) {

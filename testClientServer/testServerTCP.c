@@ -7,9 +7,9 @@
 #include <netinet/in.h> // struct sockaddr_in
 #include <sys/socket.h>
 #include <errno.h>
-#include "common.h"
+#include "../common.h"
 #include <pthread.h>
-#include "so_game_protocol.h"
+#include "../so_game_protocol.h"
 #define BUFFERSIZE 1000000
 int id;
 
@@ -101,7 +101,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         fflush(stdout);
         return 0;
     }
-        
+
     else {
         printf("Pacchetto non riconosciuto \n");
         return -1;
