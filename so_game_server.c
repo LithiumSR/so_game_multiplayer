@@ -58,6 +58,7 @@ void handle_signal(int signal){
     }
 }
 
+//Send a postDisconnect packet to a client over UDP
 void sendDisconnect(int socket_udp, struct sockaddr_in client_addr){
     char buf_send[BUFFERSIZE];
     PacketHeader ph;
@@ -236,6 +237,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
     }
 }
 
+//Handle authentication and disconnection
 void* tcp_flow(void* args){
     tcp_args* arg=(tcp_args*)args;
     int sock_fd=arg->client_desc;
@@ -293,6 +295,7 @@ void* tcp_flow(void* args){
     pthread_exit(NULL);
 }
 
+//Receive and apply VehicleUpdatePacket from clients
 void* udp_receiver(void* args){
     int socket_udp=*(int*)args;
     while(connectivity && exchangeUpdate){
@@ -314,6 +317,7 @@ void* udp_receiver(void* args){
     pthread_exit(NULL);
 }
 
+//Send WorldUpdatePacket to every client that sent al least one VehicleUpdatePacket
 void* udp_sender(void* args){
     int socket_udp=*(int*)args;
     while(connectivity && exchangeUpdate){
@@ -377,6 +381,7 @@ void* udp_sender(void* args){
     pthread_exit(NULL);
 }
 
+//Remove client that are not sending updates and the one that are AFK in the same place for an extended period of time
 void* garbage_collector(void* args){
     debug_print("[GC] Garbage collector initialized \n");
     int socket_udp=*(int*)args;
@@ -524,13 +529,10 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret,"Error: cannot handle SIGINT");
 
     debug_print("[Main] Custom signal handlers are now enabled \n");
-    //preparing 2 threads (1 for udp socket, 1 for tcp socket)
 
-    //Creating UDP Socket
+    //setup UDP socket
 
     uint16_t port_number_no_udp= htons((uint16_t)UDPPORT);
-
-    // setup server
     server_udp = socket(AF_INET, SOCK_DGRAM, 0);
     ERROR_HELPER(server_udp, "Can't create server_udp socket");
 
@@ -566,12 +568,13 @@ int main(int argc, char **argv) {
         tcpArgs.client_desc=client_desc;
         tcpArgs.elevation_texture = surface_elevation;
         tcpArgs.surface_texture = surface_texture;
-
+        //Create a thread for each client
         ret = pthread_create(&threadTCP, NULL,tcp_flow, &tcpArgs);
         PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
         ret = pthread_detach(threadTCP);
     }
     fprintf(stdout,"[Main] Shutting down the server... \n");
+    //Wait for threads to finish
     ret=pthread_join(UDP_receiver,NULL);
     ERROR_HELPER(ret,"Join on UDP_receiver thread failed");
     debug_print("[Main] UDP_receiver ended... \n");
@@ -582,19 +585,17 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret,"Join on garbage collector thread failed");
     debug_print("[Main] GC ended... \n");
 
-
-
+    //Delete list
     pthread_mutex_lock(&mutex);
     ClientList_destroy(users);
     pthread_mutex_unlock(&mutex);
 
-
+    //Close descriptors
     ret = close(server_tcp);
     ERROR_HELPER(ret,"Failed close() on server_tcp socket");
     ret = close(server_udp);
     ERROR_HELPER(ret,"Failed close() on server_udp socket");
     Image_free(surface_elevation);
 	Image_free(surface_texture);
-
     exit(EXIT_SUCCESS);
 }
