@@ -65,13 +65,11 @@ int add_user_id(int ids[] , int size , int id2, int* position,int* users_online)
         *position=-1;
         return -1;
     }
-
     for(int i=0;i<size;i++){
         if(ids[i]==id2) {
             return i;
         }
     }
-
     for (int i=0 ; i < size ; i++){
         if(ids[i]==-1){
             ids[i]=id2;
@@ -144,8 +142,14 @@ void* udp_receiver(void* args){
             sleep(1);
             continue;
         }
-        debug_print("Ho letto %d bytes \n",bytes_read);
+
+        debug_print("[UDP_Receiver] Received %d bytes over UDP\n",bytes_read);
         PacketHeader* ph=(PacketHeader*)buf_rcv;
+        if(ph->size!=bytes_read){
+            debug_print("[WARNING] Skipping partial UDP packet \n");
+            sleep(1);
+            continue;
+        }
         if(ph->type==PostDisconnect){
             fprintf(stdout,"[WARNING] You were kicked out of the server for inactivity... Closing the client now \n");
             sendGoodbye(socket_desc, id);
@@ -211,7 +215,7 @@ void* udp_receiver(void* args){
                 setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
             }
         }
-        if (ignored>0) debug_print("[WorldUpdate] Ignored %d vehicles based on position \n",ignored);
+        if (ignored>0) debug_print("[INFO] Ignored %d vehicles based on position \n",ignored);
         for(int i=0; i < WORLDSIZE ; i++){
             if(mask[i]==1) continue;
             if(i==0) continue;

@@ -80,9 +80,8 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
             pthread_mutex_lock(&mutex);
             ClientListItem* client = ClientList_find_by_id(users, vup->id);
             if(client == NULL) {
-                debug_print("[UDP_Handler] Can't find the user to apply the update \n");
+                debug_print("[UDP_Handler] Can't find the user with id %d to apply the update \n",vup->id);
                 Packet_free(&vup->header);
-                printf("Non ho trovato l'ID %d \n",vup->id);
                 sendDisconnect(socket_udp,client_addr);
                 pthread_mutex_unlock(&mutex);
                 return -1;
@@ -311,9 +310,14 @@ void* udp_receiver(void* args){
         int bytes_read=recvfrom(socket_udp,buf_recv,BUFFERSIZE,0, (struct sockaddr*)&client_addr,&addrlen);
         if(bytes_read==-1)  goto END;
 		if(bytes_read == 0) goto END;
+        PacketHeader* ph=(PacketHeader*)buf_recv;
+        if(ph->size!=bytes_read) {
+            debug_print("[WARNING] Skipping partial UDP packet \n");
+            goto END;
+        }
 		int ret = UDP_Handler(socket_udp,buf_recv,client_addr);
         if (ret==-1) debug_print("[UDP_Receiver] UDP Handler couldn't manage to apply the VehicleUpdate \n");
-        END: usleep(1);
+        END: usleep(50);
     }
     pthread_exit(NULL);
 }
@@ -566,7 +570,6 @@ int main(int argc, char **argv) {
     while (connectivity) {
         struct sockaddr_in client_addr = {0};
         // Setup to accept client connection
-        debug_print("STARTO");
         int client_desc = accept(server_tcp, (struct sockaddr*)&client_addr, (socklen_t*) &sockaddr_len);
         if (client_desc == -1 && errno == EINTR) {
             debug_print("Errore");
