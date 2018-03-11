@@ -264,23 +264,23 @@ void* tcp_flow(void* args){
         while(msg_len<ph_len){
             int ret=recv(sock_fd, buf_rcv+msg_len, ph_len-msg_len, 0);
             if (ret==-1 && errno == EINTR) continue;
-            if (ret==-1) isActive=0;
+            else if (ret<=0) goto EXIT;
             msg_len+=ret;
             }
+
         PacketHeader* header=(PacketHeader*)buf_rcv;
         int size_remaining=header->size-ph_len;
         msg_len=0;
         while(msg_len<size_remaining){
             int ret=recv(sock_fd, buf_rcv+msg_len+ph_len, size_remaining-msg_len, 0);
             if (ret==-1 && errno == EINTR) continue;
-            if(ret==-1) isActive=0;
+            else if(ret<=0) goto EXIT;
             msg_len+=ret;
-        }
-        //printf("Read %d bytes da socket TCP \n",msg_len+ph_len);
+            }
         int ret=TCP_Handler(sock_fd,buf_rcv,arg->surface_texture,arg->elevation_texture,arg->client_desc,&isActive);
         if (ret==-1) ClientList_print(users);
     }
-    printf("Freeing resources...");
+    EXIT: printf("Freeing resources...");
     pthread_mutex_lock(&mutex);
     ClientListItem* el=ClientList_find_by_id(users,sock_fd);
     if(el==NULL) goto END;
@@ -566,8 +566,12 @@ int main(int argc, char **argv) {
     while (connectivity) {
         struct sockaddr_in client_addr = {0};
         // Setup to accept client connection
+        debug_print("STARTO");
         int client_desc = accept(server_tcp, (struct sockaddr*)&client_addr, (socklen_t*) &sockaddr_len);
-        if (client_desc == -1 && errno == EINTR) continue;
+        if (client_desc == -1 && errno == EINTR) {
+            debug_print("Errore");
+            continue;
+        }
         else if(client_desc==-1) break;
         tcp_args tcpArgs;
         pthread_t threadTCP;
@@ -590,7 +594,7 @@ int main(int argc, char **argv) {
     ret=pthread_join(GC_thread,NULL);
     ERROR_HELPER(ret,"Join on garbage collector thread failed");
     debug_print("[Main] GC ended... \n");
-
+    debug_print("[Main] Freeing resources... \n");
     //Delete list
     pthread_mutex_lock(&mutex);
     ClientList_destroy(users);
