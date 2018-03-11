@@ -10,7 +10,7 @@ int Vehicle_update(Vehicle* v, float dt){
     if (ret==-1) debug_print("Wait on vsem didn't worked as expected");
     float tf=v->translational_force_update;
     float rf=v->rotational_force_update;
-    if (tf > v->max_translational_force) f = v->max_translational_force;
+    if (tf > v->max_translational_force) tf = v->max_translational_force;
     if (tf < -v->max_translational_force) tf = -v->max_translational_force;
     if (rf > v->max_rotational_force) rf = v->max_rotational_force;
     if (rf < -v->max_rotational_force) rf = -v->max_rotational_force;

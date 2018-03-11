@@ -80,9 +80,8 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
             pthread_mutex_lock(&mutex);
             ClientListItem* client = ClientList_find_by_id(users, vup->id);
             if(client == NULL) {
-                debug_print("[UDP_Handler] Can't find the user to apply the update \n");
+                debug_print("[UDP_Handler] Can't find the user with id %d to apply the update \n",vup->id);
                 Packet_free(&vup->header);
-                printf("Non ho trovato l'ID %d \n",vup->id);
                 sendDisconnect(socket_udp,client_addr);
                 pthread_mutex_unlock(&mutex);
                 return -1;
@@ -249,6 +248,7 @@ void* tcp_flow(void* args){
     user->prev_x=-1;
     user->prev_y=-1;
     user->isAddrReady=0;
+    user->forceRefresh=1;
     user->v_texture=NULL;
     printf("[New user] Adding client with id %d \n",sock_fd);
     ClientList_insert(users,user);
@@ -263,23 +263,23 @@ void* tcp_flow(void* args){
         while(msg_len<ph_len){
             int ret=recv(sock_fd, buf_rcv+msg_len, ph_len-msg_len, 0);
             if (ret==-1 && errno == EINTR) continue;
-            if (ret==-1) isActive=0;
+            else if (ret<=0) goto EXIT;
             msg_len+=ret;
             }
+
         PacketHeader* header=(PacketHeader*)buf_rcv;
         int size_remaining=header->size-ph_len;
         msg_len=0;
         while(msg_len<size_remaining){
             int ret=recv(sock_fd, buf_rcv+msg_len+ph_len, size_remaining-msg_len, 0);
             if (ret==-1 && errno == EINTR) continue;
-            if(ret==-1) isActive=0;
+            else if(ret<=0) goto EXIT;
             msg_len+=ret;
-        }
-        //printf("Read %d bytes da socket TCP \n",msg_len+ph_len);
+            }
         int ret=TCP_Handler(sock_fd,buf_rcv,arg->surface_texture,arg->elevation_texture,arg->client_desc,&isActive);
         if (ret==-1) ClientList_print(users);
     }
-    printf("Freeing resources...");
+    EXIT: printf("Freeing resources...");
     pthread_mutex_lock(&mutex);
     ClientListItem* el=ClientList_find_by_id(users,sock_fd);
     if(el==NULL) goto END;
@@ -310,9 +310,14 @@ void* udp_receiver(void* args){
         int bytes_read=recvfrom(socket_udp,buf_recv,BUFFERSIZE,0, (struct sockaddr*)&client_addr,&addrlen);
         if(bytes_read==-1)  goto END;
 		if(bytes_read == 0) goto END;
+        PacketHeader* ph=(PacketHeader*)buf_recv;
+        if(ph->size!=bytes_read) {
+            debug_print("[WARNING] Skipping partial UDP packet \n");
+            goto END;
+        }
 		int ret = UDP_Handler(socket_udp,buf_recv,client_addr);
         if (ret==-1) debug_print("[UDP_Receiver] UDP Handler couldn't manage to apply the VehicleUpdate \n");
-        END: usleep(1);
+        END: usleep(50);
     }
     pthread_exit(NULL);
 }
@@ -350,6 +355,11 @@ void* udp_sender(void* args){
         for(int i=0;client!=NULL;i++){
             if(!(client->isAddrReady)) continue;
             ClientUpdate* cup= &(wup->updates[i]);
+            if(client->forceRefresh==1) {
+                cup->forceRefresh=1;
+                client->forceRefresh=0;
+            }
+            else cup->forceRefresh=0;
             cup->y=client->y;
             cup->x=client->x;
             cup->theta=client->theta;
@@ -561,7 +571,10 @@ int main(int argc, char **argv) {
         struct sockaddr_in client_addr = {0};
         // Setup to accept client connection
         int client_desc = accept(server_tcp, (struct sockaddr*)&client_addr, (socklen_t*) &sockaddr_len);
-        if (client_desc == -1 && errno == EINTR) continue;
+        if (client_desc == -1 && errno == EINTR) {
+            debug_print("Errore");
+            continue;
+        }
         else if(client_desc==-1) break;
         tcp_args tcpArgs;
         pthread_t threadTCP;
@@ -584,7 +597,7 @@ int main(int argc, char **argv) {
     ret=pthread_join(GC_thread,NULL);
     ERROR_HELPER(ret,"Join on garbage collector thread failed");
     debug_print("[Main] GC ended... \n");
-
+    debug_print("[Main] Freeing resources... \n");
     //Delete list
     pthread_mutex_lock(&mutex);
     ClientList_destroy(users);
