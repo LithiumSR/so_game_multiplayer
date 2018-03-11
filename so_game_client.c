@@ -191,6 +191,21 @@ void* udp_receiver(void* args){
             }
             else {
                 mask[id_struct]=1;
+                if(wup->updates[i].forceRefresh==1){
+                    debug_print("[WARNING] Forcing refresh for client with id %d",wup->updates[i].id);
+                    Image* im=lw->vehicles[id_struct]->texture;
+                    World_detachVehicle(&world,lw->vehicles[id_struct]);
+                    if (im!=NULL) Image_free(im);
+                    Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
+                    Vehicle_destroy(lw->vehicles[id_struct]);
+                    Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
+                    Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
+                    lw->vehicles[id_struct]=new_vehicle;
+                    setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                    setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+                    World_addVehicle(&world, new_vehicle);
+                    continue;
+                }
                 fprintf(stdout,"Updating Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);

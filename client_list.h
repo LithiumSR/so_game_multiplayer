@@ -19,6 +19,7 @@ typedef struct ClientListItem {
   time_t creation_time;
   int isAddrReady;
   int afk_counter;
+  int forceRefresh;
 } ClientListItem;
 
 typedef struct ClientListHead {

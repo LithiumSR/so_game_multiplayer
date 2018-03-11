@@ -249,6 +249,7 @@ void* tcp_flow(void* args){
     user->prev_x=-1;
     user->prev_y=-1;
     user->isAddrReady=0;
+    user->forceRefresh=1;
     user->v_texture=NULL;
     printf("[New user] Adding client with id %d \n",sock_fd);
     ClientList_insert(users,user);
@@ -350,6 +351,11 @@ void* udp_sender(void* args){
         for(int i=0;client!=NULL;i++){
             if(!(client->isAddrReady)) continue;
             ClientUpdate* cup= &(wup->updates[i]);
+            if(client->forceRefresh==1) {
+                cup->forceRefresh=1;
+                client->forceRefresh=0;
+            }
+            else cup->forceRefresh=0;
             cup->y=client->y;
             cup->x=client->x;
             cup->theta=client->theta;
