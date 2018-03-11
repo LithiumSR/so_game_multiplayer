@@ -313,7 +313,7 @@ int main(int argc, char **argv) {
     Vehicle_init(vehicle, &world, id, my_texture);
     myLocalWorld->vehicles[0]=vehicle;
     World_addVehicle(&world, vehicle);
-    if(OFFLINE) goto SKIP;
+    if(SINGLEPLAYER) goto SKIP;
 
     //UDP Init
     uint16_t port_number_udp = htons((uint16_t)UDPPORT); // we use network byte order
@@ -338,7 +338,7 @@ int main(int argc, char **argv) {
     PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_receiver");
 
     //Disconnect from server if required by macro
-    SKIP: if(OFFLINE) sendGoodbye(socket_desc,id);
+    SKIP: if(SINGLEPLAYER) sendGoodbye(socket_desc,id);
 
     WorldViewer_runGlobal(&world, vehicle, &argc, argv);
 
@@ -346,7 +346,7 @@ int main(int argc, char **argv) {
     debug_print("[Main] Disabling and joining on UDP and TCP threads \n");
     connectivity=0;
     exchangeUpdate=0;
-    if(!OFFLINE){
+    if(!SINGLEPLAYER){
         ret=pthread_join(UDP_sender,NULL);
         PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_sender failed");
         ret=pthread_join(UDP_receiver,NULL);
@@ -375,7 +375,7 @@ int main(int argc, char **argv) {
     free(myLocalWorld);
     ret=close(socket_desc);
     ERROR_HELPER(ret,"Failed to close TCP socket");
-    ret=close(socket_udp);
+    if (!SINGLEPLAYER) ret=close(socket_udp);
     ERROR_HELPER(ret,"Failed to close UDP socket");
     // world cleanup
     World_destroy(&world);
