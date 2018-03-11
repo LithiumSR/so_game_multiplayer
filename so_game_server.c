@@ -68,6 +68,7 @@ void sendDisconnect(int socket_udp, struct sockaddr_in client_addr){
     ip->header=ph;
     int size=Packet_serialize(buf_send,&(ip->header));
     int ret=sendto(socket_udp, buf_send, size, 0, (struct sockaddr*) &client_addr, (socklen_t) sizeof(client_addr));
+    Packet_free(&(ip->header));
     debug_print("[UDP_Receiver] Sent PostDisconnect packet of %d bytes to unrecognized user \n",ret);
 }
 
@@ -353,7 +354,10 @@ void* udp_sender(void* args){
         client= users->first;
         wup->time=time(NULL);
         for(int i=0;client!=NULL;i++){
-            if(!(client->isAddrReady)) continue;
+            if(!(client->isAddrReady)) {
+                client = client->next;
+                continue;
+            }
             ClientUpdate* cup= &(wup->updates[i]);
             if(client->forceRefresh==1) {
                 cup->forceRefresh=1;
@@ -384,6 +388,7 @@ void* udp_sender(void* args){
                 }
             client=client->next;
             }
+        Packet_free(&(wup->header));
         fprintf(stdout,"[UDP_Send] WorldUpdatePacket sent to each client \n");
         pthread_mutex_unlock(&mutex);
         sleep(1);
