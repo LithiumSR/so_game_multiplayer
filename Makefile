@@ -7,9 +7,8 @@ AR=ar
 BINS=libso_game.a\
      so_game_server\
      so_game_client\
-     test_Client\
-     test_Server\
-
+	test_packets_serialization\
+	test_client_list
 OBJS = vec3.o\
        linked_list.o\
        surface.o\
@@ -21,9 +20,8 @@ OBJS = vec3.o\
        so_game_client.o\
        server_op.o\
        client_op.o\
-       testServer.o\
-       testClient.o\
        so_game_protocol.o\
+       client_list.o\
 
 HEADERS=helpers.h\
 	image.h\
@@ -37,6 +35,7 @@ HEADERS=helpers.h\
 	common.h\
 	client_op.h\
 	server_op.h\
+	client_list.h\
 
 %.o:	%.c $(HEADERS)
 	$(CC) $(CCOPTS) -c -o $@  $<
@@ -53,13 +52,14 @@ so_game_client: so_game_client.c libso_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
 
 so_game_server: so_game_server.c libso_game.a
-	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
+	$(CC) $(CCOPTS) -pg -Ofast -o $@ $^ $(LIBS)
 
-test_Server: testServer.c libso_game.a
-	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
+test_packets_serialization: test_packets_serialization.c libso_game.a
+	$(CC) $(CCOPTS) -Ofast -o $@ $^  $(LIBS)
 
-test_Client: testClient.c libso_game.a
-	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
-	
-	
-	
+test_client_list: test_client_list.c libso_game.a
+	$(CC) $(CCOPTS) -Ofast -o $@ $^  $(LIBS)
+
+
+
+

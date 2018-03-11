@@ -1,8 +1,5 @@
 #include "linked_list.h"
 #include <assert.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <unistd.h>
 
 void List_init(ListHead* head) {
   head->first=0;
@@ -13,22 +10,12 @@ void List_init(ListHead* head) {
 ListItem* List_find(ListHead* head, ListItem* item) {
   // linear scanning of list
   ListItem* aux=head->first;
-  aux->isAddrReady=0;
   while(aux){
     if (aux==item)
       return item;
     aux=aux->next;
   }
   return 0;
-}
-
-ListItem* List_find_by_id(ListHead* head, int id){
-	ListItem* tmp=head->first;
-	while(tmp){
-		if(tmp->id==id) return tmp;
-		else tmp=tmp->next;
-	}
-	return 0;
 }
 
 ListItem* List_insert(ListHead* head, ListItem* prev, ListItem* item) {
@@ -91,20 +78,4 @@ ListItem* List_detach(ListHead* head, ListItem* item) {
   return item;
 }
 
-void List_destroy(ListHead* users){
-
-    ListItem* user = users->first;
-    ListItem* tmp;
-    int i=0;
-    while(i<users->size){
-		List_detach(users, user);
-		tmp = user;
-        Image_free(tmp->v_texture);
-		close(tmp->id);
-        if(i!= users->size-1) user = user->next; //prevent seg.fault
-        free(tmp);
-        i++;
-	}
-    free(users);
-}
 

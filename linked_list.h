@@ -6,17 +6,6 @@
 typedef struct ListItem {
   struct ListItem* prev;
   struct ListItem* next;
-  float rotational_force;
-  float translational_force;
-  float x;
-  float y;
-  float theta;
-  Image * v_texture;
-  int id;
-  struct sockaddr_in user_addr;
-  time_t current_time;
-  int isAddrReady;
-  time_t creation_time;
 } ListItem;
 
 typedef struct ListHead {

@@ -7,9 +7,9 @@
 #include <netinet/in.h> // struct sockaddr_in
 #include <sys/socket.h>
 #include <errno.h>
-#include "common.h"
+#include "../common.h"
 #include <pthread.h>
-#include "so_game_protocol.h"
+#include "../so_game_protocol.h"
 #define BUFFERSIZE 1000000
 int id;
 
@@ -89,24 +89,53 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         printf("Inviati %d bytes \n",msg_len);
         return 0;
     }
+    else if(header->type==PostTexture){
+        if(id==-1) return -1;
+        ImagePacket* deserialized_packet = (ImagePacket*)Packet_deserialize(buf_rcv, header->size);
+        Image* user_texture=deserialized_packet->image;
+        printf("Texture veicolo deserializzato \n");
+        return 0;
+    }
+    else if(header->type==PostDisconnect){
+        printf("Trovato tentativo disconnessione");
+        fflush(stdout);
+        return 0;
+    }
 
-    else return 0;
+    else {
+        printf("Pacchetto non riconosciuto \n");
+        return -1;
+    }
 }
 
 void* session(void* args) {
-    int buf_len=BUFFERSIZE;
     tcp_args* arg=(tcp_args*)args;
     int sock_fd=arg->server_tcp;
-    int msg_len=0;
-    while(1){
+    int ph_len=sizeof(PacketHeader);
+
+    int count=0;
+    while (1){
+        int msg_len=0;
         char buf_rcv[BUFFERSIZE];
-        msg_len=recv(sock_fd, buf_rcv, buf_len, 0);
-        if (msg_len==-1 && errno == EINTR) continue;
-        ERROR_HELPER(msg_len, "Cannot read from socket");
-        if(msg_len!=0) {
-            int ret=TCP_Handler(sock_fd,buf_rcv,arg->texture_map,arg->elevation_map);
-            if (ret==-1) break;
+        while(msg_len<ph_len){
+            int ret=recv(sock_fd, buf_rcv+msg_len, ph_len-msg_len, 0);
+            if (ret==-1 && errno == EINTR) continue;
+            ERROR_HELPER(msg_len, "Cannot read from socket");
+            msg_len+=ret;
+            }
+        PacketHeader* header=(PacketHeader*)buf_rcv;
+        int size_remaining=header->size-ph_len;
+        msg_len=0;
+        while(msg_len<size_remaining){
+            int ret=recv(sock_fd, buf_rcv+msg_len+ph_len, size_remaining-msg_len, 0);
+            if (ret==-1 && errno == EINTR) continue;
+            ERROR_HELPER(msg_len, "Cannot read from socket");
+            msg_len+=ret;
         }
+        printf("Letti %d bytes da socket TCP",msg_len+ph_len);
+        int ret=TCP_Handler(sock_fd,buf_rcv,arg->texture_map,arg->elevation_map);
+        ERROR_HELPER(ret,"TCP Handler failed");
+        count++;
     }
     pthread_exit(NULL);
 }

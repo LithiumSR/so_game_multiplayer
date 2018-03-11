@@ -3,9 +3,12 @@
 #include <math.h>
 #include "world.h"
 #include "common.h"
-
+#include <stdio.h>
+#include <stdlib.h>
 int Vehicle_update(Vehicle* v, float dt){
-  float tf=v->translational_force_update;
+    int ret= sem_wait(&(v->vsem));
+    if (ret==-1)debug_print("Wait on vsem didn't worked as expected1");
+     float tf=v->translational_force_update;
   float rf=v->rotational_force_update;
 
   if (tf > v->max_translational_force)
@@ -18,34 +21,51 @@ int Vehicle_update(Vehicle* v, float dt){
   if (rf < -v->max_rotational_force)
     rf = -v->max_rotational_force;
 
-    sem_wait(&(v->vsem));
+    float x,y,theta;
+    x=v->x;
+    y=v->y;
+    theta=v->theta;
+    ret=sem_post(&(v->vsem));
+    if (ret==-1)debug_print("Post on vsem didn't worked as expected1.");
   // retrieve the position of the vehicle
-  if(! Surface_getTransform(v->camera_to_world, &v->world->ground, v->x, v->y, 0, v->theta, 0)) {
+  if(! Surface_getTransform(v->camera_to_world, &v->world->ground, x,y, 0, theta, 0)) { //CAREFUL
     v->translational_velocity = 0;
     v->rotational_velocity = 0;
-    sem_post(&(v->vsem));
     return 0;
   }
-  sem_post(&(v->vsem));
+
   // compute the new pose of the vehicle, based on the velocities
   // vehicle moves only along the x axis!
+   ret= sem_wait(&(v->vsem));
+if (ret==-1)debug_print("Wait on vsem didn't worked as expected1");
 
   float nx = v->camera_to_world[12] + v->camera_to_world[0] * v->translational_velocity * dt;
   float ny = v->camera_to_world[13] + v->camera_to_world[1] * v->translational_velocity * dt;
+    ret=sem_post(&(v->vsem));
+    if (ret==-1)debug_print("Post on vsem didn't worked as expected1");
 
   if(! Surface_getTransform(v->camera_to_world, &v->world->ground, nx, ny, 0, v->theta, 0)) {
     return 0;
   }
+
+  ret= sem_wait(&(v->vsem));
+    if (ret==-1)debug_print("Wait on vsem didn't worked as expected1");
   v->x=v->camera_to_world[12];
   v->y=v->camera_to_world[13];
   v->z=v->camera_to_world[14];
   v->theta += v->rotational_velocity * dt;
+  theta=v->theta;
+    ret=sem_post(&(v->vsem));
+    if (ret==-1)debug_print("Post on vsem didn't worked as expected1");
 
-  if(! Surface_getTransform(v->camera_to_world, &v->world->ground, nx, ny, 0, v->theta, 0)){
+  if(! Surface_getTransform(v->camera_to_world, &v->world->ground, nx, ny, 0, theta, 0)){
     return 0;
   }
 
   // compute the accelerations
+  ret= sem_wait(&(v->vsem));
+    if (ret==-1)debug_print("Wait on vsem didn't worked as expected1");
+
   float global_tf=(-9.8 * v->camera_to_world[2] + tf);
   if ( fabs(global_tf)<v->min_translational_force)
     global_tf = 0;
@@ -56,12 +76,20 @@ int Vehicle_update(Vehicle* v, float dt){
   v->rotational_velocity += rf * dt;
   v->translational_velocity *= v->translational_viscosity;
   v->rotational_velocity *= v->rotational_viscosity;
-  Surface_getTransform(v->world_to_camera, &v->world->ground, nx, ny, 0, v->theta, 1);
+  ret=sem_post(&(v->vsem));
+    if (ret==-1)debug_print("Post on vsem didn't worked as expected1");
+
+  Surface_getTransform(v->world_to_camera, &v->world->ground, nx, ny, 0, theta, 1);
   return 1;
 }
 
 
 void Vehicle_init(Vehicle* v, World* w, int id, Image* texture){
+    int ret = sem_init(&(v->vsem), 0, 1);
+  if (ret==-1) debug_print("Sem init for vehicle was not successful");
+  ret= sem_wait(&(v->vsem));
+if (ret==-1)debug_print("Wait on vsem didn't worked as expected1");
+
   v->world= w;
   v->id=id;
   v->texture=texture;
@@ -77,18 +105,26 @@ void Vehicle_init(Vehicle* v, World* w, int id, Image* texture){
   v->min_translational_force=0.05;
   v->translational_velocity=0;
   v->rotational_velocity=0;
+  ret=sem_post(&(v->vsem));
+    if (ret==-1)debug_print("Post on vsem didn't worked as expected1");
+
   Vehicle_reset(v);
+
+    ret= sem_wait(&(v->vsem));
+    if (ret==-1)debug_print("Wait on vsem didn't worked as expected1");
   v->gl_texture = -1;
   v->gl_list = -1;
   v->_destructor=0;
-  int ret = sem_init(&(v->vsem), 0, 1);
-  if (ret==-1) debug_print("Sem init for vehicle was not successful");
+    ret=sem_post(&(v->vsem));
+    if (ret==-1)debug_print("Post on vsem didn't worked as expected1");
+
 }
 
 
 void Vehicle_reset(Vehicle* v){
     int ret= sem_wait(&(v->vsem));
-    if (ret==-1)debug_print("Wait on vsem didn't worked as expected");
+    if (ret==-1)debug_print("Wait on vsem didn't worked as expected1");
+
     v->rotational_force=0;
     v->translational_force=0;
     v->x = v->world->ground.rows/2 * v->world->ground.row_scale;
@@ -96,14 +132,14 @@ void Vehicle_reset(Vehicle* v){
     v->theta = 0;
     v->translational_viscosity = 0.5;
     v->rotational_viscosity = 0.5;
-    if(! Surface_getTransform(v->camera_to_world, &v->world->ground, v->x, v->y, 0, v->theta, 0)){
-        ret=sem_post(&(v->vsem));
-        if (ret==-1)debug_print("Post on vsem didn't worked as expected");
-        return;
-    }
-
+    float x,y,theta;
+    x=v->x;
+    y=v->y;
+    theta=v->theta;
     ret=sem_post(&(v->vsem));
     if (ret==-1)debug_print("Post on vsem didn't worked as expected");
+    if(! Surface_getTransform(v->camera_to_world, &v->world->ground, x, y, 0, theta, 0)) return;
+    return;
 }
 
 void getXYTheta(Vehicle* v,float* x, float* y, float* theta){
@@ -113,7 +149,7 @@ void getXYTheta(Vehicle* v,float* x, float* y, float* theta){
     *y=v->y;
     *theta=v->theta;
     ret=sem_post(&(v->vsem));
-    if (ret==-1)debug_print("Post on vsem didn't worked as expected");
+    if (ret==-1)debug_print("Post on vsem didn't worked as expected3");
 }
 
 void setXYTheta(Vehicle* v, float x, float y, float theta){

@@ -25,14 +25,15 @@ Vehicle* vehicle; // The vehicle
 int id;
 uint16_t  port_number_no;
 int connectivity=1;
-int checkUpdate=1;
+int exchangeUpdate=1;
 int socket_desc; //socket tcp
-
+time_t last_update_time=-1;
 typedef struct localWorld{
     int  ids[WORLDSIZE];
     int users_online;
     Vehicle** vehicles;
 }localWorld;
+
 
 typedef struct listenArgs{
     localWorld* lw;
@@ -48,8 +49,9 @@ void handle_signal(int signal){
             break;
         case SIGINT:
             connectivity=0;
-            checkUpdate=0;
-            send_goodbye(socket_desc, id);
+            exchangeUpdate=0;
+            if(last_update_time!=1) sendGoodbye(socket_desc, id);
+            exit(0);
             break;
         default:
             fprintf(stderr, "Caught wrong signal: %d\n", signal);
@@ -57,17 +59,21 @@ void handle_signal(int signal){
     }
 }
 
-int add_user_id(int ids[] , int size , int id, int* position,int* users_online){
+int add_user_id(int ids[] , int size , int id2, int* position,int* users_online){
     if(*users_online==WORLDSIZE){
         *position=-1;
         return -1;
     }
+
     for(int i=0;i<size;i++){
-        if(ids[i]==id) return i;
+        if(ids[i]==id2) {
+            return i;
+        }
     }
+
     for (int i=0 ; i < size ; i++){
         if(ids[i]==-1){
-            ids[i]=id;
+            ids[i]=id2;
             *users_online+=1;
             *position=i;
             break;
@@ -76,115 +82,143 @@ int add_user_id(int ids[] , int size , int id, int* position,int* users_online){
     return -1;
 }
 
-int sendUpdates(int socket_udp, localWorld* lw, struct sockaddr_in server_addr,int serverlen){
-    char buf_send[BUFFSIZE];
-    debug_print("[UDP_Sender] Sending VehicleUpdatePacket");
+
+int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
+    char buf_send[BUFFERSIZE];
     PacketHeader ph;
     ph.type=VehicleUpdate;
     VehicleUpdatePacket* vup=(VehicleUpdatePacket*)malloc(sizeof(VehicleUpdatePacket));
     vup->header=ph;
+    vup->time=time(NULL);
     getForces(vehicle,&(vup->translational_force),&(vup->rotational_force));
     getXYTheta(vehicle,&(vup->x),&(vup->y),&(vup->theta));
     vup->id=id;
     vup->time=time(NULL);
     int size=Packet_serialize(buf_send, &vup->header);
-    int bytes_sent = sendto(socket_udp, buf_send, size, 0, (struct sockaddr *) &server_addr,(socklen_t) serverlen);
-    if(bytes_sent<0) return -1;
-    else {
-        debug_print("[UDP_Sender] VehicleUpdatePacket sent");
-        return 0;
+    int bytes_sent = sendto(socket_udp, buf_send, size, 0, (const struct sockaddr *) &server_addr,(socklen_t) serverlen);
+    debug_print("[UDP_Sender] Sent a VehicleUpdatePacket of %d bytes with x: %f y: %f z: %f rf:%f tf:%f \n",bytes_sent,vup->x,vup->y,vup->theta,vup->rotational_force,vup->translational_force);
+    Packet_free(&(vup->header));
+    time_t current_time=time(NULL);
+    if(last_update_time!=-1 && current_time-last_update_time>10){
+        connectivity=0;
+        exchangeUpdate=0;
+        fprintf(stdout,"[WARNING] Server is not avaiable. Terminating the client now...");
+        exit(0);
     }
+    if(bytes_sent<0) return -1;
+    return 0;
 }
 
-void* sender_routine(void* args){
+void* udp_sender(void* args){
     udpArgs udp_args =*(udpArgs*)args;
     struct sockaddr_in server_addr=udp_args.server_addr;
     int socket_udp =udp_args.socket_udp;
     int serverlen=sizeof(server_addr);
-    while(connectivity && checkUpdate){
-        int ret=sendUpdates(socket_udp,udp_args.lw,server_addr,serverlen);
-        if(ret==-1) debug_print("[UDP_Sender] Cannot send VehicleUpdatePacket");
-        sleep(1000);
+    while(connectivity && exchangeUpdate){
+        int ret=sendUpdates(socket_udp,server_addr,serverlen);
+        if(ret==-1) debug_print("[UDP_Sender] Cannot send VehicleUpdatePacket \n");
+        sleep(1);
     }
     pthread_exit(NULL);
 }
 
-void* receiver_routine(void* args){
+void* udp_receiver(void* args){
     udpArgs udp_args =*(udpArgs*)args;
     struct sockaddr_in server_addr=udp_args.server_addr;
     int socket_udp =udp_args.socket_udp;
-    int serverlen=sizeof(server_addr);
+    socklen_t addrlen= sizeof(server_addr);
     localWorld* lw=udp_args.lw;
     int socket_tcp=udp_args.socket_tcp;
-    while(connectivity && checkUpdate){
-        char buf_rcv[BUFFSIZE];
-        int bytes_read=recvfrom(socket_udp, buf_rcv, BUFFSIZE, 0, (struct sockaddr*) &server_addr, (socklen_t*) &serverlen);
+    while(connectivity && exchangeUpdate){
+        char buf_rcv[BUFFERSIZE];
+        int bytes_read=recvfrom(socket_udp, buf_rcv, BUFFERSIZE, 0, (struct sockaddr*) &server_addr, &addrlen);
         if(bytes_read==-1){
-            debug_print("[UDP_Receiver] Errore while receiving WorldUpdatePacket");
-            connectivity=0;
-            break;
+            debug_print("[UDP_Receiver] Can't receive Packet over UDP \n");
+            sleep(1);
+            continue;
         }
-        if (bytes_read==0) continue;
+        if (bytes_read==0) {
+            sleep(1);
+            continue;
+        }
+        debug_print("Ho letto %d bytes \n",bytes_read);
         PacketHeader* ph=(PacketHeader*)buf_rcv;
-        if(ph->type!=WorldUpdate) continue;
+        if(ph->type==PostDisconnect){
+            fprintf(stdout,"[WARNING] You were kicked out of the server for inactivity... Closing the client now \n");
+            sendGoodbye(socket_desc, id);
+            connectivity=0;
+            exchangeUpdate=0;
+            exit(0);
+        }
+
+        if(ph->type!=PostDisconnect && ph->type!=WorldUpdate){
+            fprintf(stdout,"[UDP_Receiver] Found an unknown udp packet. Terminating the client now... \n");
+            sendGoodbye(socket_desc, id);
+            connectivity=0;
+            exchangeUpdate=0;
+            exit(-1);
+        }
         WorldUpdatePacket* wup = (WorldUpdatePacket*)Packet_deserialize(buf_rcv, bytes_read);
-        //if ( wup->num_vehicles <= lw->users_online ) continue;
+        debug_print("WorldUpdatePacket contains %d vehicles \n",wup->num_vehicles-1);
+        last_update_time=wup->time;
         char mask[WORLDSIZE];
-        memset((void*)lw->ids,0,WORLDSIZE);
+        for(int k=0;k<WORLDSIZE;k++) mask[k]=-2;
+        float x,y,theta;
+        getXYTheta(vehicle,&x,&y,&theta);
+        int ignored=0;
         for(int i=0; i < wup -> num_vehicles ; i++){
             if(wup->updates[i].id==id) continue;
+            if(abs((int)x-(int)wup->updates[i].x)>10 && abs((int)y-(int)wup->updates[i].y)>10) {
+                ignored++;
+                continue;
+            }
             int new_position=-1;
             int id_struct=add_user_id(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position,&(lw->users_online));
             if(id_struct==-1){
                 if(new_position==-1) continue;
                 mask[new_position]=1;
-                Image * img = get_vehicle_texture(socket_tcp,wup->updates[i].id);
+                fprintf(stdout,"New Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
                 Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                 Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                 lw->vehicles[new_position]=new_vehicle;
                 setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 setForces(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+                World_addVehicle(&world, new_vehicle);
             }
             else {
                 mask[id_struct]=1;
+                fprintf(stdout,"Updating Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
             }
         }
-
-        for(int i=0; i < lw->users_online ; i++){
+        if (ignored>0) debug_print("[WorldUpdate] Ignored %d vehicles based on position \n",ignored);
+        for(int i=0; i < WORLDSIZE ; i++){
             if(mask[i]==1) continue;
-            lw->users_online=lw->users_online-1;
-            World_detachVehicle(&world,lw->vehicles[i]);
-            Vehicle_destroy(lw->vehicles[i]);
-            lw->ids[i]=-1;
-
+            if(i==0) continue;
+            if(mask[i]==-2 && lw->ids[i]!=-1){
+                fprintf(stdout,"[WorldUpdate] Removing Vehicles with ID %d \n",lw->ids[i]);
+                lw->users_online=lw->users_online-1;
+                Image* im=lw->vehicles[i]->texture;
+                World_detachVehicle(&world,lw->vehicles[i]);
+                if (im!=NULL) Image_free(im);
+                Vehicle_destroy(lw->vehicles[i]);
+                lw->ids[i]=-1;
+            }
         }
-        sleep(1000);
+
+        sleep(1);
     }
     pthread_exit(NULL);
-}
 
-int createUDPSocket(struct sockaddr_in* si_me, int port){
-    int socket_udp;
-    socket_udp=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    ERROR_HELPER(socket_udp,"Something went wrong during the creation of the udp socket");
-    memset((char *) &si_me, 0, sizeof(si_me));
-    in_addr_t ip_addr = inet_addr(SERVER_ADDRESS);
-    si_me->sin_family = AF_INET;
-    si_me->sin_port = htons(port);
-    si_me->sin_addr.s_addr = ip_addr;
-    int ret=bind(socket_udp, (struct sockaddr*)&si_me, sizeof(si_me) );
-    ERROR_HELPER(ret,"Error during bind");
-    return socket_udp;
 }
-
 int main(int argc, char **argv) {
     if (argc<3) {
         printf("usage: %s <player texture> <port_number> \n", argv[1]);
         exit(-1);
         }
-    debug_print("[Main] loading texture image from %s ... ", argv[1]);
+    fprintf(stdout,"[Main] loading vehicle texture from %s ... ", argv[1]);
     Image* my_texture = Image_load(argv[1]);
     if (my_texture) {
         printf("Done! \n");
@@ -193,11 +227,13 @@ int main(int argc, char **argv) {
         printf("Fail! \n");
         }
     long tmp= strtol(argv[2], NULL, 0);
+
     if (tmp < 1024 || tmp > 49151) {
       fprintf(stderr, "Use a port number between 1024 and 49151.\n");
       exit(EXIT_FAILURE);
       }
-    debug_print("[Main] Starting... \n");
+
+    fprintf(stdout,"[Main] Starting... \n");
     port_number_no = htons((uint16_t)tmp); // we use network byte order
 	socket_desc = socket(AF_INET, SOCK_STREAM, 0);
     in_addr_t ip_addr = inet_addr(SERVER_ADDRESS);
@@ -206,7 +242,12 @@ int main(int argc, char **argv) {
     server_addr.sin_addr.s_addr = ip_addr;
     server_addr.sin_family      = AF_INET;
     server_addr.sin_port        = port_number_no;
-	int ret= connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
+
+    int reuseaddr_opt = 1; // recover server if a crash occurs
+    int ret = setsockopt(socket_desc, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_opt, sizeof(reuseaddr_opt));
+    ERROR_HELPER(ret, "Can't set SO_REUSEADDR flag");
+
+	ret= connect(socket_desc, (struct sockaddr*) &server_addr, sizeof(struct sockaddr_in));
     ERROR_HELPER(ret, "Cannot connect to remote server \n");
     debug_print("[Main] TCP connection established... \n");
 
@@ -222,9 +263,6 @@ int main(int argc, char **argv) {
     ret=sigaction(SIGINT, &sa, NULL);
     ERROR_HELPER(ret,"Error: cannot handle SIGINT");
 
-    //setting non-blocking socket
-    fcntl(socket_desc, F_SETFL, fcntl(socket_desc, F_GETFL) | O_NONBLOCK);
-
     //setting up localWorld
     localWorld* myLocalWorld = (localWorld*)malloc(sizeof(localWorld));
     myLocalWorld->vehicles=(Vehicle**)malloc(sizeof(Vehicle*)*WORLDSIZE);
@@ -232,63 +270,85 @@ int main(int argc, char **argv) {
         myLocalWorld->ids[i]=-1;
     }
 
-
-    debug_print("[Main] Starting ID,map_elevation,map_texture requests \n");
-    int id=get_client_ID(socket_desc);
-    debug_print("[Main] ID received \n");
-    Image* map_elevation=get_image_elevation(socket_desc,id);
-    debug_print("[Main] Map elevation received \n");
-    Image* map_texture = get_image_texture(socket_desc,id);
-    debug_print("[Main] Map texture received \n");
+    //Talk with server
+    fprintf(stdout,"[Main] Starting ID,map_elevation,map_texture requests \n");
+    id=getID(socket_desc);
+    myLocalWorld->ids[0]=id;
+    fprintf(stdout,"[Main] ID number %d received \n",id);
+    Image* surface_elevation=getElevationMap(socket_desc);
+    fprintf(stdout,"[Main] Map elevation received \n");
+    Image* surface_texture = getTextureMap(socket_desc);
+    fprintf(stdout,"[Main] Map texture received \n");
     debug_print("[Main] Sending vehicle texture");
-    send_vehicle_texture(socket_desc,id,my_texture);
-    debug_print("[Main] Client Vehicle texture sent \n");
+    sendVehicleTexture(socket_desc,my_texture,id);
+    fprintf(stdout,"[Main] Client Vehicle texture sent \n");
 
 
-
-
-    // construct the world
-    World_init(&world, map_elevation, map_texture,0.5, 0.5, 0.5);
+    //create Vehicle
+    World_init(&world, surface_elevation, surface_texture,0.5, 0.5, 0.5);
     vehicle=(Vehicle*) malloc(sizeof(Vehicle));
     Vehicle_init(vehicle, &world, id, my_texture);
+    myLocalWorld->vehicles[0]=vehicle;
     World_addVehicle(&world, vehicle);
+    if(OFFLINE) goto SKIP;
 
-    // spawn a thread that will listen the update messages from
-    // the server, and sends back the controls
-    // the update for yourself are written in the desired_*_force
-    // fields of the vehicle variable
-    // when the server notifies a new player has joined the game
-    // request the texture and add the player to the pool
+    //UDP Init
+    uint16_t port_number_udp = htons((uint16_t)UDPPORT); // we use network byte order
+	int socket_udp = socket(AF_INET, SOCK_DGRAM, 0);
+    ERROR_HELPER(socket_desc, "Can't create an UDP socket");
+	struct sockaddr_in udp_server = {0}; // some fields are required to be filled with 0
+    udp_server.sin_addr.s_addr = ip_addr;
+    udp_server.sin_family      = AF_INET;
+    udp_server.sin_port        = port_number_udp;
+    debug_print("[Main] Socket UDP created and ready to work \n");
 
-    struct sockaddr_in udp_addr;
-    int socket_udp=createUDPSocket(&udp_addr,tmp);
-
-    pthread_t threadUDP_receiver,threadUDP_sender;
+    //Create UDP Threads
+    pthread_t UDP_sender,UDP_receiver;
     udpArgs udp_args;
-    udp_args.server_addr=udp_addr;
-    udp_args.lw=myLocalWorld;
-    udp_args.socket_udp=socket_udp;
     udp_args.socket_tcp=socket_desc;
-    ret=pthread_create(&threadUDP_sender,NULL,sender_routine,&udp_args);
-    PTHREAD_ERROR_HELPER(ret,"pthread_create on threadUDP_sender failed \n");
-    ret=pthread_create(&threadUDP_receiver,NULL,receiver_routine,&udp_args);
-    PTHREAD_ERROR_HELPER(ret,"pthread_create on threadUDP_receiver failed \n");
+    udp_args.server_addr=udp_server;
+    udp_args.socket_udp=socket_udp;
+    udp_args.lw=myLocalWorld;
+    ret = pthread_create(&UDP_sender, NULL, udp_sender, &udp_args);
+    PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_sender");
+    ret = pthread_create(&UDP_receiver, NULL, udp_receiver, &udp_args);
+    PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_receiver");
+
+    //Disconnect from server if required by macro
+    SKIP: if(OFFLINE) sendGoodbye(socket_desc,id);
+
     WorldViewer_runGlobal(&world, vehicle, &argc, argv);
-    debug_print("[Main] Closing the client... \n");
-    ret=pthread_join(threadUDP_sender,NULL);
-    PTHREAD_ERROR_HELPER(ret,"pthread_join on threadUDP_sender failed \n");
-    ret=pthread_join(threadUDP_receiver,NULL);
-    PTHREAD_ERROR_HELPER(ret,"pthread_join on threadUDP_receiver failed \n");
 
-    // check out the images not needed anymore
+    // Waiting threads to end and cleaning resources
+    debug_print("[Main] Disabling and joining on UDP and TCP threads \n");
+    connectivity=0;
+    exchangeUpdate=0;
+    if(!OFFLINE){
+        ret=pthread_join(UDP_sender,NULL);
+        PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_sender failed");
+        ret=pthread_join(UDP_receiver,NULL);
+        PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_receiver failed");
+        ret= close(socket_udp);
+        ERROR_HELPER(ret,"Failed to close UDP socket");
+        }
 
-    Image_free(my_texture);
-    Image_free(map_elevation);
-    Image_free(map_texture);
-
+    fprintf(stdout,"[Main] Cleaning up... \n");
+    sendGoodbye(socket_desc,id);
+    Image_free(surface_elevation);
+    Image_free(surface_texture);
+    for(int i=0;i<WORLDSIZE;i++){
+        if(myLocalWorld->ids[i]==-1) continue;
+        myLocalWorld->users_online--;
+        Image* im=myLocalWorld->vehicles[i]->texture;
+        World_detachVehicle(&world,myLocalWorld->vehicles[i]);
+        if (im!=NULL) Image_free(im);
+        Vehicle_destroy(myLocalWorld->vehicles[i]);
+    }
     free(myLocalWorld->vehicles);
-    free(myLocalWorld);
-
+    ret=close(socket_desc);
+    ERROR_HELPER(ret,"Failed to close TCP socket");
+    ret=close(socket_udp);
+    ERROR_HELPER(ret,"Failed to close UDP socket");
     // world cleanup
     World_destroy(&world);
     return 0;
