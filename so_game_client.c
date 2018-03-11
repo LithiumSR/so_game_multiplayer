@@ -175,7 +175,7 @@ void* udp_receiver(void* args){
         int ignored=0;
         for(int i=0; i < wup -> num_vehicles ; i++){
             if(wup->updates[i].id==id) continue;
-            if(abs((int)x-(int)wup->updates[i].x)>10 && abs((int)y-(int)wup->updates[i].y)>10) {
+            if(abs((int)x-(int)wup->updates[i].x)>3 || abs((int)y-(int)wup->updates[i].y)>3) {
                 ignored++;
                 continue;
             }
@@ -227,6 +227,7 @@ void* udp_receiver(void* args){
                 if (im!=NULL) Image_free(im);
                 Vehicle_destroy(lw->vehicles[i]);
                 lw->ids[i]=-1;
+                free(lw->vehicles[i]);
             }
         }
 
@@ -367,9 +368,11 @@ int main(int argc, char **argv) {
         World_detachVehicle(&world,myLocalWorld->vehicles[i]);
         if (im!=NULL) Image_free(im);
         Vehicle_destroy(myLocalWorld->vehicles[i]);
+        free(myLocalWorld->vehicles[i]);
     }
 
     free(myLocalWorld->vehicles);
+    free(myLocalWorld);
     ret=close(socket_desc);
     ERROR_HELPER(ret,"Failed to close TCP socket");
     ret=close(socket_udp);
