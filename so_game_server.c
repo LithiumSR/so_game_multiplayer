@@ -26,11 +26,11 @@ int cleanGarbage=1;
 int hasUsers=0;
 ClientListHead* users;
 uint16_t  port_number_no;
-
+int server_tcp=-1;
+int server_udp;
 typedef struct {
     int client_desc;
     Image* elevation_texture;
-    Image* vehicle_texture;
     Image* surface_texture;
 } tcp_args;
 
@@ -48,6 +48,9 @@ void handle_signal(int signal){
             connectivity=0;
             exchangeUpdate=0;
             cleanGarbage=0;
+            if(server_tcp==-1) exit(0);
+            shutdown(server_tcp, SHUT_RDWR);
+            shutdown(server_udp, SHUT_RDWR);
             break;
         default:
             fprintf(stderr, "Caught wrong signal: %d\n", signal);
@@ -453,7 +456,6 @@ int main(int argc, char **argv) {
     }
     char* elevation_filename=argv[1];
     char* texture_filename=argv[2];
-    char* vehicle_texture_filename="./images/arrow-right.ppm";
     long tmp = strtol(argv[3], NULL, 0);
     if (tmp < 1024 || tmp > 49151) {
         fprintf(stderr, "Use a port number between 1024 and 49151.\n");
@@ -478,21 +480,12 @@ int main(int argc, char **argv) {
         fprintf(stdout,"Fail! \n");
     }
 
-    fprintf(stdout,"[Main] loading vehicle texture (default) from %s ... ", vehicle_texture_filename);
-    Image* vehicle_texture = Image_load(vehicle_texture_filename);
-    if (vehicle_texture) {
-        fprintf(stdout,"Done! \n");
-    }
-    else {
-        fprintf(stdout,"Fail! \n");
-    }
-
     port_number_no = htons((uint16_t)tmp);
 
     // setup tcp socket
     debug_print("[Main] Starting TCP socket \n");
 
-    int server_tcp = socket(AF_INET , SOCK_STREAM , 0);
+    server_tcp = socket(AF_INET , SOCK_STREAM , 0);
     ERROR_HELPER(server_tcp, "Can't create server_tcp socket");
 
     struct sockaddr_in server_addr = {0};
@@ -527,8 +520,8 @@ int main(int argc, char **argv) {
     sigfillset(&sa.sa_mask);
     ret=sigaction(SIGHUP, &sa, NULL);
     ERROR_HELPER(ret,"Error: cannot handle SIGHUP");
-    //ret=sigaction(SIGINT, &sa, NULL);
-    //ERROR_HELPER(ret,"Error: cannot handle SIGINT");
+    ret=sigaction(SIGINT, &sa, NULL);
+    ERROR_HELPER(ret,"Error: cannot handle SIGINT");
 
     debug_print("[Main] Custom signal handlers are now enabled \n");
     //preparing 2 threads (1 for udp socket, 1 for tcp socket)
@@ -538,7 +531,7 @@ int main(int argc, char **argv) {
     uint16_t port_number_no_udp= htons((uint16_t)UDPPORT);
 
     // setup server
-    int server_udp = socket(AF_INET, SOCK_DGRAM, 0);
+    server_udp = socket(AF_INET, SOCK_DGRAM, 0);
     ERROR_HELPER(server_udp, "Can't create server_udp socket");
 
     struct sockaddr_in udp_server = {0};
@@ -567,35 +560,41 @@ int main(int argc, char **argv) {
         // Setup to accept client connection
         int client_desc = accept(server_tcp, (struct sockaddr*)&client_addr, (socklen_t*) &sockaddr_len);
         if (client_desc == -1 && errno == EINTR) continue;
-        ERROR_HELPER(client_desc, "Failed accept() on server_tcp socket");
+        else if(client_desc==-1) break;
         tcp_args tcpArgs;
         pthread_t threadTCP;
         tcpArgs.client_desc=client_desc;
         tcpArgs.elevation_texture = surface_elevation;
         tcpArgs.surface_texture = surface_texture;
-        tcpArgs.vehicle_texture = vehicle_texture;
 
         ret = pthread_create(&threadTCP, NULL,tcp_flow, &tcpArgs);
         PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
         ret = pthread_detach(threadTCP);
     }
-
+    fprintf(stdout,"[Main] Shutting down the server... \n");
     ret=pthread_join(UDP_receiver,NULL);
     ERROR_HELPER(ret,"Join on UDP_receiver thread failed");
+    debug_print("[Main] UDP_receiver ended... \n");
     ret=pthread_join(UDP_sender,NULL);
     ERROR_HELPER(ret,"Join on UDP_sender thread failed");
+    debug_print("[Main] UDP_sender ended... \n");
     ret=pthread_join(GC_thread,NULL);
     ERROR_HELPER(ret,"Join on garbage collector thread failed");
+    debug_print("[Main] GC ended... \n");
 
-    fprintf(stdout,"[Main] Shutting down the server...");
+
+
+    pthread_mutex_lock(&mutex);
     ClientList_destroy(users);
+    pthread_mutex_unlock(&mutex);
+
+
     ret = close(server_tcp);
     ERROR_HELPER(ret,"Failed close() on server_tcp socket");
     ret = close(server_udp);
     ERROR_HELPER(ret,"Failed close() on server_udp socket");
     Image_free(surface_elevation);
 	Image_free(surface_texture);
-	Image_free(vehicle_texture);
 
     exit(EXIT_SUCCESS);
 }
