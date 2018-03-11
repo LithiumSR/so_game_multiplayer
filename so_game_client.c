@@ -28,6 +28,7 @@ int connectivity=1;
 int exchangeUpdate=1;
 int socket_desc; //socket tcp
 time_t last_update_time=-1;
+
 typedef struct localWorld{
     int  ids[WORLDSIZE];
     int users_online;
@@ -109,6 +110,7 @@ int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
     return 0;
 }
 
+//Send vehicleUpdatePacket to server
 void* udp_sender(void* args){
     udpArgs udp_args =*(udpArgs*)args;
     struct sockaddr_in server_addr=udp_args.server_addr;
@@ -122,6 +124,7 @@ void* udp_sender(void* args){
     pthread_exit(NULL);
 }
 
+//Receive and apply WorldUpdatePacket from server
 void* udp_receiver(void* args){
     udpArgs udp_args =*(udpArgs*)args;
     struct sockaddr_in server_addr=udp_args.server_addr;
@@ -334,6 +337,8 @@ int main(int argc, char **argv) {
 
     fprintf(stdout,"[Main] Cleaning up... \n");
     sendGoodbye(socket_desc,id);
+
+    //Clean resources
     Image_free(surface_elevation);
     Image_free(surface_texture);
     for(int i=0;i<WORLDSIZE;i++){
@@ -344,6 +349,7 @@ int main(int argc, char **argv) {
         if (im!=NULL) Image_free(im);
         Vehicle_destroy(myLocalWorld->vehicles[i]);
     }
+
     free(myLocalWorld->vehicles);
     ret=close(socket_desc);
     ERROR_HELPER(ret,"Failed to close TCP socket");
