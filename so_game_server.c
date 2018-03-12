@@ -132,7 +132,8 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
     else if(header->type==GetTexture){
         char buf_send[BUFFERSIZE];
         ImagePacket* image_request = (ImagePacket*)buf_rcv;
-        if(image_request->id>0){
+        if(image_request->id>=0){
+            if(image_request->id==0) debug_print("[WARNING] Received GetTexture with id 0 which is highly unlikeable \n");
             char buf_send[BUFFERSIZE];
             ImagePacket* image_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
             PacketHeader im_head;
@@ -409,7 +410,7 @@ void* garbage_collector(void* args){
         while(client!=NULL){
             long creation_time=(long)client->creation_time;
             long last_update_time=(long)client->last_update_time;
-            if((client->isAddrReady==1 && (current_time-last_update_time)>10) || (client->isAddrReady!=1 && (current_time-creation_time)>10)){
+            if((client->isAddrReady==1 && (current_time-last_update_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE) || (client->isAddrReady!=1 && (current_time-creation_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE)){
                 ClientListItem* tmp=client;
                 client=client->next;
                 sendDisconnect(socket_udp,tmp->user_addr);
@@ -434,9 +435,9 @@ void* garbage_collector(void* args){
                     client->afk_counter=0;
                     client=client->next;
                 }
-                else if(abs(x-prev_x)<1 && abs(y-prev_y)<1) {
+                else if(abs(x-prev_x)<AFK_RANGE && abs(y-prev_y)<AFK_RANGE) {
                     client->afk_counter++;
-                    if(client->afk_counter>=5){
+                    if(client->afk_counter>=MAX_AFK_COUNTER){
                         ClientListItem* tmp=client;
                         client=client->next;
                         sendDisconnect(socket_udp,tmp->user_addr);
