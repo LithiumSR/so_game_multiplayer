@@ -18,7 +18,11 @@
 #include "client_op.h"
 #include "so_game_protocol.h"
 #include <fcntl.h>
-#define APP_DEBUG
+#define NO_ACCESS -2
+#if CACHE_TEXTURE == 1
+    #define _USE_CACHE_TEXTURE_
+#endif
+
 int window;
 World world;
 Vehicle* vehicle; // The vehicle
@@ -29,13 +33,9 @@ int exchangeUpdate=1;
 int socket_desc; //socket tcp
 time_t last_update_time=-1;
 
-#if CACHE_TEXTURE == 1
-    #define USE_CACHE_TEXTURE
-#endif
-
 typedef struct localWorld{
     int  ids[WORLDSIZE];
-    #ifdef USE_CACHE_TEXTURE
+    #ifdef _USE_CACHE_TEXTURE_
     int isDisabled[WORLDSIZE];
     #endif
     int users_online;
@@ -176,13 +176,13 @@ void* udp_receiver(void* args){
         debug_print("WorldUpdatePacket contains %d vehicles \n",wup->num_vehicles-1);
         last_update_time=wup->time;
         char mask[WORLDSIZE];
-        for(int k=0;k<WORLDSIZE;k++) mask[k]=-2;
+        for(int k=0;k<WORLDSIZE;k++) mask[k]=NO_ACCESS;
         float x,y,theta;
         getXYTheta(vehicle,&x,&y,&theta);
         int ignored=0;
 
 
-        #ifdef USE_CACHE_TEXTURE
+        #ifdef _USE_CACHE_TEXTURE_
         for(int i=0; i < wup -> num_vehicles ; i++){
             if(wup->updates[i].id==id) continue;
             if(!(abs((int)x-(int)wup->updates[i].x)>HIDE_RANGE || abs((int)y-(int)wup->updates[i].y)>HIDE_RANGE)) {
@@ -257,7 +257,7 @@ void* udp_receiver(void* args){
         for(int i=0; i < WORLDSIZE ; i++){
             if(mask[i]==1) continue;
             if(i==0) continue;
-            if(mask[i]==-2 && lw->ids[i]!=-1){
+            if(mask[i]==NO_ACCESS && lw->ids[i]!=-1){
                 fprintf(stdout,"[WorldUpdate] Removing Vehicles with ID %d \n",lw->ids[i]);
                 lw->users_online=lw->users_online-1;
                 Image* im=lw->vehicles[i]->texture;
@@ -270,7 +270,7 @@ void* udp_receiver(void* args){
         }
         #endif
 
-        #ifndef USE_CACHE_TEXTURE
+        #ifndef _USE_CACHE_TEXTURE_
         for(int i=0; i < wup -> num_vehicles ; i++){
             if(wup->updates[i].id==id) continue;
             if(abs((int)x-(int)wup->updates[i].x)>HIDE_RANGE || abs((int)y-(int)wup->updates[i].y)>HIDE_RANGE) {
@@ -357,7 +357,7 @@ int main(int argc, char **argv) {
 
     fprintf(stdout,"[Main] Starting... \n");
 
-    #ifdef USE_CACHE_TEXTURE
+    #ifdef _USE_CACHE_TEXTURE_
     debug_print("[INFO] CACHE_TEXTURE option is enabled \n");
     #endif
 
@@ -395,7 +395,7 @@ int main(int argc, char **argv) {
     myLocalWorld->vehicles=(Vehicle**)malloc(sizeof(Vehicle*)*WORLDSIZE);
     for(int i=0;i<WORLDSIZE;i++){
         myLocalWorld->ids[i]=-1;
-        #ifdef USE_CACHE_TEXTURE
+        #ifdef _USE_CACHE_TEXTURE_
         myLocalWorld->isDisabled[i]=0;
         #endif
     }
