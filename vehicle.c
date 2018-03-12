@@ -21,7 +21,7 @@ int Vehicle_update(Vehicle* v, float dt){
     ret=sem_post(&(v->vsem));
     if (ret==-1)debug_print("Post on vsem didn't worked as expected.");
     // retrieve the position of the vehicle
-    if(! Surface_getTransform(v->camera_to_world, &v->world->ground, x,y, 0, theta, 0)) { //CAREFUL
+    if(! Surface_getTransform(v->camera_to_world, &v->world->ground, x,y, 0, theta, 0)) {
         v->translational_velocity = 0;
         v->rotational_velocity = 0;
         return 0;

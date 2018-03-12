@@ -15,7 +15,7 @@ typedef struct Vehicle {
   Image* texture;
   sem_t vsem;
 
-  // these are the forces that will be applied after the update
+  // these are the forces that will be applied after the update and the critical section
   float translational_force_update;
   float rotational_force_update;
   float x,y, z, theta; //position and orientation of the vehicle, on the surface
