@@ -58,7 +58,6 @@ int getID(int socket_desc){
     printf("[Get Id] Received %dbytes \n",msg_len+ph_len);
     int id=deserialized_packet->id;
     Packet_free(&(deserialized_packet->header));
-    debug_print("Got ID %d \n",id);
     return id;
 }
 
