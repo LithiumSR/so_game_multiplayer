@@ -18,7 +18,6 @@ OBJS = vec3.o\
        world_viewer.o\
        so_game_server.o\
        so_game_client.o\
-       server_op.o\
        client_op.o\
        so_game_protocol.o\
        client_list.o\
@@ -34,7 +33,6 @@ HEADERS=helpers.h\
 	world_viewer.h\
 	common.h\
 	client_op.h\
-	server_op.h\
 	client_list.h\
 
 %.o:	%.c $(HEADERS)
@@ -52,7 +50,7 @@ so_game_client: so_game_client.c libso_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
 
 so_game_server: so_game_server.c libso_game.a
-	$(CC) $(CCOPTS) -pg -Ofast -o $@ $^ $(LIBS)
+	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
 
 test_packets_serialization: test_packets_serialization.c libso_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^  $(LIBS)

@@ -15,7 +15,6 @@
 #include "vehicle.h"
 #include "world_viewer.h"
 #include "client_op.h"
-#include "server_op.h"
 #include "so_game_protocol.h"
 #include "client_list.h"
 
