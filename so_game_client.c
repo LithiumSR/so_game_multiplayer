@@ -265,8 +265,8 @@ void* udp_receiver(void* args){
             if(i==0) continue;
             if(mask[i]==NO_ACCESS && lw->ids[i]!=-1){
                 fprintf(stdout,"[WorldUpdate] Removing Vehicles with ID %d \n",lw->ids[i]);
-                if(!lw->hasVehicle[i]) continue;
                 lw->users_online=lw->users_online-1;
+                if(!lw->hasVehicle[i]) continue;
                 Image* im=lw->vehicles[i]->texture;
                 World_detachVehicle(&world,lw->vehicles[i]);
                 if (im!=NULL) Image_free(im);
@@ -331,8 +331,8 @@ void* udp_receiver(void* args){
             if(i==0) continue;
             if(mask[i]==NO_ACCESS && lw->ids[i]!=-1){
                 fprintf(stdout,"[WorldUpdate] Removing Vehicles with ID %d \n",lw->ids[i]);
-                if(!lw->hasVehicle[i]) continue;
                 lw->users_online=lw->users_online-1;
+                if(!lw->hasVehicle[i]) continue;
                 Image* im=lw->vehicles[i]->texture;
                 World_detachVehicle(&world,lw->vehicles[i]);
                 if (im!=NULL) Image_free(im);
