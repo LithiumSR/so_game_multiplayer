@@ -1,6 +1,6 @@
-# so_game
+# so_game_multiplayer
 
-This is a little video-game that was as part of the final exam of the operating systems course held by Giorgio Grisetti and Irvin Aloise at the Sapienza University in 2017-2018
+This is a protype of a multiplayer video-game developed as part of the final exam of the operating systems course held a held by Giorgio Grisetti and Irvin Aloise at the Sapienza University in 2017-2018
 
 ## Getting Started
 
