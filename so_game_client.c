@@ -20,7 +20,7 @@
 #include <fcntl.h>
 #define NO_ACCESS -2
 #if CACHE_TEXTURE == 1
-    #define _USE_CACHE_TEXTURE_
+    #define _USE_CACHED_TEXTURE_
 #endif
 
 int window;
@@ -35,10 +35,11 @@ time_t last_update_time=-1;
 
 typedef struct localWorld{
     int  ids[WORLDSIZE];
-    #ifdef _USE_CACHE_TEXTURE_
-    int isDisabled[WORLDSIZE];
+    #ifdef _USE_CACHED_TEXTURE_
+    char isDisabled[WORLDSIZE];
     #endif
     int users_online;
+    char hasVehicle[WORLDSIZE];
     Vehicle** vehicles;
 }localWorld;
 
@@ -182,7 +183,7 @@ void* udp_receiver(void* args){
         int ignored=0;
 
 
-        #ifdef _USE_CACHE_TEXTURE_
+        #ifdef _USE_CACHED_TEXTURE_
         for(int i=0; i < wup -> num_vehicles ; i++){
             if(wup->updates[i].id==id) continue;
             if(!(abs((int)x-(int)wup->updates[i].x)>HIDE_RANGE || abs((int)y-(int)wup->updates[i].y)>HIDE_RANGE)) {
@@ -200,7 +201,8 @@ void* udp_receiver(void* args){
                     setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                     setForces(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                     World_addVehicle(&world, new_vehicle);
-                    lw->isDisabled[new_position]=0;
+                    lw->isDisabled[new_position]=0; //Just to play safe
+                    lw->hasVehicle[new_position]=1;
                 }
                 else {
                     mask[id_struct]=1;
@@ -218,6 +220,8 @@ void* udp_receiver(void* args){
                         setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                         setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                         World_addVehicle(&world, new_vehicle);
+                        lw->hasVehicle[id_struct]=1;
+                        lw->isDisabled[id_struct]=0;
                         continue;
                     }
                     else {
@@ -229,13 +233,15 @@ void* udp_receiver(void* args){
                             setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                             World_addVehicle(&world, old_vehicle);
                             lw->isDisabled[id_struct]=0;
+                            //lw->hasVehicle[id_struct]=1;
                         }
                         else {
                             printf("[INFO] Updating vehicles  \n");
                             fprintf(stdout,"Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                            lw->isDisabled[id_struct]=0;
                             setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                             setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+                            //lw->isDisabled[id_struct]=0;
+                            //lw->hasVehicle[id_struct]=1;
                         }
                     }
                 }
@@ -246,7 +252,7 @@ void* udp_receiver(void* args){
                 int id_struct=add_user_id(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position,&(lw->users_online));
                 if(id_struct==-1) continue;
                 mask[id_struct]=1;
-                 printf("\n Disabilito veicolo lontano  \n");
+                 printf("[INFO] Temporary disabling a vehicle  \n");
                 lw->isDisabled[id_struct]=1;
                 World_detachVehicle(&world,lw->vehicles[id_struct]);
             }
@@ -259,18 +265,22 @@ void* udp_receiver(void* args){
             if(i==0) continue;
             if(mask[i]==NO_ACCESS && lw->ids[i]!=-1){
                 fprintf(stdout,"[WorldUpdate] Removing Vehicles with ID %d \n",lw->ids[i]);
+                if(!lw->hasVehicle[i]) continue;
                 lw->users_online=lw->users_online-1;
                 Image* im=lw->vehicles[i]->texture;
                 World_detachVehicle(&world,lw->vehicles[i]);
                 if (im!=NULL) Image_free(im);
                 Vehicle_destroy(lw->vehicles[i]);
                 lw->ids[i]=-1;
+                lw->hasVehicle[i]=0;
+                lw->isDisabled[i]=0;
                 free(lw->vehicles[i]);
+
             }
         }
         #endif
 
-        #ifndef _USE_CACHE_TEXTURE_
+        #ifndef _USE_CACHED_TEXTURE_
         for(int i=0; i < wup -> num_vehicles ; i++){
             if(wup->updates[i].id==id) continue;
             if(abs((int)x-(int)wup->updates[i].x)>HIDE_RANGE || abs((int)y-(int)wup->updates[i].y)>HIDE_RANGE) {
@@ -290,6 +300,7 @@ void* udp_receiver(void* args){
                 setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 setForces(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                 World_addVehicle(&world, new_vehicle);
+                lw->hasVehicle[new_position]=1;
             }
             else {
                 mask[id_struct]=1;
@@ -306,6 +317,7 @@ void* udp_receiver(void* args){
                     setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                     setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                     World_addVehicle(&world, new_vehicle);
+                    lw->hasVehicle[id_struct]=1;
                     continue;
                 }
                 fprintf(stdout,"Updating Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
@@ -317,8 +329,9 @@ void* udp_receiver(void* args){
         for(int i=0; i < WORLDSIZE ; i++){
             if(mask[i]==1) continue;
             if(i==0) continue;
-            if(mask[i]==-2 && lw->ids[i]!=-1){
+            if(mask[i]==NO_ACCESS && lw->ids[i]!=-1){
                 fprintf(stdout,"[WorldUpdate] Removing Vehicles with ID %d \n",lw->ids[i]);
+                if(!lw->hasVehicle[i]) continue;
                 lw->users_online=lw->users_online-1;
                 Image* im=lw->vehicles[i]->texture;
                 World_detachVehicle(&world,lw->vehicles[i]);
@@ -326,6 +339,7 @@ void* udp_receiver(void* args){
                 Vehicle_destroy(lw->vehicles[i]);
                 lw->ids[i]=-1;
                 free(lw->vehicles[i]);
+                lw->hasVehicle[i]=0;
             }
         }
         #endif
@@ -357,7 +371,7 @@ int main(int argc, char **argv) {
 
     fprintf(stdout,"[Main] Starting... \n");
 
-    #ifdef _USE_CACHE_TEXTURE_
+    #ifdef _USE_CACHED_TEXTURE_
     debug_print("[INFO] CACHE_TEXTURE option is enabled \n");
     #endif
 
@@ -395,6 +409,7 @@ int main(int argc, char **argv) {
     myLocalWorld->vehicles=(Vehicle**)malloc(sizeof(Vehicle*)*WORLDSIZE);
     for(int i=0;i<WORLDSIZE;i++){
         myLocalWorld->ids[i]=-1;
+        myLocalWorld->hasVehicle[i]=0;
         #ifdef _USE_CACHE_TEXTURE_
         myLocalWorld->isDisabled[i]=0;
         #endif
