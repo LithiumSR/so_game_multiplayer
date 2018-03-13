@@ -17,6 +17,9 @@
 #include "client_op.h"
 #include "so_game_protocol.h"
 #include "client_list.h"
+#if SERVER_SIDE_POSITION_CHECK == 1
+    #define _USE_SERVER_SIDE_FOG_
+#endif
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
@@ -324,6 +327,93 @@ void* udp_receiver(void* args){
 }
 
 //Send WorldUpdatePacket to every client that sent al least one VehicleUpdatePacket
+#ifdef _USE_SERVER_SIDE_FOG_
+void* udp_sender(void* args){
+    int socket_udp=*(int*)args;
+    while(connectivity && exchangeUpdate){
+        if(!hasUsers){
+            sleep(1);
+            continue;
+        }
+        pthread_mutex_lock(&mutex);
+        ClientListItem* client= users->first;
+        debug_print("I'm going to create a WorldUpdatePacket \n");
+        client= users->first;
+        time_t time_update=time(NULL);
+        while(client!=NULL){
+            char buf_send[BUFFERSIZE];
+            if (client->isAddrReady!=1) {
+                client=client->next;
+                continue;
+            }
+            PacketHeader ph;
+            ph.type=WorldUpdate;
+            WorldUpdatePacket* wup=(WorldUpdatePacket*)malloc(sizeof(WorldUpdatePacket));
+            wup->header=ph;
+            int n=0;
+            ClientListItem* tmp= users->first;
+            while(tmp!=NULL){
+                if(tmp->isAddrReady && (abs(tmp->x-client->x)<HIDE_RANGE && abs(tmp->y-client->y)<HIDE_RANGE)) {
+                    n++;
+                }
+                tmp=tmp->next;
+            }
+
+            if (n==0) {
+                client=client->next;
+                continue;
+            }
+            wup->num_vehicles=n;
+            wup->updates=(ClientUpdate*)malloc(sizeof(ClientUpdate)*n);
+            wup->time=time_update;
+            tmp= users->first;
+            ClientList_print(users);
+            int k=0;
+            for(int i=0;tmp!=NULL;i++){
+                if(!(tmp->isAddrReady && (abs(tmp->x-client->x)<HIDE_RANGE && abs(tmp->y-client->y)<HIDE_RANGE))) {
+                    tmp=tmp->next;
+                    continue;
+                }
+
+                ClientUpdate* cup= &(wup->updates[k]);
+                if(tmp->forceRefresh==1) {
+                    cup->forceRefresh=1;
+                    tmp->forceRefresh=0;
+                }
+                else cup->forceRefresh=0;
+                cup->y=tmp->y;
+                cup->x=tmp->x;
+                cup->theta=tmp->theta;
+                cup->id=tmp->id;
+                cup->rotational_force=tmp->rotational_force;
+                cup->translational_force=tmp->translational_force;
+                printf("--- Vehicle with id: %d x: %f y:%f z:%f rf:%f tf:%f --- \n",cup->id,cup->x,cup->y,cup->theta,cup->rotational_force,cup->translational_force);
+                tmp = tmp->next;
+                k++;
+            }
+
+            int size=Packet_serialize(buf_send,&wup->header);
+
+            if(size==0 || size==-1){
+                client=client->next;
+                continue;
+                }
+
+            int ret = sendto(socket_udp, buf_send, size, 0, (struct sockaddr*) &client->user_addr, (socklen_t) sizeof(client->user_addr));
+            debug_print("[UDP_Send] Sent WorldUpdate of %d bytes to client with id %d \n",ret,client->id);
+            debug_print("Difference lenght check - wup: %d client found:%d \n" ,wup->num_vehicles,n);
+            Packet_free(&(wup->header));
+            client=client->next;
+            }
+        fprintf(stdout,"[UDP_Send] WorldUpdatePacket sent to each client \n");
+        pthread_mutex_unlock(&mutex);
+        sleep(1);
+    }
+    pthread_exit(NULL);
+}
+#endif
+
+#ifndef _USE_SERVER_SIDE_FOG_
 void* udp_sender(void* args){
     int socket_udp=*(int*)args;
     while(connectivity && exchangeUpdate){
@@ -395,6 +485,7 @@ void* udp_sender(void* args){
     }
     pthread_exit(NULL);
 }
+#endif
 
 //Remove client that are not sending updates and the one that are AFK in the same place for an extended period of time
 void* garbage_collector(void* args){
@@ -502,6 +593,14 @@ int main(int argc, char **argv) {
 
     port_number_no = htons((uint16_t)tmp);
 
+    #ifdef _USE_SERVER_SIDE_FOG_
+        debug_print("[Main] Server-side position check option is enabled \n");
+    #endif
+
+    #ifndef _USE_SERVER_SIDE_FOG_
+        debug_print("[Main] Position check will be done client-side \n");
+    #endif
+
     // setup tcp socket
     debug_print("[Main] Starting TCP socket \n");
 
@@ -592,6 +691,7 @@ int main(int argc, char **argv) {
         ret = pthread_detach(threadTCP);
     }
     fprintf(stdout,"[Main] Shutting down the server... \n");
+    debug_print("[Main] TCP loop ended... \n");
     //Wait for threads to finish
     ret=pthread_join(UDP_receiver,NULL);
     ERROR_HELPER(ret,"Join on UDP_receiver thread failed");
