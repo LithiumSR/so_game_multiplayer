@@ -139,11 +139,11 @@ void* udp_receiver(void* args){
         int bytes_read=recvfrom(socket_udp, buf_rcv, BUFFERSIZE, 0, (struct sockaddr*) &server_addr, &addrlen);
         if(bytes_read==-1){
             debug_print("[UDP_Receiver] Can't receive Packet over UDP \n");
-            usleep(500);
+            usleep(300);
             continue;
         }
         if (bytes_read==0) {
-            usleep(500);
+            usleep(300);
             continue;
         }
 
@@ -151,7 +151,7 @@ void* udp_receiver(void* args){
         PacketHeader* ph=(PacketHeader*)buf_rcv;
         if(ph->size!=bytes_read){
             debug_print("[WARNING] Skipping partial UDP packet \n");
-            usleep(500);
+            usleep(300);
             continue;
         }
         if(ph->type==PostDisconnect){
@@ -239,7 +239,7 @@ void* udp_receiver(void* args){
                 lw->hasVehicle[i]=0;
             }
         }
-        usleep(500);
+        usleep(300);
     }
     pthread_exit(NULL);
 
