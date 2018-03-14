@@ -2,24 +2,19 @@
 #include "image.h"
 #include <netinet/in.h>
 #include <time.h>
-
+#include "vehicle.h"
 typedef struct ClientListItem {
   struct ClientListItem* next;
-  float rotational_force;
-  float translational_force;
-  float x;
-  float prev_x;
-  float y;
-  float prev_y;
-  float theta;
-  Image * v_texture;
   int id;
   struct sockaddr_in user_addr;
   time_t last_update_time;
   time_t creation_time;
-  int isAddrReady;
+  char isAddrReady;
   int afk_counter;
-  int forceRefresh;
+  char forceRefresh;
+  char insideWorld;
+  Vehicle* vehicle;
+  Image * v_texture;
 } ClientListItem;
 
 typedef struct ClientListHead {
