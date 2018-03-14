@@ -10,6 +10,7 @@ int Vehicle_update(Vehicle* v, float dt){
     if (ret==-1) debug_print("Wait on vsem didn't worked as expected");
     float tf=v->translational_force_update;
     float rf=v->rotational_force_update;
+    debug_print("HO TU:%f RU: %f \n",tf,rf);
     if (tf > v->max_translational_force) tf = v->max_translational_force;
     if (tf < -v->max_translational_force) tf = -v->max_translational_force;
     if (rf > v->max_rotational_force) rf = v->max_rotational_force;
@@ -155,7 +156,35 @@ void setXYTheta(Vehicle* v, float x, float y, float theta){
     if (ret==-1)debug_print("Post on vsem didn't worked as expected");
 }
 
-void setForces(Vehicle* v, float translational_update, float rotational_update){
+void setForces(Vehicle* v, float translational_force, float rotational_force){
+    int ret= sem_wait(&(v->vsem));
+    if (ret==-1)debug_print("Wait on vsem didn't worked as expected");
+    v->translational_force=translational_force;
+    v->rotational_force=rotational_force;
+    ret=sem_post(&(v->vsem));
+    if (ret==-1)debug_print("Post on vsem didn't worked as expected");
+}
+
+
+void getForces(Vehicle* v, float* translational_force, float* rotational_force){
+    int ret= sem_wait(&(v->vsem));
+    if (ret==-1) debug_print("Wait on vsem didn't worked as expected");
+    *translational_force=v->translational_force;
+    *rotational_force=v->rotational_force;
+    ret=sem_post(&(v->vsem));
+    if (ret==-1) debug_print("Post on vsem didn't worked as expected");
+}
+
+void getForcesUpdate(Vehicle* v, float* translational_update, float* rotational_update){
+    int ret= sem_wait(&(v->vsem));
+    if (ret==-1) debug_print("Wait on vsem didn't worked as expected");
+    *translational_update=v->translational_force_update;
+    *rotational_update=v->rotational_force_update;
+    ret=sem_post(&(v->vsem));
+    if (ret==-1) debug_print("Post on vsem didn't worked as expected");
+}
+
+void setForcesUpdate(Vehicle* v, float translational_update, float rotational_update){
     int ret= sem_wait(&(v->vsem));
     if (ret==-1)debug_print("Wait on vsem didn't worked as expected");
     v->translational_force_update=translational_update;
@@ -165,14 +194,7 @@ void setForces(Vehicle* v, float translational_update, float rotational_update){
 }
 
 
-void getForces(Vehicle* v, float* translational_update, float* rotational_update){
-    int ret= sem_wait(&(v->vsem));
-    if (ret==-1) debug_print("Wait on vsem didn't worked as expected");
-    *translational_update=v->translational_force_update;
-    *rotational_update=v->rotational_force_update;
-    ret=sem_post(&(v->vsem));
-    if (ret==-1) debug_print("Post on vsem didn't worked as expected");
-}
+
 
 void Vehicle_destroy(Vehicle* v){
     int ret= sem_destroy(&(v->vsem));
