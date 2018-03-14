@@ -8,9 +8,12 @@
 #include "image.h"
 #include <sys/time.h>
 #include <assert.h>
+#include <semaphore.h>
 
 void World_destroy(World* w) {
   Surface_destroy(&w->ground);
+  sem_t sem=w->vehicles.sem;
+  sem_wait(&(sem));
   ListItem* item=w->vehicles.first;
   while(item){
     Vehicle* v=(Vehicle*)item;
@@ -18,13 +21,15 @@ void World_destroy(World* w) {
     item=item->next;
     free(v);
   }
+  sem_post(&(sem));
+  sem_destroy(&sem);
 }
 
 int World_init(World* w,
 	       Image* surface_elevation,
 	       Image* surface_texture,
-	       float x_step, 
-	       float y_step, 
+	       float x_step,
+	       float y_step,
 	       float z_step) {
   List_init(&w->vehicles);
   Image* float_image = Image_convert(surface_elevation, FLOATMONO);
@@ -33,8 +38,8 @@ int World_init(World* w,
     return 0;
 
   Surface_fromMatrix(&w->ground,
-		     (float**) float_image->row_data, 
-		     float_image->rows, 
+		     (float**) float_image->row_data,
+		     float_image->rows,
 		     float_image->cols,
 		     .5, .5, 5);
   w->ground.texture=surface_texture;
@@ -48,7 +53,7 @@ int World_init(World* w,
 void World_update(World* w) {
   struct timeval current_time;
   gettimeofday(&current_time, 0);
-  
+
   struct timeval dt;
   timersub(&current_time, &w->last_update, &dt);
   float delta = dt.tv_sec+1e-6*dt.tv_usec;
