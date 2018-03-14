@@ -10,7 +10,6 @@ int Vehicle_update(Vehicle* v, float dt){
     if (ret==-1) debug_print("Wait on vsem didn't worked as expected");
     float tf=v->translational_force_update;
     float rf=v->rotational_force_update;
-    debug_print("HO TU:%f RU: %f \n",tf,rf);
     if (tf > v->max_translational_force) tf = v->max_translational_force;
     if (tf < -v->max_translational_force) tf = -v->max_translational_force;
     if (rf > v->max_rotational_force) rf = v->max_rotational_force;
@@ -76,7 +75,6 @@ int Vehicle_update(Vehicle* v, float dt){
     Surface_getTransform(v->world_to_camera, &v->world->ground, nx, ny, 0, theta, 1);
     return 1;
 }
-
 
 void Vehicle_init(Vehicle* v, World* w, int id, Image* texture){
     int ret = sem_init(&(v->vsem), 0, 1);
