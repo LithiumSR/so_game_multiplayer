@@ -94,12 +94,12 @@ int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
     VehicleUpdatePacket* vup=(VehicleUpdatePacket*)malloc(sizeof(VehicleUpdatePacket));
     vup->header=ph;
     vup->time=time(NULL);
-    getForces(vehicle,&(vup->translational_force),&(vup->rotational_force));
+    getForcesUpdate(vehicle,&(vup->translational_force),&(vup->rotational_force));
     vup->id=id;
     vup->time=time(NULL);
     int size=Packet_serialize(buf_send, &vup->header);
     int bytes_sent = sendto(socket_udp, buf_send, size, 0, (const struct sockaddr *) &server_addr,(socklen_t) serverlen);
-    debug_print("[UDP_Sender] Sent a VehicleUpdatePacket of %d bytes with rf:%f tf:%f \n",bytes_sent,vup->rotational_force,vup->translational_force);
+    debug_print("[UDP_Sender] Sent a VehicleUpdatePacket of %d bytes with tf:%f rf:%f \n",bytes_sent,vup->translational_force,vup->rotational_force);
     Packet_free(&(vup->header));
     time_t current_time=time(NULL);
     if(last_update_time!=-1 && current_time-last_update_time>MAX_TIME_WITHOUT_WORLDUPDATE){
@@ -177,7 +177,7 @@ void* udp_receiver(void* args){
         float x,y,theta;
         getXYTheta(vehicle,&x,&y,&theta);
         int ignored=0;
-        
+
         for(int i=0; i < wup -> num_vehicles ; i++){
             if(wup->updates[i].id==id) continue;
             if(abs((int)x-(int)wup->updates[i].x)>HIDE_RANGE || abs((int)y-(int)wup->updates[i].y)>HIDE_RANGE) {
@@ -195,7 +195,7 @@ void* udp_receiver(void* args){
                 Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                 lw->vehicles[new_position]=new_vehicle;
                 setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                setForces(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+                //setForces(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                 World_addVehicle(&world, new_vehicle);
                 lw->hasVehicle[new_position]=1;
             }
@@ -212,14 +212,14 @@ void* udp_receiver(void* args){
                     Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                     lw->vehicles[id_struct]=new_vehicle;
                     setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                    setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+                    //setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                     World_addVehicle(&world, new_vehicle);
                     lw->hasVehicle[id_struct]=1;
                     continue;
                 }
                 fprintf(stdout,"Updating Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+                //setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
             }
         }
         if (ignored>0) debug_print("[INFO] Ignored %d vehicles based on position \n",ignored);
@@ -239,7 +239,7 @@ void* udp_receiver(void* args){
                 lw->hasVehicle[i]=0;
             }
         }
-        sleep(1);
+        usleep(500);
     }
     pthread_exit(NULL);
 
