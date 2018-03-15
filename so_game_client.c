@@ -32,9 +32,6 @@ time_t last_update_time=-1;
 
 typedef struct localWorld{
     int  ids[WORLDSIZE];
-    #ifdef _USE_CACHED_TEXTURE_
-    char isDisabled[WORLDSIZE];
-    #endif
     int users_online;
     char hasVehicle[WORLDSIZE];
     Vehicle** vehicles;
@@ -208,6 +205,7 @@ void* udp_receiver(void* args){
                     if (im!=NULL) Image_free(im);
                     Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
                     Vehicle_destroy(lw->vehicles[id_struct]);
+                    free(lw->vehicles[id_struct]);
                     Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                     Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                     lw->vehicles[id_struct]=new_vehicle;
@@ -218,7 +216,7 @@ void* udp_receiver(void* args){
                     continue;
                 }
                 fprintf(stdout,"Updating Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                if(wup->updates[i].id==id) setXYTheta(vehicle,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                if(wup->updates[i].id==id) setXYTheta(lw->vehicles[0],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 else setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 //setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
             }
@@ -227,7 +225,7 @@ void* udp_receiver(void* args){
         for(int i=0; i < WORLDSIZE ; i++){
             if(mask[i]==1) continue;
             if(i==0) continue;
-            
+
             if(lw->ids[i]==id) continue;
             if(mask[i]==NO_ACCESS && lw->ids[i]!=-1){
                 fprintf(stdout,"[WorldUpdate] Removing Vehicles with ID %d \n",lw->ids[i]);
@@ -327,6 +325,8 @@ int main(int argc, char **argv) {
     vehicle=(Vehicle*) malloc(sizeof(Vehicle));
     Vehicle_init(vehicle, &world, id, my_texture);
     World_addVehicle(&world, vehicle);
+    myLocalWorld->vehicles[0]=vehicle;
+    myLocalWorld->hasVehicle[0]=1;
     if(SINGLEPLAYER) goto SKIP;
 
     //UDP Init
