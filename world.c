@@ -57,6 +57,8 @@ void World_update(World* w) {
   struct timeval dt;
   timersub(&current_time, &w->last_update, &dt);
   float delta = dt.tv_sec+1e-6*dt.tv_usec;
+  sem_t sem=w->vehicles.sem;
+  sem_wait(&sem);
   ListItem* item=w->vehicles.first;
   while(item){
     Vehicle* v=(Vehicle*)item;
@@ -65,6 +67,7 @@ void World_update(World* w) {
     }
     item=item->next;
   }
+  sem_post(&sem);
   w->last_update = current_time;
 }
 
