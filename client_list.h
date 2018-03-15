@@ -6,6 +6,7 @@
 typedef struct ClientListItem {
   struct ClientListItem* next;
   int id;
+  float x,y,theta,prev_x,prev_y;
   struct sockaddr_in user_addr;
   struct timeval last_update_time;
   struct timeval  creation_time;

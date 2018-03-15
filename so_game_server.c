@@ -384,9 +384,11 @@ void* udp_sender(void* args){
                 client->forceRefresh=0;
             }
             else cup->forceRefresh=0;
-            getXYTheta(client->vehicle,&(cup->x),&(cup->y),&(cup->theta));
+            getXYTheta(client->vehicle,&(client->x),&(client->y),&(cup->theta));
             //getForces(client->vehicle,&(cup->rotational_force),&(cup->translational_force));
             cup->id=client->id;
+            cup->x=client->x;
+            cup->y=client->y;
             printf("--- Vehicle with id: %d x: %f, y: %f, theta:%f --- \n",cup->id,cup->x,cup->y,cup->theta);
             client = client->next;
         }
@@ -435,6 +437,7 @@ void* garbage_collector(void* args){
                 if(!del->insideWorld) goto SKIP;
                 World_detachVehicle(&serverWorld,del->vehicle);
                 Vehicle_destroy(del->vehicle);
+                free(del->vehicle);
                 Image* user_texture=del->v_texture;
                 if (user_texture!=NULL) Image_free(user_texture);
                 count++;
@@ -442,6 +445,47 @@ void* garbage_collector(void* args){
                 SKIP: close(del->id);
                 free(del);
             }
+            else if (client->isAddrReady==1) {
+                int x,prev_x,y,prev_y;
+                x=(int)client->x;
+                y=(int)client->y;
+                prev_x=(int)client->prev_x;
+                prev_y=(int)client->prev_y;
+                if(prev_x==-1 || prev_y==-1) {
+                    client->prev_x=client->x;
+                    client->prev_y=client->y;
+                    client->afk_counter=0;
+                    client=client->next;
+                }
+                else if(abs(x-prev_x)<AFK_RANGE && abs(y-prev_y)<AFK_RANGE) {
+                    client->afk_counter++;
+                    if(client->afk_counter>=MAX_AFK_COUNTER){
+                        ClientListItem* tmp=client;
+                        client=client->next;
+                        sendDisconnect(socket_udp,tmp->user_addr);
+                        ClientListItem* del=ClientList_detach(users,tmp);
+                        if (del==NULL) continue;
+                        if(!del->insideWorld) goto SKIP2;
+                        World_detachVehicle(&serverWorld,del->vehicle);
+                        Vehicle_destroy(del->vehicle);
+                        free(del->vehicle);
+                        Image* user_texture=del->v_texture;
+                        if (user_texture!=NULL) Image_free(user_texture);
+                        count++;
+                        if(users->size==0) hasUsers=0;
+                        SKIP2: close(del->id);
+                        free(del);
+                        }
+                    else client=client->next;
+                    }
+                else {
+                    client->afk_counter=0;
+                    client->prev_x=client->x;
+                    client->prev_y=client->y;
+                    client=client->next;
+                    }
+            }
+
             else client=client->next;
         }
         if (count>0) fprintf(stdout,"[GC] Removed %d users from the client list \n",count);
