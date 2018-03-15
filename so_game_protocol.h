@@ -53,7 +53,7 @@ typedef struct {
   float x;
   float y;
   float theta;
-  time_t time;
+  struct timeval time;
 } VehicleUpdatePacket;
 
 // block of the client updates, id of vehicle
@@ -73,7 +73,7 @@ typedef struct {
 typedef struct {
   PacketHeader header;
   int num_vehicles;
-  time_t time;
+  struct timeval time;
   ClientUpdate* updates;
 } WorldUpdatePacket;
 

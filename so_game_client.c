@@ -35,7 +35,7 @@ uint16_t  port_number_no;
 int connectivity=1;
 int exchangeUpdate=1;
 int socket_desc; //socket tcp
-time_t last_update_time=-1;
+struct timeval last_update_time;
 
 typedef struct localWorld{
     int  ids[WORLDSIZE];
@@ -63,7 +63,7 @@ void handle_signal(int signal){
         case SIGINT:
             connectivity=0;
             exchangeUpdate=0;
-            if(last_update_time!=1) sendGoodbye(socket_desc, id);
+            if(last_update_time.tv_sec!=1) sendGoodbye(socket_desc, id);
             exit(0);
             break;
         default:
@@ -100,17 +100,17 @@ int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
     ph.type=VehicleUpdate;
     VehicleUpdatePacket* vup=(VehicleUpdatePacket*)malloc(sizeof(VehicleUpdatePacket));
     vup->header=ph;
-    vup->time=time(NULL);
+    gettimeofday(&vup->time, NULL);
     getForces(vehicle,&(vup->translational_force),&(vup->rotational_force));
     getXYTheta(vehicle,&(vup->x),&(vup->y),&(vup->theta));
     vup->id=id;
-    vup->time=time(NULL);
     int size=Packet_serialize(buf_send, &vup->header);
     int bytes_sent = sendto(socket_udp, buf_send, size, 0, (const struct sockaddr *) &server_addr,(socklen_t) serverlen);
     debug_print("[UDP_Sender] Sent a VehicleUpdatePacket of %d bytes with x: %f y: %f z: %f rf:%f tf:%f \n",bytes_sent,vup->x,vup->y,vup->theta,vup->rotational_force,vup->translational_force);
     Packet_free(&(vup->header));
-    time_t current_time=time(NULL);
-    if(last_update_time!=-1 && current_time-last_update_time>MAX_TIME_WITHOUT_WORLDUPDATE){
+    struct timeval current_time;
+    gettimeofday(&current_time, NULL);
+    if(last_update_time.tv_sec!=-1 && current_time.tv_sec-last_update_time.tv_sec >MAX_TIME_WITHOUT_WORLDUPDATE){
         connectivity=0;
         exchangeUpdate=0;
         fprintf(stdout,"[WARNING] Server is not avaiable. Terminating the client now...");
@@ -396,7 +396,7 @@ int main(int argc, char **argv) {
     #ifndef _USE_CACHED_TEXTURE_
         debug_print("[INFO] CACHE_TEXTURE option is disabled \n");
     #endif
-
+    last_update_time.tv_sec=-1;
     port_number_no = htons((uint16_t)tmp); // we use network byte order
 	socket_desc = socket(AF_INET, SOCK_STREAM, 0);
     in_addr_t ip_addr = inet_addr(SERVER_ADDRESS);

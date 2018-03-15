@@ -247,7 +247,7 @@ void* tcp_flow(void* args){
     pthread_mutex_lock(&mutex);
     ClientListItem* user=malloc(sizeof(ClientListItem));
     user->v_texture = NULL;
-    user->creation_time=time(NULL);
+    gettimeofday(&user->creation_time, NULL);
     user->id=sock_fd;
     user->prev_x=-1;
     user->prev_y=-1;
@@ -339,7 +339,8 @@ void* udp_sender(void* args){
         ClientListItem* client= users->first;
         debug_print("I'm going to create a WorldUpdatePacket \n");
         client= users->first;
-        time_t time_update=time(NULL);
+        struct timeval time;
+        gettimeofday(&time,NULL);
         while(client!=NULL){
             char buf_send[BUFFERSIZE];
             if (client->isAddrReady!=1) {
@@ -365,7 +366,7 @@ void* udp_sender(void* args){
             }
             wup->num_vehicles=n;
             wup->updates=(ClientUpdate*)malloc(sizeof(ClientUpdate)*n);
-            wup->time=time_update;
+            wup->time=time;
             tmp= users->first;
             ClientList_print(users);
             int k=0;
@@ -442,7 +443,7 @@ void* udp_sender(void* args){
         }
         wup->updates=(ClientUpdate*)malloc(sizeof(ClientUpdate)*n);
         client= users->first;
-        wup->time=time(NULL);
+        gettimeofday(&wup->time, NULL);
         for(int i=0;client!=NULL;i++){
             if(!(client->isAddrReady)) {
                 client = client->next;
@@ -498,8 +499,8 @@ void* garbage_collector(void* args){
         long current_time=(long)time(NULL);
         int count=0;
         while(client!=NULL){
-            long creation_time=(long)client->creation_time;
-            long last_update_time=(long)client->last_update_time;
+            long creation_time=(long)client->creation_time.tv_sec;
+            long last_update_time=(long)client->last_update_time.tv_sec;
             if((client->isAddrReady==1 && (current_time-last_update_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE) || (client->isAddrReady!=1 && (current_time-creation_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE)){
                 ClientListItem* tmp=client;
                 client=client->next;

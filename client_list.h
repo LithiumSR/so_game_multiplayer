@@ -15,8 +15,7 @@ typedef struct ClientListItem {
   Image * v_texture;
   int id;
   struct sockaddr_in user_addr;
-  time_t last_update_time;
-  time_t creation_time;
+  struct timeval last_update_time,creation_time;
   int isAddrReady;
   int afk_counter;
   int forceRefresh;
