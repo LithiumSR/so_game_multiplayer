@@ -201,7 +201,7 @@ void* udp_receiver(void* args){
             }
             else {
                 mask[id_struct]=1;
-                if(wup->updates[i].forceRefresh==1){
+                if(wup->updates[i].forceRefresh==1 && wup->updates[i].id!=id){
                     debug_print("[WARNING] Forcing refresh for client with id %d",wup->updates[i].id);
                     Image* im=lw->vehicles[id_struct]->texture;
                     World_detachVehicle(&world,lw->vehicles[id_struct]);
@@ -218,7 +218,8 @@ void* udp_receiver(void* args){
                     continue;
                 }
                 fprintf(stdout,"Updating Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                if(wup->updates[i].id==id) setXYTheta(vehicle,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                else setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 //setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
             }
         }
@@ -226,6 +227,8 @@ void* udp_receiver(void* args){
         for(int i=0; i < WORLDSIZE ; i++){
             if(mask[i]==1) continue;
             if(i==0) continue;
+            
+            if(lw->ids[i]==id) continue;
             if(mask[i]==NO_ACCESS && lw->ids[i]!=-1){
                 fprintf(stdout,"[WorldUpdate] Removing Vehicles with ID %d \n",lw->ids[i]);
                 lw->users_online=lw->users_online-1;
@@ -323,7 +326,6 @@ int main(int argc, char **argv) {
     World_init(&world, surface_elevation, surface_texture,0.5, 0.5, 0.5);
     vehicle=(Vehicle*) malloc(sizeof(Vehicle));
     Vehicle_init(vehicle, &world, id, my_texture);
-    myLocalWorld->vehicles[0]=vehicle;
     World_addVehicle(&world, vehicle);
     if(SINGLEPLAYER) goto SKIP;
 
