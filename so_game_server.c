@@ -585,10 +585,10 @@ int main(int argc, char **argv) {
     tcp_args tcpArgs;
     tcpArgs.surface_texture=surface_texture;
     tcpArgs.elevation_texture=surface_elevation;
-    World_init(&serverWorld, surface_elevation, surface_texture,  0.5, 0.5, 0.5);
     Vehicle* vehicle=(Vehicle*) malloc(sizeof(Vehicle));
     Vehicle_init(vehicle, &serverWorld, 0, my_texture);
     World_addVehicle(&serverWorld, vehicle);
+    World_init(&serverWorld, surface_elevation, surface_texture,  0.5, 0.5, 0.5);
 
     pthread_t UDP_receiver,UDP_sender,GC_thread,tcp_thread;
     ret = pthread_create(&UDP_receiver, NULL,udp_receiver, &server_udp);
