@@ -260,7 +260,7 @@ void* tcp_flow(void* args){
     pthread_mutex_lock(&mutex);
     ClientListItem* user=malloc(sizeof(ClientListItem));
     user->v_texture = NULL;
-    user->creation_time=time(NULL);
+    gettimeofday(&user->creation_time, NULL);
     user->id=sock_fd;
     user->isAddrReady=0;
     user->forceRefresh=1;
@@ -372,7 +372,7 @@ void* udp_sender(void* args){
         World_update(&serverWorld);
         wup->updates=(ClientUpdate*)malloc(sizeof(ClientUpdate)*n);
         client= users->first;
-        wup->time=time(NULL);
+        gettimeofday(&wup->time, NULL);
         for(int i=0;client!=NULL;i++){
             if(!(client->isAddrReady && client->insideWorld)) {
                 client = client->next;
@@ -424,8 +424,8 @@ void* garbage_collector(void* args){
         long current_time=(long)time(NULL);
         int count=0;
         while(client!=NULL){
-            long creation_time=(long)client->creation_time;
-            long last_update_time=(long)client->last_update_time;
+            long creation_time=(long)client->creation_time.tv_sec;
+            long last_update_time=(long)client->last_update_time.tv_sec;
             if((client->isAddrReady==1 && (current_time-last_update_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE) || (client->isAddrReady!=1 && (current_time-creation_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE)){
                 ClientListItem* tmp=client;
                 client=client->next;

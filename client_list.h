@@ -7,8 +7,8 @@ typedef struct ClientListItem {
   struct ClientListItem* next;
   int id;
   struct sockaddr_in user_addr;
-  time_t last_update_time;
-  time_t creation_time;
+  struct timeval last_update_time;
+  struct timeval  creation_time;
   char isAddrReady;
   int afk_counter;
   char forceRefresh;
