@@ -101,7 +101,7 @@ void idle(void) {
   World_update(viewer.world);
   usleep(30000);
   glutPostRedisplay();
-  
+
   // decay the commands
   viewer.self->translational_force_update *= 0.999;
   viewer.self->rotational_force_update *= 0.7;
@@ -209,15 +209,15 @@ void Surface_draw(Surface* s) {
     glCallList(s->gl_list);
     return;
   }
-  
+
   s->gl_list = glGenLists(1);
   glNewList(s->gl_list, GL_COMPILE_AND_EXECUTE);
   if (s->gl_texture>-1){
     glEnable(GL_TEXTURE_2D);
     glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-    glBindTexture(GL_TEXTURE_2D, s->gl_texture); 
+    glBindTexture(GL_TEXTURE_2D, s->gl_texture);
   }
-    
+
   for (int r=0; r<s->rows-1; r++) {
     Vec3* normals_row_ptr = s->normal_rows[r];
     Vec3* normals_row_next = s->normal_rows[r+1];
@@ -228,11 +228,11 @@ void Surface_draw(Surface* s) {
       glNormal3fv(normals_row_ptr->values);
       glTexCoord2f((float) c/s->cols, (float)r/s->rows);
       glVertex3fv(points_row_ptr->values);
-      
+
       glNormal3fv(normals_row_next->values);
       glTexCoord2f( (float) c/s->cols, (float)(r+1)/s->rows);
       glVertex3fv(points_row_next->values);
-      
+
       normals_row_ptr++;
       points_row_ptr++;
       normals_row_next++;
@@ -278,7 +278,7 @@ void Vehicle_draw(Vehicle* v){
     if (v->gl_texture>-1){
       glEnable(GL_TEXTURE_2D);
       glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-      glBindTexture(GL_TEXTURE_2D, v->gl_texture); 
+      glBindTexture(GL_TEXTURE_2D, v->gl_texture);
     }
     drawBox(0.5,0.5,0.25);
     if (v->gl_texture>-1)
@@ -316,7 +316,10 @@ void WorldViewer_init(WorldViewer* viewer,
   glEnable(GL_LIGHTING);
   glEnable(GL_DEPTH_TEST);
   Surface_applyTexture(&viewer->world->ground, viewer->world->ground.texture);
+  sem_t sem=viewer->world->vehicles.sem;
+  sem_wait(&sem);
   ListItem* item=viewer->world->vehicles.first;
+
   while(item){
     Vehicle* v=(Vehicle*)item;
     Vehicle_applyTexture(v);
@@ -325,6 +328,7 @@ void WorldViewer_init(WorldViewer* viewer,
     }
     item=item->next;
   }
+  sem_post(&sem);
   assert("not self in list of vehicles, aborting" && viewer->self);
 }
 
@@ -389,7 +393,7 @@ void WorldViewer_run(WorldViewer* viewer,
 		     Vehicle* self,
 		     int* argc_ptr, char** argv){
 
-  
+
 
 }
 
