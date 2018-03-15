@@ -76,7 +76,6 @@ int Vehicle_update(Vehicle* v, float dt){
     return 1;
 }
 
-
 void Vehicle_init(Vehicle* v, World* w, int id, Image* texture){
     int ret = sem_init(&(v->vsem), 0, 1);
     if (ret==-1) debug_print("Sem init for vehicle was not successfuf");
@@ -155,6 +154,16 @@ void setXYTheta(Vehicle* v, float x, float y, float theta){
     if (ret==-1)debug_print("Post on vsem didn't worked as expected");
 }
 
+
+void getForces(Vehicle* v, float* translational_update, float* rotational_update){
+    int ret= sem_wait(&(v->vsem));
+    if (ret==-1) debug_print("Wait on vsem didn't worked as expected");
+    *translational_update=v->translational_force_update;
+    *rotational_update=v->rotational_force_update;
+    ret=sem_post(&(v->vsem));
+    if (ret==-1) debug_print("Post on vsem didn't worked as expected");
+}
+
 void setForces(Vehicle* v, float translational_update, float rotational_update){
     int ret= sem_wait(&(v->vsem));
     if (ret==-1)debug_print("Wait on vsem didn't worked as expected");
@@ -165,14 +174,7 @@ void setForces(Vehicle* v, float translational_update, float rotational_update){
 }
 
 
-void getForces(Vehicle* v, float* translational_update, float* rotational_update){
-    int ret= sem_wait(&(v->vsem));
-    if (ret==-1) debug_print("Wait on vsem didn't worked as expected");
-    *translational_update=v->translational_force_update;
-    *rotational_update=v->rotational_force_update;
-    ret=sem_post(&(v->vsem));
-    if (ret==-1) debug_print("Post on vsem didn't worked as expected");
-}
+
 
 void Vehicle_destroy(Vehicle* v){
     int ret= sem_destroy(&(v->vsem));
