@@ -170,7 +170,7 @@ void* udp_receiver(void* args){
             exit(-1);
         }
         WorldUpdatePacket* wup = (WorldUpdatePacket*)Packet_deserialize(buf_rcv, bytes_read);
-        debug_print("WorldUpdatePacket contains %d vehicles \n",wup->num_vehicles-1);
+        debug_print("WorldUpdatePacket contains %d vehicles besides mine \n",wup->num_vehicles-1);
         last_update_time=wup->time;
         char mask[WORLDSIZE];
         for(int k=0;k<WORLDSIZE;k++) mask[k]=NO_ACCESS;
@@ -180,7 +180,7 @@ void* udp_receiver(void* args){
 
         for(int i=0; i < wup -> num_vehicles ; i++){
             //if(wup->updates[i].id==id) continue;
-            if(abs((int)x-(int)wup->updates[i].x)>HIDE_RANGE || abs((int)y-(int)wup->updates[i].y)>HIDE_RANGE) {
+            if(wup->updates[i].id!=id && (abs((int)x-(int)wup->updates[i].x)>HIDE_RANGE || abs((int)y-(int)wup->updates[i].y))>HIDE_RANGE) {
                 ignored++;
                 continue;
             }
@@ -265,11 +265,6 @@ int main(int argc, char **argv) {
       }
 
     fprintf(stdout,"[Main] Starting... \n");
-
-    #ifdef _USE_CACHED_TEXTURE_
-    debug_print("[INFO] CACHE_TEXTURE option is enabled \n");
-    #endif
-
     port_number_no = htons((uint16_t)tmp); // we use network byte order
 	socket_desc = socket(AF_INET, SOCK_STREAM, 0);
     in_addr_t ip_addr = inet_addr(SERVER_ADDRESS);
