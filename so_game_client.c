@@ -176,8 +176,7 @@ void* udp_receiver(void* args){
         int ignored=0;
 
         for(int i=0; i < wup -> num_vehicles ; i++){
-
-            if(wup->updates[i].id!=id && (abs((int)x-(int)wup->updates[i].x)>HIDE_RANGE || abs((int)y-(int)wup->updates[i].y))>HIDE_RANGE) {
+            if(wup->updates[i].id!=id && (abs((int)x-(int)wup->updates[i].x)>HIDE_RANGE || abs((int)y-(int)wup->updates[i].y)>HIDE_RANGE)) {
                 ignored++;
                 continue;
             }
