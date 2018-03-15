@@ -267,6 +267,8 @@ void* tcp_flow(void* args){
     user->insideWorld=0;
     user->v_texture=NULL;
     user->vehicle=NULL;
+    user->prev_x=-1;
+    user->prev_y=-1;
     printf("[New user] Adding client with id %d \n",sock_fd);
     ClientList_insert(users,user);
     ClientList_print(users);
