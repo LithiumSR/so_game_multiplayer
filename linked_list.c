@@ -5,36 +5,30 @@ void List_init(ListHead* head) {
   head->first=0;
   head->last=0;
   head->size=0;
+  sem_init(&(head->sem), 0, 1);
 }
 
 ListItem* List_find(ListHead* head, ListItem* item) {
   // linear scanning of list
+  sem_wait(&(head->sem));
   ListItem* aux=head->first;
   while(aux){
-    if (aux==item)
-      return item;
+    if (aux==item){
+        sem_post(&(head->sem));
+        return item;
+    }
     aux=aux->next;
   }
+  sem_post(&(head->sem));
   return 0;
 }
 
 ListItem* List_insert(ListHead* head, ListItem* prev, ListItem* item) {
-  if (item->next || item->prev)
-    return 0;
-
-#ifdef _LIST_DEBUG_
-  // we check that the element is not in the list
-  ListItem* instance=List_find(head, item);
-  assert(!instance);
-
-  // we check that the previous is inthe list
-
-  if (prev) {
-    ListItem* prev_instance=List_find(head, prev);
-    assert(prev_instance);
+    sem_wait(&(head->sem));
+  if (item->next || item->prev){
+      sem_post(&(head->sem));
+      return 0;
   }
-  // we check that the previous is inthe list
-#endif
 
   ListItem* next= prev ? prev->next : head->first;
   if (prev) {
@@ -50,17 +44,12 @@ ListItem* List_insert(ListHead* head, ListItem* prev, ListItem* item) {
   if(!next)
     head->last=item;
   ++head->size;
+  sem_post(&(head->sem));
   return item;
 }
 
 ListItem* List_detach(ListHead* head, ListItem* item) {
-
-#ifdef _LIST_DEBUG_
-  // we check that the element is in the list
-  ListItem* instance=List_find(head, item);
-  assert(instance);
-#endif
-
+    sem_wait(&(head->sem));
   ListItem* prev=item->prev;
   ListItem* next=item->next;
   if (prev){
@@ -75,6 +64,7 @@ ListItem* List_detach(ListHead* head, ListItem* item) {
     head->last=prev;
   head->size--;
   item->next=item->prev=0;
+  sem_post(&(head->sem));
   return item;
 }
 

@@ -2,7 +2,7 @@
 #include "image.h"
 #include <netinet/in.h>
 #include <time.h>
-
+#include <semaphore.h>
 typedef struct ListItem {
   struct ListItem* prev;
   struct ListItem* next;
@@ -12,6 +12,7 @@ typedef struct ListHead {
   ListItem* first;
   ListItem* last;
   int size;
+  sem_t sem;
 } ListHead;
 
 void List_init(ListHead* head);
