@@ -217,6 +217,7 @@ void* udp_receiver(void* args){
                         if (im!=NULL) Image_free(im);
                         Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
                         Vehicle_destroy(lw->vehicles[id_struct]);
+                        free(lw->vehicles[id_struct]);
                         Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                         Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                         lw->vehicles[id_struct]=new_vehicle;
@@ -274,10 +275,10 @@ void* udp_receiver(void* args){
                 World_detachVehicle(&world,lw->vehicles[i]);
                 if (im!=NULL) Image_free(im);
                 Vehicle_destroy(lw->vehicles[i]);
+                free(lw->vehicles[i]);
                 lw->ids[i]=-1;
                 lw->hasVehicle[i]=0;
                 lw->isDisabled[i]=0;
-                free(lw->vehicles[i]);
 
             }
         }
@@ -323,6 +324,7 @@ void* udp_receiver(void* args){
                     if (im!=NULL) Image_free(im);
                     Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
                     Vehicle_destroy(lw->vehicles[id_struct]);
+                    free(lw->vehicles[id_struct]);
                     Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                     Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                     lw->vehicles[id_struct]=new_vehicle;
@@ -353,8 +355,8 @@ void* udp_receiver(void* args){
                 World_detachVehicle(&world,lw->vehicles[i]);
                 if (im!=NULL) Image_free(im);
                 Vehicle_destroy(lw->vehicles[i]);
-                lw->ids[i]=-1;
                 free(lw->vehicles[i]);
+                lw->ids[i]=-1;
                 lw->hasVehicle[i]=0;
             }
         }
@@ -454,6 +456,7 @@ int main(int argc, char **argv) {
     vehicle=(Vehicle*) malloc(sizeof(Vehicle));
     Vehicle_init(vehicle, &world, id, my_texture);
     myLocalWorld->vehicles[0]=vehicle;
+    myLocalWorld->hasVehicle[0]=1;
     World_addVehicle(&world, vehicle);
     if(SINGLEPLAYER) goto SKIP;
 
