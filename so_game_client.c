@@ -22,6 +22,10 @@
 #if CACHE_TEXTURE == 1
     #define _USE_CACHED_TEXTURE_
 #endif
+#if SERVER_SIDE_POSITION_CHECK == 1
+    #define _USE_SERVER_SIDE_FOG_
+    #undef _USE_CACHED_TEXTURE_
+#endif
 
 int window;
 World world;
@@ -180,10 +184,9 @@ void* udp_receiver(void* args){
         for(int k=0;k<WORLDSIZE;k++) mask[k]=NO_ACCESS;
         float x,y,theta;
         getXYTheta(vehicle,&x,&y,&theta);
-        int ignored=0;
-
 
         #ifdef _USE_CACHED_TEXTURE_
+        int ignored=0;
         for(int i=0; i < wup -> num_vehicles ; i++){
             if(wup->updates[i].id==id) continue;
             if(!(abs((int)x-(int)wup->updates[i].x)>HIDE_RANGE || abs((int)y-(int)wup->updates[i].y)>HIDE_RANGE)) {
@@ -281,12 +284,21 @@ void* udp_receiver(void* args){
         #endif
 
         #ifndef _USE_CACHED_TEXTURE_
+
+        #ifndef _USE_SERVER_SIDE_FOG_
+        int ignored=0;
+        #endif
+
         for(int i=0; i < wup -> num_vehicles ; i++){
             if(wup->updates[i].id==id) continue;
+
+        #ifndef _USE_SERVER_SIDE_FOG_
             if(abs((int)x-(int)wup->updates[i].x)>HIDE_RANGE || abs((int)y-(int)wup->updates[i].y)>HIDE_RANGE) {
                 ignored++;
                 continue;
             }
+        #endif
+
             int new_position=-1;
             int id_struct=add_user_id(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position,&(lw->users_online));
             if(id_struct==-1){
@@ -325,7 +337,11 @@ void* udp_receiver(void* args){
                 setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
             }
         }
+
+        #ifndef _USE_SERVER_SIDE_FOG_
         if (ignored>0) debug_print("[INFO] Ignored %d vehicles based on position \n",ignored);
+        #endif
+
         for(int i=0; i < WORLDSIZE ; i++){
             if(mask[i]==1) continue;
             if(i==0) continue;
@@ -372,7 +388,11 @@ int main(int argc, char **argv) {
     fprintf(stdout,"[Main] Starting... \n");
 
     #ifdef _USE_CACHED_TEXTURE_
-    debug_print("[INFO] CACHE_TEXTURE option is enabled \n");
+        debug_print("[INFO] CACHE_TEXTURE option is enabled \n");
+    #endif
+
+    #ifndef _USE_CACHED_TEXTURE_
+        debug_print("[INFO] CACHE_TEXTURE option is disabled \n");
     #endif
 
     port_number_no = htons((uint16_t)tmp); // we use network byte order
