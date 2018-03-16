@@ -17,6 +17,7 @@
 #include "client_op.h"
 #include "so_game_protocol.h"
 #include "client_list.h"
+#define RECEIVER_SLEEP 50
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
@@ -383,8 +384,6 @@ void* udp_sender(void* args){
                 client=client->next;
                 continue;
             }
-            serverWorld.last_update=wup->time;
-            World_update(&serverWorld);
             wup->num_vehicles=n;
             wup->updates=(ClientUpdate*)malloc(sizeof(ClientUpdate)*n);
             wup->time=time;

@@ -19,6 +19,8 @@
 #include "so_game_protocol.h"
 #include <fcntl.h>
 #define NO_ACCESS -2
+#define SENDER_SLEEP 200
+#define RECEIVER_SLEEP 500
 
 int window;
 World world;
@@ -118,7 +120,7 @@ void* udp_sender(void* args){
     while(connectivity && exchangeUpdate){
         int ret=sendUpdates(socket_udp,server_addr,serverlen);
         if(ret==-1) debug_print("[UDP_Sender] Cannot send VehicleUpdatePacket \n");
-        sleep(1);
+        usleep(SENDER_SLEEP);
     }
     pthread_exit(NULL);
 }
@@ -136,11 +138,11 @@ void* udp_receiver(void* args){
         int bytes_read=recvfrom(socket_udp, buf_rcv, BUFFERSIZE, 0, (struct sockaddr*) &server_addr, &addrlen);
         if(bytes_read==-1){
             debug_print("[UDP_Receiver] Can't receive Packet over UDP \n");
-            usleep(150);
+            usleep(RECEIVER_SLEEP);
             continue;
         }
         if (bytes_read==0) {
-            usleep(150);
+            usleep(RECEIVER_SLEEP);
             continue;
         }
 
@@ -148,7 +150,7 @@ void* udp_receiver(void* args){
         PacketHeader* ph=(PacketHeader*)buf_rcv;
         if(ph->size!=bytes_read){
             debug_print("[WARNING] Skipping partial UDP packet \n");
-            usleep(150);
+            usleep(RECEIVER_SLEEP);
             continue;
         }
         if(ph->type==PostDisconnect){
@@ -177,7 +179,8 @@ void* udp_receiver(void* args){
 
             int new_position=-1;
             int id_struct=add_user_id(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position,&(lw->users_online));
-            if(id_struct==-1){
+            if(wup->updates[i].id==id) setXYTheta(lw->vehicles[0],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+            else if(id_struct==-1){
                 if(new_position==-1) continue;
                 mask[new_position]=1;
                 fprintf(stdout,"New Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
@@ -191,7 +194,7 @@ void* udp_receiver(void* args){
             }
             else {
                 mask[id_struct]=1;
-                if(wup->updates[i].forceRefresh==1 && wup->updates[i].id!=id){
+                if(wup->updates[i].forceRefresh==1){
                     debug_print("[WARNING] Forcing refresh for client with id %d",wup->updates[i].id);
                     Image* im=lw->vehicles[id_struct]->texture;
                     World_detachVehicle(&world,lw->vehicles[id_struct]);
@@ -208,8 +211,7 @@ void* udp_receiver(void* args){
                     continue;
                 }
                 fprintf(stdout,"Updating Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                if(wup->updates[i].id==id) setXYTheta(lw->vehicles[0],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                else setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
             }
         }
         for(int i=0; i < WORLDSIZE ; i++){
@@ -230,7 +232,7 @@ void* udp_receiver(void* args){
                 lw->hasVehicle[i]=0;
             }
         }
-        usleep(150);
+        usleep(RECEIVER_SLEEP);
     }
     pthread_exit(NULL);
 
