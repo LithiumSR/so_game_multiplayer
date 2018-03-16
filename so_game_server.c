@@ -669,6 +669,13 @@ int main(int argc, char **argv) {
     //This will spawn a vehicle whose position is not going to be sent to the clients.
     //This is needed just to get the World_update to work
     WorldViewer_runGlobal(&serverWorld, vehicle, &argc, argv);
+    
+    /**
+    while(connectivity){
+		World_update(&serverWorld);
+	}
+	**/
+	
     //starting cleanup
     connectivity=0;
     exchangeUpdate=0;
