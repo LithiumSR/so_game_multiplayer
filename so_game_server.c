@@ -17,7 +17,7 @@
 #include "client_op.h"
 #include "so_game_protocol.h"
 #include "client_list.h"
-
+#define RECEIVER_SLEEP 50
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
 int exchangeUpdate=1;
@@ -335,11 +335,11 @@ void* udp_receiver(void* args){
         PacketHeader* ph=(PacketHeader*)buf_recv;
         if(ph->size!=bytes_read) {
             debug_print("[WARNING] Skipping partial UDP packet \n");
-            goto END;
+            continue;
         }
 		int ret = UDP_Handler(socket_udp,buf_recv,client_addr);
         if (ret==-1) debug_print("[UDP_Receiver] UDP Handler couldn't manage to apply the VehicleUpdate \n");
-        END: usleep(50);
+        END: usleep(RECEIVER_SLEEP);
     }
     pthread_exit(NULL);
 }
@@ -387,7 +387,6 @@ void* udp_sender(void* args){
             }
             else cup->forceRefresh=0;
             getXYTheta(client->vehicle,&(client->x),&(client->y),&(cup->theta));
-            //getForces(client->vehicle,&(cup->rotational_force),&(cup->translational_force));
             cup->id=client->id;
             cup->x=client->x;
             cup->y=client->y;
