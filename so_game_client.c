@@ -19,11 +19,16 @@
 #include "so_game_protocol.h"
 #include <fcntl.h>
 #define NO_ACCESS -2
-#define SENDER_SLEEP 200
+#define SENDER_SLEEP 1000
 #define RECEIVER_SLEEP 500
 #if CACHE_TEXTURE == 1
     #define _USE_CACHED_TEXTURE_
 #endif
+#if SERVER_SIDE_POSITION_CHECK == 1
+    #define _USE_SERVER_SIDE_FOG_
+    #undef _USE_CACHED_TEXTURE_
+#endif
+
 
 int window;
 World world;
@@ -103,7 +108,7 @@ int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
     vup->id=id;
     int size=Packet_serialize(buf_send, &vup->header);
     int bytes_sent = sendto(socket_udp, buf_send, size, 0, (const struct sockaddr *) &server_addr,(socklen_t) serverlen);
-    debug_print("[UDP_Sender] Sent a VehicleUpdatePacket of %d bytes with tf:%f rf:%f \n",bytes_sent,vup->translational_force,vup->rotational_force);
+    //debug_print("[UDP_Sender] Sent a VehicleUpdatePacket of %d bytes with tf:%f rf:%f \n",bytes_sent,vup->translational_force,vup->rotational_force);
     Packet_free(&(vup->header));
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
@@ -181,9 +186,10 @@ void* udp_receiver(void* args){
         for(int k=0;k<WORLDSIZE;k++) mask[k]=NO_ACCESS;
         float x,y,theta;
         getXYTheta(vehicle,&x,&y,&theta);
-        int ignored=0;
 
         #ifdef _USE_CACHED_TEXTURE_
+        int ignored=0;
+
         for(int i=0; i < wup -> num_vehicles ; i++){
             if(wup->updates[i].id==id) setXYTheta(lw->vehicles[0],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
             else if(!(abs((int)x-(int)wup->updates[i].x)>HIDE_RANGE || abs((int)y-(int)wup->updates[i].y)>HIDE_RANGE)) {
@@ -275,13 +281,20 @@ void* udp_receiver(void* args){
             }
         }
         #endif
+
         #ifndef _USE_CACHED_TEXTURE_
+
+        #ifndef _USE_SERVER_SIDE_FOG_
+        int ignored=0;
+        #endif
+
         for(int i=0; i < wup -> num_vehicles ; i++){
+            #ifndef _USE_SERVER_SIDE_FOG_
             if(wup->updates[i].id!=id && (abs((int)x-(int)wup->updates[i].x)>HIDE_RANGE || abs((int)y-(int)wup->updates[i].y)>HIDE_RANGE)) {
                 ignored++;
                 continue;
             }
-
+            #endif
             int new_position=-1;
             int id_struct=add_user_id(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position,&(lw->users_online));
             if(id_struct==-1){
@@ -319,7 +332,11 @@ void* udp_receiver(void* args){
                 else setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
             }
         }
+
+        #ifndef _USE_SERVER_SIDE_FOG_
         if (ignored>0) debug_print("[INFO] Ignored %d vehicles based on position \n",ignored);
+        #endif
+
         for(int i=0; i < WORLDSIZE ; i++){
             if(mask[i]==1) continue;
             if(i==0) continue;
@@ -431,6 +448,7 @@ int main(int argc, char **argv) {
 
     //create Vehicle
     World_init(&world, surface_elevation, surface_texture,0.5, 0.5, 0.5);
+
     vehicle=(Vehicle*) malloc(sizeof(Vehicle));
     Vehicle_init(vehicle, &world, id, my_texture);
     World_addVehicle(&world, vehicle);
