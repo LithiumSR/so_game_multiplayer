@@ -366,7 +366,7 @@ void* udp_sender(void* args){
         World_update(&serverWorld);
         while(client!=NULL){
             char buf_send[BUFFERSIZE];
-            if (client->isAddrReady!=1 && client->insideWorld) {
+            if (client->isAddrReady!=1 || !client->insideWorld) {
                 client=client->next;
                 continue;
             }
@@ -375,16 +375,27 @@ void* udp_sender(void* args){
             WorldUpdatePacket* wup=(WorldUpdatePacket*)malloc(sizeof(WorldUpdatePacket));
             wup->header=ph;
             int n=0;
+
+            //refresh list x,y,theta before proceding
+            ClientListItem* check=users->first;
+            while(check!=NULL){
+                if(check->insideWorld && check->isAddrReady){
+                    getXYTheta(check->vehicle,&check->x,&check->y,&check->theta);
+                }
+                check=check->next;
+            }
+            //find num of eligible clients to receive the worldUpdatePacket
             ClientListItem* tmp= users->first;
             while(tmp!=NULL){
-                if(tmp->isAddrReady && tmp->insideWorld && (abs(tmp->x-client->x)<HIDE_RANGE && abs(tmp->y-client->y)<HIDE_RANGE)) {
+                if(tmp->isAddrReady && tmp->insideWorld && tmp->id==client->id) n++;
+                else if(tmp->isAddrReady && tmp->insideWorld && (abs(tmp->x-client->x)<HIDE_RANGE || abs(tmp->y-client->y)<HIDE_RANGE)) {
                     n++;
                 }
                 tmp=tmp->next;
             }
-
             if (n==0) {
                 client=client->next;
+                free(wup);
                 continue;
             }
             wup->num_vehicles=n;
@@ -393,38 +404,32 @@ void* udp_sender(void* args){
             tmp= users->first;
             ClientList_print(users);
             int k=0;
-            for(int i=0;tmp!=NULL;i++){
-                if(!(tmp->isAddrReady && tmp->insideWorld && (abs(tmp->x-client->x)<HIDE_RANGE && abs(tmp->y-client->y)<HIDE_RANGE))) {
+            //Place data in the WorldUpdatePacket
+            while(tmp!=NULL){
+                if(!(tmp->isAddrReady && tmp->insideWorld && (abs(tmp->x-client->x)<HIDE_RANGE || abs(tmp->y-client->y)<HIDE_RANGE))) {
                     tmp=tmp->next;
                     continue;
                 }
-
                 ClientUpdate* cup= &(wup->updates[k]);
                 if(tmp->forceRefresh==1) {
                     cup->forceRefresh=1;
                     tmp->forceRefresh=0;
                 }
                 else cup->forceRefresh=0;
-                getXYTheta(tmp->vehicle,&(client->x),&(client->y),&(cup->theta));
                 cup->y=tmp->y;
                 cup->x=tmp->x;
+                cup->theta=tmp->theta;
                 cup->id=tmp->id;
                 printf("--- Vehicle with id: %d x: %f y:%f z:%f --- \n",cup->id,cup->x,cup->y,cup->theta);
                 tmp = tmp->next;
                 k++;
             }
-
             int size=Packet_serialize(buf_send,&wup->header);
-
-            if(size==0 || size==-1){
-                client=client->next;
-                continue;
-                }
-
+            if(size==0 || size==-1) goto END;
             int ret = sendto(socket_udp, buf_send, size, 0, (struct sockaddr*) &client->user_addr, (socklen_t) sizeof(client->user_addr));
             debug_print("[UDP_Send] Sent WorldUpdate of %d bytes to client with id %d \n",ret,client->id);
             debug_print("Difference lenght check - wup: %d client found:%d \n" ,wup->num_vehicles,n);
-            Packet_free(&(wup->header));
+            END:
             client=client->next;
             }
         fprintf(stdout,"[UDP_Send] WorldUpdatePacket sent to each client \n");
