@@ -89,7 +89,7 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
                 pthread_mutex_unlock(&mutex);
                 return -1;
             }
-            if(!(client->last_update_time.tv_sec==1 || timercmp(&vup->time,&client->last_update_time,>))) goto END;
+            if(!(client->last_update_time.tv_sec==-1 || timercmp(&vup->time,&client->last_update_time,>))) goto END;
             client->x=vup->x;
             client->y=vup->y;
             client->theta=vup->theta;
@@ -98,9 +98,9 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
             client->user_addr=client_addr;
             client->isAddrReady=1;
             client->last_update_time=vup->time;
-            pthread_mutex_unlock(&mutex);
             fprintf(stdout,"[UDP_Receiver] Applied VehicleUpdatePacket of %d bytes from id %d... \n",ph->size,vup->id);
-            END: Packet_free(&vup->header);
+            END: pthread_mutex_unlock(&mutex);
+            Packet_free(&vup->header);
             return 0;
         }
         default: return -1;
