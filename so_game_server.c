@@ -96,12 +96,12 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
                 pthread_mutex_unlock(&mutex);
                 return 0;
             }
-
+            if(!(client->last_update_time.tv_sec==-1 || timercmp(&vup->time,&client->last_update_time,>))) goto END;
             setForcesUpdate(client->vehicle,vup->translational_force,vup->rotational_force);
             client->user_addr=client_addr;
             client->isAddrReady=1;
             client->last_update_time=vup->time;
-            pthread_mutex_unlock(&mutex);
+            END: pthread_mutex_unlock(&mutex);
             //fprintf(stdout,"[UDP_Receiver] Applied VehicleUpdatePacket with force_translational_update: %f force_rotation_update: %f.. \n",vup->translational_force,vup->rotational_force);
             Packet_free(&vup->header);
             return 0;
@@ -272,6 +272,7 @@ void* tcp_flow(void* args){
     user->vehicle=NULL;
     user->prev_x=-1;
     user->prev_y=-1;
+    user->last_update_time.tv_sec=-1;
     printf("[New user] Adding client with id %d \n",sock_fd);
     ClientList_insert(users,user);
     ClientList_print(users);
