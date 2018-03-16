@@ -19,7 +19,7 @@
 #include "so_game_protocol.h"
 #include <fcntl.h>
 #define NO_ACCESS -2
-#define SENDER_SLEEP 1000
+#define SENDER_SLEEP 200
 #define RECEIVER_SLEEP 500
 #if CACHE_TEXTURE == 1
     #define _USE_CACHED_TEXTURE_
@@ -297,7 +297,8 @@ void* udp_receiver(void* args){
             #endif
             int new_position=-1;
             int id_struct=add_user_id(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position,&(lw->users_online));
-            if(id_struct==-1){
+            if(wup->updates[i].id==id) setXYTheta(lw->vehicles[0],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+            else if(id_struct==-1){
                 if(new_position==-1) continue;
                 mask[new_position]=1;
                 fprintf(stdout,"New Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
@@ -311,7 +312,7 @@ void* udp_receiver(void* args){
             }
             else {
                 mask[id_struct]=1;
-                if(wup->updates[i].forceRefresh==1 && wup->updates[i].id!=id){
+                if(wup->updates[i].forceRefresh==1){
                     debug_print("[WARNING] Forcing refresh for client with id %d",wup->updates[i].id);
                     Image* im=lw->vehicles[id_struct]->texture;
                     World_detachVehicle(&world,lw->vehicles[id_struct]);
@@ -328,8 +329,7 @@ void* udp_receiver(void* args){
                     continue;
                 }
                 fprintf(stdout,"Updating Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                if(wup->updates[i].id==id) setXYTheta(lw->vehicles[0],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                else setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
             }
         }
 
