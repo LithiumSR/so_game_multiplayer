@@ -381,6 +381,7 @@ void* udp_sender(void* args){
             while(check!=NULL){
                 if(check->insideWorld && check->isAddrReady){
                     getXYTheta(check->vehicle,&check->x,&check->y,&check->theta);
+                    getForcesUpdate(check->vehicle,&check->translational_force,&check->rotational_force);
                 }
                 check=check->next;
             }
@@ -420,6 +421,8 @@ void* udp_sender(void* args){
                 cup->x=tmp->x;
                 cup->theta=tmp->theta;
                 cup->id=tmp->id;
+                cup->translational_force=tmp->translational_force;
+                cup->rotational_force=tmp->rotational_force;
                 printf("--- Vehicle with id: %d x: %f y:%f z:%f --- \n",cup->id,cup->x,cup->y,cup->theta);
                 tmp = tmp->next;
                 k++;
@@ -486,6 +489,8 @@ void* udp_sender(void* args){
             cup->id=client->id;
             cup->x=client->x;
             cup->y=client->y;
+            cup->translational_force=tmp->translational_force;
+            cup->rotational_force=tmp->rotational_force;
             printf("--- Vehicle with id: %d x: %f, y: %f, theta:%f --- \n",cup->id,cup->x,cup->y,cup->theta);
             client = client->next;
         }

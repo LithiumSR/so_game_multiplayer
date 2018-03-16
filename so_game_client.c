@@ -205,6 +205,7 @@ void* udp_receiver(void* args){
                     Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                     lw->vehicles[new_position]=new_vehicle;
                     setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                    setForcesUpdate(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                     World_addVehicle(&world, new_vehicle);
                     lw->isDisabled[new_position]=0; //Just to play safe
                     lw->hasVehicle[new_position]=1;
@@ -224,6 +225,7 @@ void* udp_receiver(void* args){
                         Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                         lw->vehicles[id_struct]=new_vehicle;
                         setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                        setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                         World_addVehicle(&world, new_vehicle);
                         lw->hasVehicle[id_struct]=1;
                         lw->isDisabled[id_struct]=0;
@@ -235,6 +237,7 @@ void* udp_receiver(void* args){
                             fprintf(stdout,"Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                             Vehicle* old_vehicle=lw->vehicles[id_struct];
                             setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                            setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                             World_addVehicle(&world, old_vehicle);
                             lw->isDisabled[id_struct]=0;
                             //lw->hasVehicle[id_struct]=1;
@@ -243,6 +246,7 @@ void* udp_receiver(void* args){
                             printf("[INFO] Updating vehicles  \n");
                             fprintf(stdout,"Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                             setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                            setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                             //lw->isDisabled[id_struct]=0;
                             //lw->hasVehicle[id_struct]=1;
                         }
@@ -307,6 +311,7 @@ void* udp_receiver(void* args){
                 Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                 lw->vehicles[new_position]=new_vehicle;
                 setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                setForcesUpdate(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                 World_addVehicle(&world, new_vehicle);
                 lw->hasVehicle[new_position]=1;
             }
@@ -324,12 +329,14 @@ void* udp_receiver(void* args){
                     Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                     lw->vehicles[id_struct]=new_vehicle;
                     setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                    setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                     World_addVehicle(&world, new_vehicle);
                     lw->hasVehicle[id_struct]=1;
                     continue;
                 }
                 fprintf(stdout,"Updating Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
             }
         }
 
