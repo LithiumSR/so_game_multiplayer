@@ -363,6 +363,7 @@ void* udp_sender(void* args){
         client= users->first;
         struct timeval time;
         gettimeofday(&time,NULL);
+        World_update(&serverWorld);
         while(client!=NULL){
             char buf_send[BUFFERSIZE];
             if (client->isAddrReady!=1 && client->insideWorld) {
@@ -386,8 +387,6 @@ void* udp_sender(void* args){
                 client=client->next;
                 continue;
             }
-            serverWorld.last_update=wup->time;
-            World_update(&serverWorld);
             wup->num_vehicles=n;
             wup->updates=(ClientUpdate*)malloc(sizeof(ClientUpdate)*n);
             wup->time=time;
