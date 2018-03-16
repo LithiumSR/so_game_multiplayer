@@ -342,7 +342,7 @@ void* udp_receiver(void* args){
         }
 		int ret = UDP_Handler(socket_udp,buf_recv,client_addr);
         if (ret==-1) debug_print("[UDP_Receiver] UDP Handler couldn't manage to apply the VehicleUpdate \n");
-        END: usleep(50);
+        END: usleep(RECEIVER_SLEEP);
     }
     pthread_exit(NULL);
 }
@@ -660,8 +660,10 @@ int main(int argc, char **argv) {
     ret = pthread_create(&tcp_thread, NULL,tcp_auth, &tcpArgs);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
 
+    //This will spawn a vehicle whose position is not going to be sent to the clients.
+    //This is needed just to get the World_update to work
     WorldViewer_runGlobal(&serverWorld, vehicle, &argc, argv);
-    //creating server world
+    //starting cleanup
     connectivity=0;
     exchangeUpdate=0;
 
@@ -685,6 +687,8 @@ int main(int argc, char **argv) {
     //Delete list
     pthread_mutex_lock(&mutex);
     ClientList_destroy(users);
+    Vehicle_destroy(vehicle);
+    free(vehicle);
     pthread_mutex_unlock(&mutex);
 
     //Close descriptors
@@ -694,5 +698,6 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret,"Failed close() on server_udp socket");
     Image_free(surface_elevation);
 	Image_free(surface_texture);
+    Image_free(my_texture);
     exit(EXIT_SUCCESS);
 }
