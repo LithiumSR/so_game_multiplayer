@@ -173,13 +173,7 @@ void* udp_receiver(void* args){
         for(int k=0;k<WORLDSIZE;k++) mask[k]=NO_ACCESS;
         float x,y,theta;
         getXYTheta(vehicle,&x,&y,&theta);
-        int ignored=0;
-
         for(int i=0; i < wup -> num_vehicles ; i++){
-            if(wup->updates[i].id!=id && (abs((int)x-(int)wup->updates[i].x)>HIDE_RANGE || abs((int)y-(int)wup->updates[i].y)>HIDE_RANGE)) {
-                ignored++;
-                continue;
-            }
 
             int new_position=-1;
             int id_struct=add_user_id(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position,&(lw->users_online));
@@ -192,7 +186,6 @@ void* udp_receiver(void* args){
                 Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                 lw->vehicles[new_position]=new_vehicle;
                 setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                //setForces(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                 World_addVehicle(&world, new_vehicle);
                 lw->hasVehicle[new_position]=1;
             }
@@ -210,7 +203,6 @@ void* udp_receiver(void* args){
                     Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                     lw->vehicles[id_struct]=new_vehicle;
                     setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                    //setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                     World_addVehicle(&world, new_vehicle);
                     lw->hasVehicle[id_struct]=1;
                     continue;
@@ -218,10 +210,8 @@ void* udp_receiver(void* args){
                 fprintf(stdout,"Updating Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 if(wup->updates[i].id==id) setXYTheta(lw->vehicles[0],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 else setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                //setForces(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
             }
         }
-        if (ignored>0) debug_print("[INFO] Ignored %d vehicles based on position \n",ignored);
         for(int i=0; i < WORLDSIZE ; i++){
             if(mask[i]==1) continue;
             if(i==0) continue;
