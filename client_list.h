@@ -16,6 +16,7 @@ typedef struct ClientListItem {
   char insideWorld;
   Vehicle* vehicle;
   Image * v_texture;
+  float rotational_force,translational_force;
 } ClientListItem;
 
 typedef struct ClientListHead {
