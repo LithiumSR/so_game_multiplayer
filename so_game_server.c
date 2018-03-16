@@ -429,7 +429,7 @@ void* udp_sender(void* args){
             int ret = sendto(socket_udp, buf_send, size, 0, (struct sockaddr*) &client->user_addr, (socklen_t) sizeof(client->user_addr));
             debug_print("[UDP_Send] Sent WorldUpdate of %d bytes to client with id %d \n",ret,client->id);
             debug_print("Difference lenght check - wup: %d client found:%d \n" ,wup->num_vehicles,n);
-            END:
+            END: Packet_free(&(wup->header));
             client=client->next;
             }
         fprintf(stdout,"[UDP_Send] WorldUpdatePacket sent to each client \n");
