@@ -143,13 +143,30 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
             im_head.type=PostTexture;
             pthread_mutex_lock(&mutex);
             ClientListItem* el=ClientList_find_by_id(users,image_request->id);
-            if (el==NULL) {
+            
+            if (el==NULL && !el->insideWorld) {
                 pthread_mutex_unlock(&mutex);
+                PacketHeader pheader;
+                pheader.type=PostDisconnect;
+                IdPacket* idPckt = (IdPacket*)malloc(sizeof(IdPacket));
+                idPckt->header=pheader;
+                int msg_len= Packet_serialize(buf_send, &idPckt->header);
+                idPckt->id=-1;
+                int bytes_sent=0;
+				int ret=0;
+                while(bytes_sent<msg_len){
+					ret=send(socket_desc,buf_send+bytes_sent,msg_len-bytes_sent,0);
+					if (ret==-1 && errno==EINTR) continue;
+					ERROR_HELPER(ret,"Can't send map texture over TCP");
+					bytes_sent+=ret;
+				}
+				free(idPckt);
+				free(image_packet);
                 return -1;
             }
+            
             image_packet->id=image_request->id;
-            if (!el->insideWorld) image_packet->id=-1;
-            else image_packet->image=el->v_texture;
+            image_packet->image=el->v_texture;
             pthread_mutex_unlock(&mutex);
             image_packet->header=im_head;
             int msg_len= Packet_serialize(buf_send, &image_packet->header);

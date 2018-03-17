@@ -213,7 +213,8 @@ Image* getVehicleTexture(int socket,int id){
         }
     PacketHeader* header=(PacketHeader*)buf_rcv;
     size=header->size-ph_len;
-
+    char flag=0;
+	if (header->type==PostDisconnect) flag=1;
     msg_len=0;
     while(msg_len<size){
         ret=recv(socket, buf_rcv+msg_len+ph_len, size-msg_len, 0);
@@ -221,13 +222,19 @@ Image* getVehicleTexture(int socket,int id){
         ERROR_HELPER(msg_len, "Cannot read from socket");
         msg_len+=ret;
         }
+        
+    if(flag) {
+		IdPacket* packet = (IdPacket*)Packet_deserialize(buf_rcv, msg_len+ph_len);
+		Packet_free(&packet->header);
+		return NULL;
+	}
     ImagePacket* deserialized_packet = (ImagePacket*)Packet_deserialize(buf_rcv, msg_len+ph_len);
-    if(deserialized_packet->id==-1) return NULL;
-    printf("[Get Vehicle Texture] Received %d bytes \n",msg_len+ph_len);
+	printf("[Get Vehicle Texture] Received %d bytes \n",msg_len+ph_len);
     Image* im=deserialized_packet->image;
     free(deserialized_packet);
     return im;
 }
+
 
 int sendGoodbye(int socket,int id){
     char buf_send[BUFFERSIZE];
