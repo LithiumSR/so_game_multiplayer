@@ -222,6 +222,7 @@ Image* getVehicleTexture(int socket,int id){
         msg_len+=ret;
         }
     ImagePacket* deserialized_packet = (ImagePacket*)Packet_deserialize(buf_rcv, msg_len+ph_len);
+    if(deserialized_packet->id==-1) return NULL;
     printf("[Get Vehicle Texture] Received %d bytes \n",msg_len+ph_len);
     Image* im=deserialized_packet->image;
     free(deserialized_packet);
