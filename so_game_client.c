@@ -19,8 +19,8 @@
 #include "so_game_protocol.h"
 #include <fcntl.h>
 #define NO_ACCESS -2
-#define SENDER_SLEEP 200
-#define RECEIVER_SLEEP 500
+#define SENDER_SLEEP 200*1000
+#define RECEIVER_SLEEP 500*1000
 
 int window;
 World world;
@@ -185,6 +185,7 @@ void* udp_receiver(void* args){
                 mask[new_position]=1;
                 fprintf(stdout,"New Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
+                if(img==NULL) continue;
                 Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                 Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                 lw->vehicles[new_position]=new_vehicle;
@@ -196,10 +197,15 @@ void* udp_receiver(void* args){
                 mask[id_struct]=1;
                 if(wup->updates[i].forceRefresh==1){
                     debug_print("[WARNING] Forcing refresh for client with id %d",wup->updates[i].id);
-                    Image* im=lw->vehicles[id_struct]->texture;
-                    World_detachVehicle(&world,lw->vehicles[id_struct]);
-                    if (im!=NULL) Image_free(im);
+                    if(lw->hasVehicle[id_struct]){
+						Image* im=lw->vehicles[id_struct]->texture;
+						World_detachVehicle(&world,lw->vehicles[id_struct]);
+						Vehicle_destroy(lw->vehicles[id_struct]);
+						if (im!=NULL) Image_free(im);
+						free(lw->vehicles[id_struct]);
+						}
                     Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
+                    if(img==NULL) continue;
                     Vehicle_destroy(lw->vehicles[id_struct]);
                     free(lw->vehicles[id_struct]);
                     Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));

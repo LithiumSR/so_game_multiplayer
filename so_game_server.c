@@ -17,7 +17,7 @@
 #include "client_op.h"
 #include "so_game_protocol.h"
 #include "client_list.h"
-#define RECEIVER_SLEEP 50
+#define RECEIVER_SLEEP 50*1000
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
@@ -148,7 +148,9 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
                 pthread_mutex_unlock(&mutex);
                 return -1;
             }
-            image_packet->image=el->v_texture;
+            image_packet->id=image_request->id;
+            if (!el->insideWorld) image_packet->id=-1;
+            else image_packet->image=el->v_texture;
             pthread_mutex_unlock(&mutex);
             image_packet->header=im_head;
             int msg_len= Packet_serialize(buf_send, &image_packet->header);
@@ -386,7 +388,7 @@ void* udp_sender(void* args){
             ClientListItem* tmp= users->first;
             while(tmp!=NULL){
                 if(tmp->isAddrReady && tmp->insideWorld && tmp->id==client->id) n++;
-                else if(tmp->isAddrReady && tmp->insideWorld && (abs(tmp->x-client->x)<HIDE_RANGE || abs(tmp->y-client->y)<HIDE_RANGE)) {
+                else if(tmp->isAddrReady && tmp->insideWorld && (abs(tmp->x-client->x)<=HIDE_RANGE && abs(tmp->y-client->y)<=HIDE_RANGE)) {
                     n++;
                 }
                 tmp=tmp->next;
@@ -404,7 +406,7 @@ void* udp_sender(void* args){
             int k=0;
             //Place data in the WorldUpdatePacket
             while(tmp!=NULL){
-                if(!(tmp->isAddrReady && tmp->insideWorld && (abs(tmp->x-client->x)<HIDE_RANGE || abs(tmp->y-client->y)<HIDE_RANGE))) {
+                if(!(tmp->isAddrReady && tmp->insideWorld && (abs(tmp->x-client->x)<=HIDE_RANGE && abs(tmp->y-client->y)<=HIDE_RANGE))) {
                     tmp=tmp->next;
                     continue;
                 }
@@ -450,7 +452,7 @@ void* garbage_collector(void* args){
         while(client!=NULL){
             long creation_time=(long)client->creation_time.tv_sec;
             long last_update_time=(long)client->last_update_time.tv_sec;
-            if((client->isAddrReady==1 && (current_time-last_update_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE) || (client->isAddrReady!=1 && (current_time-creation_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE)){
+            if((client->isAddrReady==1 && (current_time-last_update_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE) && (client->isAddrReady!=1 && (current_time-creation_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE)){
                 ClientListItem* tmp=client;
                 client=client->next;
                 sendDisconnect(socket_udp,tmp->user_addr);
