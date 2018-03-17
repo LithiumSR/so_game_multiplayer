@@ -19,8 +19,8 @@
 #include "so_game_protocol.h"
 #include <fcntl.h>
 #define NO_ACCESS -2
-#define SENDER_SLEEP 200
-#define RECEIVER_SLEEP 500
+#define SENDER_SLEEP 200*1000
+#define RECEIVER_SLEEP 500*1000
 #if CACHE_TEXTURE == 1
     #define _USE_CACHED_TEXTURE_
 #endif
@@ -108,7 +108,7 @@ int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
     vup->id=id;
     int size=Packet_serialize(buf_send, &vup->header);
     int bytes_sent = sendto(socket_udp, buf_send, size, 0, (const struct sockaddr *) &server_addr,(socklen_t) serverlen);
-    //debug_print("[UDP_Sender] Sent a VehicleUpdatePacket of %d bytes with tf:%f rf:%f \n",bytes_sent,vup->translational_force,vup->rotational_force);
+    debug_print("[UDP_Sender] Sent a VehicleUpdatePacket of %d bytes with tf:%f rf:%f \n",bytes_sent,vup->translational_force,vup->rotational_force);
     Packet_free(&(vup->header));
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
@@ -215,12 +215,14 @@ void* udp_receiver(void* args){
                     if(wup->updates[i].forceRefresh==1){
                         debug_print("[WARNING] Forcing refresh for client with id %d",wup->updates[i].id);
                         fprintf(stdout,"Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                        Image* im=lw->vehicles[id_struct]->texture;
-                        World_detachVehicle(&world,lw->vehicles[id_struct]);
-                        if (im!=NULL) Image_free(im);
-                        Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
-                        Vehicle_destroy(lw->vehicles[id_struct]);
-                        free(lw->vehicles[id_struct]);
+                        if(lw->hasVehicle[id_struct]){
+							Image* im=lw->vehicles[id_struct]->texture;
+							if(!lw->isDisabled[id_struct]) World_detachVehicle(&world,lw->vehicles[id_struct]);
+							Vehicle_destroy(lw->vehicles[id_struct]);
+							if (im!=NULL) Image_free(im);
+							free(lw->vehicles[id_struct]);
+						}
+						Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
                         Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                         Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                         lw->vehicles[id_struct]=new_vehicle;
@@ -272,13 +274,13 @@ void* udp_receiver(void* args){
             if(mask[i]==NO_ACCESS && lw->ids[i]!=-1){
                 fprintf(stdout,"[WorldUpdate] Removing Vehicles with ID %d \n",lw->ids[i]);
                 lw->users_online=lw->users_online-1;
-                if(!lw->hasVehicle[i]) continue;
+                if(!lw->hasVehicle[i]) goto END;
                 Image* im=lw->vehicles[i]->texture;
-                World_detachVehicle(&world,lw->vehicles[i]);
-                if (im!=NULL) Image_free(im);
+                if (!lw->isDisabled[i]) World_detachVehicle(&world,lw->vehicles[i]);
                 Vehicle_destroy(lw->vehicles[i]);
+                if (im!=NULL) Image_free(im);
                 free(lw->vehicles[i]);
-                lw->ids[i]=-1;
+                END: lw->ids[i]=-1;
                 lw->hasVehicle[i]=0;
                 lw->isDisabled[i]=0;
 
@@ -319,9 +321,14 @@ void* udp_receiver(void* args){
                 mask[id_struct]=1;
                 if(wup->updates[i].forceRefresh==1){
                     debug_print("[WARNING] Forcing refresh for client with id %d",wup->updates[i].id);
-                    Image* im=lw->vehicles[id_struct]->texture;
-                    World_detachVehicle(&world,lw->vehicles[id_struct]);
-                    if (im!=NULL) Image_free(im);
+                    if(lw->hasVehicle[id_struct]){
+						Image* im=lw->vehicles[id_struct]->texture;
+						World_detachVehicle(&world,lw->vehicles[id_struct]);
+						Vehicle_destroy(lw->vehicles[id_struct]);
+						if (im!=NULL) Image_free(im);
+						free(lw->vehicles[id_struct]);
+						}
+						
                     Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
                     Vehicle_destroy(lw->vehicles[id_struct]);
                     free(lw->vehicles[id_struct]);
@@ -352,13 +359,13 @@ void* udp_receiver(void* args){
             if(mask[i]==NO_ACCESS && lw->ids[i]!=-1){
                 fprintf(stdout,"[WorldUpdate] Removing Vehicles with ID %d \n",lw->ids[i]);
                 lw->users_online=lw->users_online-1;
-                if(!lw->hasVehicle[i]) continue;
+                if(!lw->hasVehicle[i]) goto END;
                 Image* im=lw->vehicles[i]->texture;
                 World_detachVehicle(&world,lw->vehicles[i]);
                 if (im!=NULL) Image_free(im);
                 Vehicle_destroy(lw->vehicles[i]);
-                lw->ids[i]=-1;
                 free(lw->vehicles[i]);
+                END: lw->ids[i]=-1;
                 lw->hasVehicle[i]=0;
             }
         }
