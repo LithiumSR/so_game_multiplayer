@@ -253,7 +253,6 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         Vehicle_init(vehicle, &serverWorld, id, user->v_texture);
         user->vehicle=vehicle;
         World_addVehicle(&serverWorld, vehicle);
-        debug_print("[Set Texture] AGGIUNTO VEICOLO con id %d",id);
         pthread_mutex_unlock(&mutex);
         debug_print("[Set Texture] Vehicle texture applied to user with id %d \n",id);
         free(deserialized_packet);
@@ -717,13 +716,13 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret,"Join on garbage collector thread failed");
     debug_print("[Main] GC ended... \n");
     debug_print("[Main] Freeing resources... \n");
-    //Delete list
+    //Delete list and other structures
     pthread_mutex_lock(&mutex);
     ClientList_destroy(users);
     Vehicle_destroy(vehicle);
     free(vehicle);
     pthread_mutex_unlock(&mutex);
-
+	World_destroy(&serverWorld);
     //Close descriptors
     ret = close(server_tcp);
     ERROR_HELPER(ret,"Failed close() on server_tcp socket");
