@@ -72,13 +72,17 @@ void World_update(World* w) {
 }
 
 Vehicle* World_getVehicle(World* w, int vehicle_id){
+  sem_t sem=w->sem;
+  sem_wait(&sem);
   ListItem* item=w->vehicles.first;
   while(item){
     Vehicle* v=(Vehicle*)item;
     if(v->id==vehicle_id)
+      sem_post(&sem);
       return v;
     item=item->next;
   }
+  sem_post(&sem);
   return 0;
 }
 
