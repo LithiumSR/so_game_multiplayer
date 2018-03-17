@@ -369,12 +369,15 @@ void WorldViewer_draw(WorldViewer* viewer){
   }
   glMatrixMode(GL_MODELVIEW);
   Surface_draw(&viewer->world->ground);
+  sem_t sem=viewer->world->vehicles.sem;
+  sem_wait(&sem);
   ListItem* item=viewer->world->vehicles.first;
   while(item){
     Vehicle* v=(Vehicle*)item;
     Vehicle_draw(v);
     item=item->next;
   }
+  sem_post(&sem);
   glutSwapBuffers();
 }
 
