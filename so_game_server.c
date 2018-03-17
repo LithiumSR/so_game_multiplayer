@@ -357,7 +357,7 @@ void* udp_sender(void* args){
             int n=0;
             ClientListItem* tmp= users->first;
             while(tmp!=NULL){
-                if(tmp->isAddrReady && (abs(tmp->x-client->x)<HIDE_RANGE || abs(tmp->y-client->y)<HIDE_RANGE)) {
+                if (tmp->isAddrReady && (abs(tmp->x-client->x)<=HIDE_RANGE && abs(tmp->y-client->y)<=HIDE_RANGE)) {
                     n++;
                 }
                 tmp=tmp->next;
@@ -374,7 +374,7 @@ void* udp_sender(void* args){
             ClientList_print(users);
             int k=0;
             for(int i=0;tmp!=NULL;i++){
-                if(!(tmp->isAddrReady && (abs(tmp->x-client->x)<HIDE_RANGE || abs(tmp->y-client->y)<HIDE_RANGE))) {
+                if(!(tmp->isAddrReady && (abs(tmp->x-client->x)<=HIDE_RANGE && abs(tmp->y-client->y)<=HIDE_RANGE))) {
                     tmp=tmp->next;
                     continue;
                 }

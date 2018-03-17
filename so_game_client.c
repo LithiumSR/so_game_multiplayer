@@ -214,12 +214,14 @@ void* udp_receiver(void* args){
                     if(wup->updates[i].forceRefresh==1){
                         debug_print("[WARNING] Forcing refresh for client with id %d",wup->updates[i].id);
                         fprintf(stdout,"Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                        Image* im=lw->vehicles[id_struct]->texture;
-                        World_detachVehicle(&world,lw->vehicles[id_struct]);
-                        if (im!=NULL) Image_free(im);
+						if(lw->hasVehicle[id_struct]){
+							if(!lw->isDisabled[id_struct]) World_detachVehicle(&world,lw->vehicles[id_struct]);
+							Image* im=lw->vehicles[id_struct]->texture;
+							Vehicle_destroy(lw->vehicles[id_struct]);
+							free(lw->vehicles[id_struct]);
+							if (im!=NULL) Image_free(im);
+						}
                         Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
-                        Vehicle_destroy(lw->vehicles[id_struct]);
-                        free(lw->vehicles[id_struct]);
                         Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                         Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                         lw->vehicles[id_struct]=new_vehicle;
@@ -272,13 +274,13 @@ void* udp_receiver(void* args){
             if(mask[i]==NO_ACCESS && lw->ids[i]!=-1){
                 fprintf(stdout,"[WorldUpdate] Removing Vehicles with ID %d \n",lw->ids[i]);
                 lw->users_online=lw->users_online-1;
-                if(!lw->hasVehicle[i]) continue;
+                if(!lw->hasVehicle[i]) goto END;
                 Image* im=lw->vehicles[i]->texture;
-                World_detachVehicle(&world,lw->vehicles[i]);
-                if (im!=NULL) Image_free(im);
+                if (!lw->isDisabled[i]) World_detachVehicle(&world,lw->vehicles[i]);
                 Vehicle_destroy(lw->vehicles[i]);
                 free(lw->vehicles[i]);
-                lw->ids[i]=-1;
+                if (im!=NULL) Image_free(im);
+                END: lw->ids[i]=-1;
                 lw->hasVehicle[i]=0;
                 lw->isDisabled[i]=0;
 
@@ -321,12 +323,14 @@ void* udp_receiver(void* args){
                 mask[id_struct]=1;
                 if(wup->updates[i].forceRefresh==1){
                     debug_print("[WARNING] Forcing refresh for client with id %d",wup->updates[i].id);
-                    Image* im=lw->vehicles[id_struct]->texture;
-                    World_detachVehicle(&world,lw->vehicles[id_struct]);
-                    if (im!=NULL) Image_free(im);
-                    Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
-                    Vehicle_destroy(lw->vehicles[id_struct]);
-                    free(lw->vehicles[id_struct]);
+                    if(lw->hasVehicle[id_struct]){
+							World_detachVehicle(&world,lw->vehicles[id_struct]);
+							Image* im=lw->vehicles[id_struct]->texture;
+							if (im!=NULL) Image_free(im);
+							Vehicle_destroy(lw->vehicles[id_struct]);
+							free(lw->vehicles[id_struct]);
+						}
+					Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
                     Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                     Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                     lw->vehicles[id_struct]=new_vehicle;
@@ -352,13 +356,13 @@ void* udp_receiver(void* args){
             if(mask[i]==NO_ACCESS && lw->ids[i]!=-1){
                 fprintf(stdout,"[WorldUpdate] Removing Vehicles with ID %d \n",lw->ids[i]);
                 lw->users_online=lw->users_online-1;
-                if(!lw->hasVehicle[i]) continue;
+                if(!lw->hasVehicle[i]) goto END;
                 Image* im=lw->vehicles[i]->texture;
-                World_detachVehicle(&world,lw->vehicles[i]);
+                Vehicle* del=World_detachVehicle(&world,lw->vehicles[i]);
+                if (del!=NULL) Vehicle_destroy(del);
                 if (im!=NULL) Image_free(im);
-                Vehicle_destroy(lw->vehicles[i]);
-                free(lw->vehicles[i]);
-                lw->ids[i]=-1;
+                free(del);
+                END: lw->ids[i]=-1;
                 lw->hasVehicle[i]=0;
             }
         }
