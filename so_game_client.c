@@ -105,6 +105,7 @@ int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
     vup->header=ph;
     gettimeofday(&vup->time, NULL);
     getForcesUpdate(vehicle,&(vup->translational_force),&(vup->rotational_force));
+    getXYTheta(vehicle,&(vup->x),&(vup->y),&(vup->theta));
     vup->id=id;
     int size=Packet_serialize(buf_send, &vup->header);
     int bytes_sent = sendto(socket_udp, buf_send, size, 0, (const struct sockaddr *) &server_addr,(socklen_t) serverlen);
@@ -191,7 +192,7 @@ void* udp_receiver(void* args){
         int ignored=0;
 
         for(int i=0; i < wup -> num_vehicles ; i++){
-            if(wup->updates[i].id==id) setXYTheta(lw->vehicles[0],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+            if(wup->updates[i].id==id) continue;
             else if(!(abs((int)x-(int)wup->updates[i].x)>HIDE_RANGE || abs((int)y-(int)wup->updates[i].y)>HIDE_RANGE)) {
                 int new_position=-1;
                 int id_struct=add_user_id(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position,&(lw->users_online));
@@ -303,7 +304,7 @@ void* udp_receiver(void* args){
             #endif
             int new_position=-1;
             int id_struct=add_user_id(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position,&(lw->users_online));
-            if(wup->updates[i].id==id) setXYTheta(lw->vehicles[0],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+            if(wup->updates[i].id==id) continue;
             else if(id_struct==-1){
                 if(new_position==-1) continue;
                 mask[new_position]=1;
