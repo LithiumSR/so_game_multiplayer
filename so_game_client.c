@@ -202,6 +202,7 @@ void* udp_receiver(void* args){
                     mask[new_position]=1;
                     fprintf(stdout,"[INFO] New Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                     Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
+                    if (img==NULL) continue;
                     Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                     Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                     lw->vehicles[new_position]=new_vehicle;
@@ -224,6 +225,7 @@ void* udp_receiver(void* args){
 							free(lw->vehicles[id_struct]);
 						}
 						Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
+						if (img==NULL) continue;
                         Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                         Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                         lw->vehicles[id_struct]=new_vehicle;
@@ -310,6 +312,7 @@ void* udp_receiver(void* args){
                 mask[new_position]=1;
                 fprintf(stdout,"New Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                 Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
+                if (img==NULL) continue;
                 Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                 Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                 lw->vehicles[new_position]=new_vehicle;
@@ -331,6 +334,7 @@ void* udp_receiver(void* args){
 						}
 						
                     Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
+                    if (img==NULL) continue;
                     Vehicle_destroy(lw->vehicles[id_struct]);
                     free(lw->vehicles[id_struct]);
                     Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
