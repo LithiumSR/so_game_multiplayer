@@ -17,7 +17,7 @@
 #include "client_op.h"
 #include "so_game_protocol.h"
 #include "client_list.h"
-#define RECEIVER_SLEEP 50*1000
+#define RECEIVER_SLEEP 20*1000
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
@@ -51,7 +51,6 @@ void handle_signal(int signal){
             cleanGarbage=0;
             shutdown(server_tcp, SHUT_RDWR);
             shutdown(server_udp, SHUT_RDWR);
-            exit(0);
             break;
         default:
             fprintf(stderr, "Caught wrong signal: %d\n", signal);
@@ -543,6 +542,15 @@ void* tcp_auth(void* args){
     }
     pthread_exit(NULL);
 }
+void* world_loop(void* args){
+	debug_print("[WorldLoop] World Update loop initialized \n");
+	while (connectivity){
+		World_update(&serverWorld);
+		usleep(15000);
+	}
+	pthread_exit(NULL);
+}
+		
 
 int main(int argc, char **argv) {
     int ret=0;
@@ -658,7 +666,7 @@ int main(int argc, char **argv) {
     Vehicle_init(vehicle, &serverWorld, 0, my_texture);
     World_addVehicle(&serverWorld, vehicle);
 
-    pthread_t UDP_receiver,UDP_sender,GC_thread,tcp_thread;
+    pthread_t UDP_receiver,UDP_sender,GC_thread,tcp_thread, world_thread;
     ret = pthread_create(&UDP_receiver, NULL,udp_receiver, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on thread tcp failed");
     ret = pthread_create(&UDP_sender, NULL,udp_sender, &server_udp);
@@ -667,36 +675,29 @@ int main(int argc, char **argv) {
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
     ret = pthread_create(&tcp_thread, NULL,tcp_auth, &tcpArgs);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
-
-    //This will spawn a vehicle whose position is not going to be sent to the clients.
-    //This is needed just to get the World_update to work
-    WorldViewer_runGlobal(&serverWorld, vehicle, &argc, argv);
+    ret = pthread_create(&world_thread, NULL,world_loop, NULL);
+    PTHREAD_ERROR_HELPER(ret, "pthread_create on world_loop thread failed");
     
-    /**
-    while(connectivity){
-		World_update(&serverWorld);
-	}
-	**/
-	
-    //starting cleanup
-    connectivity=0;
-    exchangeUpdate=0;
 
     fprintf(stdout,"[Main] World created. Now waiting for clients to connect...");
 
     fprintf(stdout,"[Main] Shutting down the server... \n");
     //Wait for threads to finish
+    
+    ret=pthread_join(world_thread,NULL);
+    ERROR_HELPER(ret,"Join on world_loop thread failed");
+    debug_print("[Main] World_loop ended... \n");
     ret=pthread_join(UDP_receiver,NULL);
     ERROR_HELPER(ret,"Join on UDP_receiver thread failed");
+    debug_print("[Main] UDP_receiver ended... \n");
     ret=pthread_join(tcp_thread,NULL);
     ERROR_HELPER(ret,"Join on tcp_auth thread failed");
-    debug_print("[Main] UDP_receiver ended... \n");
+    debug_print("[Main] TCP_receiver/sender ended... \n");
     ret=pthread_join(UDP_sender,NULL);
     ERROR_HELPER(ret,"Join on UDP_sender thread failed");
     debug_print("[Main] UDP_sender ended... \n");
     ret=pthread_join(GC_thread,NULL);
     ERROR_HELPER(ret,"Join on garbage collector thread failed");
-
     debug_print("[Main] GC ended... \n");
     debug_print("[Main] Freeing resources... \n");
     //Delete list
