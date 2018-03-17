@@ -17,7 +17,7 @@
 #include "client_op.h"
 #include "so_game_protocol.h"
 #include "client_list.h"
-#define RECEIVER_SLEEP 50
+#define RECEIVER_SLEEP 50*1000
 #if SERVER_SIDE_POSITION_CHECK == 1
     #define _USE_SERVER_SIDE_FOG_
 #endif
@@ -102,7 +102,7 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
             client->isAddrReady=1;
             client->last_update_time=vup->time;
             END: pthread_mutex_unlock(&mutex);
-            //fprintf(stdout,"[UDP_Receiver] Applied VehicleUpdatePacket with force_translational_update: %f force_rotation_update: %f.. \n",vup->translational_force,vup->rotational_force);
+            fprintf(stdout,"[UDP_Receiver] Applied VehicleUpdatePacket with force_translational_update: %f force_rotation_update: %f.. \n",vup->translational_force,vup->rotational_force);
             Packet_free(&vup->header);
             return 0;
         }
@@ -389,7 +389,7 @@ void* udp_sender(void* args){
             ClientListItem* tmp= users->first;
             while(tmp!=NULL){
                 if(tmp->isAddrReady && tmp->insideWorld && tmp->id==client->id) n++;
-                else if(tmp->isAddrReady && tmp->insideWorld && (abs(tmp->x-client->x)<HIDE_RANGE || abs(tmp->y-client->y)<HIDE_RANGE)) {
+                else if(tmp->isAddrReady && tmp->insideWorld && (abs(tmp->x-client->x)<=HIDE_RANGE && abs(tmp->y-client->y)<=HIDE_RANGE)) {
                     n++;
                 }
                 tmp=tmp->next;
@@ -407,7 +407,7 @@ void* udp_sender(void* args){
             int k=0;
             //Place data in the WorldUpdatePacket
             while(tmp!=NULL){
-                if(!(tmp->isAddrReady && tmp->insideWorld && (abs(tmp->x-client->x)<HIDE_RANGE || abs(tmp->y-client->y)<HIDE_RANGE))) {
+                if(!(tmp->isAddrReady && tmp->insideWorld && (abs(tmp->x-client->x)<=HIDE_RANGE && abs(tmp->y-client->y)<=HIDE_RANGE))) {
                     tmp=tmp->next;
                     continue;
                 }
@@ -423,7 +423,7 @@ void* udp_sender(void* args){
                 cup->id=tmp->id;
                 cup->translational_force=tmp->translational_force;
                 cup->rotational_force=tmp->rotational_force;
-                printf("--- Vehicle with id: %d x: %f y:%f z:%f --- \n",cup->id,cup->x,cup->y,cup->theta);
+                printf("--- Vehicle with id: %d x: %f y:%f z:%f tf:%f rf:%f --- \n",cup->id,cup->x,cup->y,cup->theta,cup->translational_force,cup->rotational_force);
                 tmp = tmp->next;
                 k++;
             }
@@ -486,12 +486,13 @@ void* udp_sender(void* args){
             }
             else cup->forceRefresh=0;
             getXYTheta(client->vehicle,&(client->x),&(client->y),&(cup->theta));
+            getForcesUpdate(client->vehicle,&(client->translational_force),&(client->rotational_force));
             cup->id=client->id;
             cup->x=client->x;
             cup->y=client->y;
-            cup->translational_force=tmp->translational_force;
-            cup->rotational_force=tmp->rotational_force;
-            printf("--- Vehicle with id: %d x: %f, y: %f, theta:%f --- \n",cup->id,cup->x,cup->y,cup->theta);
+            cup->translational_force=client->translational_force;
+            cup->rotational_force=client->rotational_force;
+            printf("--- Vehicle with id: %d x: %f y:%f z:%f tf:%f rf:%f --- \n",cup->id,cup->x,cup->y,cup->theta,cup->translational_force,cup->rotational_force);
             client = client->next;
         }
 
