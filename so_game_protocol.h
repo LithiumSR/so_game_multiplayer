@@ -50,6 +50,7 @@ typedef struct {
   int id;
   float rotational_force;
   float translational_force;
+  float x,y,theta;
   struct timeval time;
 } VehicleUpdatePacket;
 
