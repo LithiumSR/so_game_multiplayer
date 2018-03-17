@@ -17,6 +17,7 @@
 #include "client_op.h"
 #include "so_game_protocol.h"
 #include "client_list.h"
+#define RECEIVER_SLEEP 50*1000
 #if SERVER_SIDE_POSITION_CHECK == 1
     #define _USE_SERVER_SIDE_FOG_
 #endif
@@ -323,7 +324,7 @@ void* udp_receiver(void* args){
         }
 		int ret = UDP_Handler(socket_udp,buf_recv,client_addr);
         if (ret==-1) debug_print("[UDP_Receiver] UDP Handler couldn't manage to apply the VehicleUpdate \n");
-        END: usleep(50);
+        END: usleep(RECEIVER_SLEEP);
     }
     pthread_exit(NULL);
 }
