@@ -18,7 +18,7 @@
 #include "so_game_protocol.h"
 #include "client_list.h"
 #define RECEIVER_SLEEP 20*1000
-
+#define WORLD_LOOP_SLEEP 70000
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
 int exchangeUpdate=1;
@@ -562,7 +562,7 @@ void* world_loop(void* args){
 	debug_print("[WorldLoop] World Update loop initialized \n");
 	while (connectivity){
 		World_update(&serverWorld);
-		usleep(15000);
+		usleep(WORLD_LOOP_SLEEP);
 	}
 	pthread_exit(NULL);
 }
