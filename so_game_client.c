@@ -382,11 +382,12 @@ int main(int argc, char **argv) {
     sendGoodbye(socket_desc,id);
 
     //Clean resources
-    Image_free(surface_elevation);
-    Image_free(surface_texture);
+
     for(int i=0;i<WORLDSIZE;i++){
         if(myLocalWorld->ids[i]==-1) continue;
+        if(i==0) continue;
         myLocalWorld->users_online--;
+        if(!myLocalWorld->hasVehicle[i]) continue;
         Image* im=myLocalWorld->vehicles[i]->texture;
         World_detachVehicle(&world,myLocalWorld->vehicles[i]);
         if (im!=NULL) Image_free(im);
@@ -402,5 +403,8 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret,"Failed to close UDP socket");
     // world cleanup
     World_destroy(&world);
-    return 0;
+    Image_free(surface_elevation);
+    Image_free(surface_texture);
+    Image_free(my_texture);
+    exit(EXIT_SUCCESS);
 }
