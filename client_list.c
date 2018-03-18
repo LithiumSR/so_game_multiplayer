@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 void ClientList_init(ClientListHead* head) {
-  head->first=0;
+  head->first=NULL;
   head->size=0;
 }
 
@@ -48,21 +48,19 @@ ClientListItem* ClientList_detach(ClientListHead* head, ClientListItem* item) {
 }
 
 void ClientList_destroy(ClientListHead* users){
-
+	if(users==NULL) return;
     ClientListItem* user = users->first;
-    int i=0;
     while(user!=NULL){
 		ClientListItem* tmp=ClientList_detach(users, user);
 		user=user->next;
 		close(tmp->id);
         free(tmp);
-        i++;
 	}
     free(users);
 }
 
 void ClientList_print(ClientListHead* users){
-
+	if(users==NULL) return;
     ClientListItem* user = users->first;
     int i=0;
     printf("List elements: [");
