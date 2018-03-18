@@ -21,6 +21,7 @@
 #define NO_ACCESS -2
 #define SENDER_SLEEP 200*1000
 #define RECEIVER_SLEEP 500*1000
+#define MAX_FAILED_ATTEMPTS 20
 
 int window;
 World world;
@@ -103,7 +104,7 @@ int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
     if(last_update_time.tv_sec!=-1) offline_server_counter++;
-    if(offline_server_counter>=20) {
+    if(offline_server_counter>=MAX_FAILED_ATTEMPTS) {
         connectivity=0;
         exchangeUpdate=0;
         fprintf(stdout,"[WARNING] Server is not avaiable. Terminating the client now...");
