@@ -557,7 +557,6 @@ void* garbage_collector(void* args){
                 if(!del->insideWorld) goto SKIP;
                 World_detachVehicle(&serverWorld,del->vehicle);
                 Vehicle_destroy(del->vehicle);
-                free(del->vehicle);
                 Image* user_texture=del->v_texture;
                 if (user_texture!=NULL) Image_free(user_texture);
                 count++;
@@ -588,7 +587,6 @@ void* garbage_collector(void* args){
                         if(!del->insideWorld) goto SKIP2;
                         World_detachVehicle(&serverWorld,del->vehicle);
                         Vehicle_destroy(del->vehicle);
-                        free(del->vehicle);
                         Image* user_texture=del->v_texture;
                         if (user_texture!=NULL) Image_free(user_texture);
                         count++;
@@ -809,7 +807,6 @@ int main(int argc, char **argv) {
     pthread_mutex_lock(&mutex);
     ClientList_destroy(users);
     Vehicle_destroy(vehicle);
-    free(vehicle);
     pthread_mutex_unlock(&mutex);
 
     //Close descriptors
