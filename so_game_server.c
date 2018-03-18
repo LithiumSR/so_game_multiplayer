@@ -326,7 +326,7 @@ void* tcp_flow(void* args){
     if(!del->insideWorld) goto END;
     World_detachVehicle(&serverWorld,del->vehicle);
     Vehicle_destroy(del->vehicle);
-    free(del->vehicle);
+    //free(del->vehicle);
     Image* user_texture=del->v_texture;
     if (user_texture!=NULL) Image_free(user_texture);
     if(users->size==0) hasUsers=0;
@@ -476,7 +476,7 @@ void* garbage_collector(void* args){
                 if(!del->insideWorld) goto SKIP;
                 World_detachVehicle(&serverWorld,del->vehicle);
                 Vehicle_destroy(del->vehicle);
-                free(del->vehicle);
+                //free(del->vehicle);
                 Image* user_texture=del->v_texture;
                 if (user_texture!=NULL) Image_free(user_texture);
                 count++;
@@ -507,7 +507,7 @@ void* garbage_collector(void* args){
                         if(!del->insideWorld) goto SKIP2;
                         World_detachVehicle(&serverWorld,del->vehicle);
                         Vehicle_destroy(del->vehicle);
-                        free(del->vehicle);
+                        //free(del->vehicle);
                         Image* user_texture=del->v_texture;
                         if (user_texture!=NULL) Image_free(user_texture);
                         count++;
@@ -720,16 +720,15 @@ int main(int argc, char **argv) {
     pthread_mutex_lock(&mutex);
     ClientList_destroy(users);
     Vehicle_destroy(vehicle);
-    free(vehicle);
     pthread_mutex_unlock(&mutex);
-	World_destroy(&serverWorld);
+    World_destroy(&serverWorld);
     //Close descriptors
     ret = close(server_tcp);
     ERROR_HELPER(ret,"Failed close() on server_tcp socket");
     ret = close(server_udp);
     ERROR_HELPER(ret,"Failed close() on server_udp socket");
     Image_free(surface_elevation);
-	Image_free(surface_texture);
+    Image_free(surface_texture);
     Image_free(my_texture);
     exit(EXIT_SUCCESS);
 }
