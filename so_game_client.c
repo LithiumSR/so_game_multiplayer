@@ -347,8 +347,6 @@ void* udp_receiver(void* args){
 						
                     Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
                     if (img==NULL) continue;
-                    Vehicle_destroy(lw->vehicles[id_struct]);
-                    free(lw->vehicles[id_struct]);
                     Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                     Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                     lw->vehicles[id_struct]=new_vehicle;
@@ -531,10 +529,9 @@ int main(int argc, char **argv) {
     sendGoodbye(socket_desc,id);
 
     //Clean resources
-    Image_free(surface_elevation);
-    Image_free(surface_texture);
     for(int i=0;i<WORLDSIZE;i++){
         if(myLocalWorld->ids[i]==-1) continue;
+        if(i==0) continue;
         myLocalWorld->users_online--;
         Image* im=myLocalWorld->vehicles[i]->texture;
         World_detachVehicle(&world,myLocalWorld->vehicles[i]);
@@ -551,5 +548,8 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret,"Failed to close UDP socket");
     // world cleanup
     World_destroy(&world);
+    Image_free(surface_elevation);
+    Image_free(surface_texture);
+    Image_free(my_texture);
     return 0;
 }

@@ -328,6 +328,7 @@ void* tcp_flow(void* args){
     if(!del->insideWorld) goto END;
     World_detachVehicle(&serverWorld,del->vehicle);
     Vehicle_destroy(del->vehicle);
+    free(del->vehicle);
     Image* user_texture=del->v_texture;
     if (user_texture!=NULL) Image_free(user_texture);
     if(users->size==0) hasUsers=0;
@@ -557,6 +558,7 @@ void* garbage_collector(void* args){
                 if(!del->insideWorld) goto SKIP;
                 World_detachVehicle(&serverWorld,del->vehicle);
                 Vehicle_destroy(del->vehicle);
+                free(del->vehicle);
                 Image* user_texture=del->v_texture;
                 if (user_texture!=NULL) Image_free(user_texture);
                 count++;
@@ -587,6 +589,7 @@ void* garbage_collector(void* args){
                         if(!del->insideWorld) goto SKIP2;
                         World_detachVehicle(&serverWorld,del->vehicle);
                         Vehicle_destroy(del->vehicle);
+                        free(del->vehicle);
                         Image* user_texture=del->v_texture;
                         if (user_texture!=NULL) Image_free(user_texture);
                         count++;
@@ -806,9 +809,8 @@ int main(int argc, char **argv) {
     //Delete list
     pthread_mutex_lock(&mutex);
     ClientList_destroy(users);
-    Vehicle_destroy(vehicle);
     pthread_mutex_unlock(&mutex);
-
+	pthread_mutex_destroy(&mutex);
     //Close descriptors
     ret = close(server_tcp);
     ERROR_HELPER(ret,"Failed close() on server_tcp socket");
