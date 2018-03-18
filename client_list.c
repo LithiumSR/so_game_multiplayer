@@ -48,7 +48,7 @@ ClientListItem* ClientList_detach(ClientListHead* head, ClientListItem* item) {
 }
 
 void ClientList_destroy(ClientListHead* users){
-
+	if(users==NULL) return;
     ClientListItem* user = users->first;
     while(user!=NULL){
 		ClientListItem* tmp=ClientList_detach(users, user);
@@ -60,7 +60,7 @@ void ClientList_destroy(ClientListHead* users){
 }
 
 void ClientList_print(ClientListHead* users){
-
+	if(users==NULL) return;
     ClientListItem* user = users->first;
     int i=0;
     printf("List elements: [");
