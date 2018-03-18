@@ -5,7 +5,7 @@
 #include <unistd.h>
 
 void ClientList_init(ClientListHead* head) {
-  head->first=0;
+  head->first=NULL;
   head->size=0;
 }
 
@@ -50,14 +50,11 @@ ClientListItem* ClientList_detach(ClientListHead* head, ClientListItem* item) {
 void ClientList_destroy(ClientListHead* users){
 
     ClientListItem* user = users->first;
-    int i=0;
     while(user!=NULL){
 		ClientListItem* tmp=ClientList_detach(users, user);
 		user=user->next;
-        if (tmp->v_texture!=NULL) Image_free(tmp->v_texture);
 		close(tmp->id);
         free(tmp);
-        i++;
 	}
     free(users);
 }

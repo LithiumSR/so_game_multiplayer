@@ -677,10 +677,7 @@ int main(int argc, char **argv) {
     tcp_args tcpArgs;
     tcpArgs.surface_texture=surface_texture;
     tcpArgs.elevation_texture=surface_elevation;
-    Vehicle* vehicle=(Vehicle*) malloc(sizeof(Vehicle));
     World_init(&serverWorld, surface_elevation, surface_texture,  0.5, 0.5, 0.5);
-    Vehicle_init(vehicle, &serverWorld, 0, my_texture);
-    World_addVehicle(&serverWorld, vehicle);
 
     pthread_t UDP_receiver,UDP_sender,GC_thread,tcp_thread, world_thread;
     ret = pthread_create(&UDP_receiver, NULL,udp_receiver, &server_udp);
@@ -727,8 +724,8 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret,"Failed close() on server_tcp socket");
     ret = close(server_udp);
     ERROR_HELPER(ret,"Failed close() on server_udp socket");
+    World_destroy(&serverWorld);
     Image_free(surface_elevation);
     Image_free(surface_texture);
-    Image_free(my_texture);
     exit(EXIT_SUCCESS);
 }
