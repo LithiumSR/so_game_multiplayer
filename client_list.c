@@ -54,7 +54,6 @@ void ClientList_destroy(ClientListHead* users){
     while(user!=NULL){
 		ClientListItem* tmp=ClientList_detach(users, user);
 		user=user->next;
-        if (tmp->v_texture!=NULL) Image_free(tmp->v_texture);
 		close(tmp->id);
         free(tmp);
         i++;
