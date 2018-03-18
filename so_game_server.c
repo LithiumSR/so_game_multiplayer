@@ -22,6 +22,7 @@
 #if SERVER_SIDE_POSITION_CHECK == 1
     #define _USE_SERVER_SIDE_FOG_
 #endif
+
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
 int exchangeUpdate=1;
@@ -32,16 +33,12 @@ uint16_t  port_number_no;
 int server_tcp=-1;
 int server_udp;
 World serverWorld;
+
 typedef struct {
     int client_desc;
     Image* elevation_texture;
     Image* surface_texture;
-} tcp_args;
-
-typedef struct {
-    tcp_args args;
-    int id_client; //I will use the socket as ID
-} auth_args;
+} tcpArgs;
 
 void handle_signal(int signal){
     // Find out which signal we're handling
@@ -276,8 +273,8 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 
 //Handle authentication and disconnection
 void* tcp_flow(void* args){
-    tcp_args* arg=(tcp_args*)args;
-    int sock_fd=arg->client_desc;
+    tcpArgs* tcp_args=(tcpArgs*)args;
+    int sock_fd=tcp_args->client_desc;
     pthread_mutex_lock(&mutex);
     ClientListItem* user=malloc(sizeof(ClientListItem));
     user->v_texture = NULL;
@@ -317,7 +314,7 @@ void* tcp_flow(void* args){
             else if(ret<=0) goto EXIT;
             msg_len+=ret;
             }
-        int ret=TCP_Handler(sock_fd,buf_rcv,arg->surface_texture,arg->elevation_texture,arg->client_desc,&isActive);
+        int ret=TCP_Handler(sock_fd,buf_rcv,tcp_args->surface_texture,tcp_args->elevation_texture,tcp_args->client_desc,&isActive);
         if (ret==-1) ClientList_print(users);
     }
     EXIT: printf("Freeing resources...");
@@ -618,7 +615,7 @@ void* garbage_collector(void* args){
 }
 
 void* tcp_auth(void* args){
-    tcp_args* arg=(tcp_args*)args;
+    tcpArgs* tcp_args=(tcpArgs*)args;
     int sockaddr_len = sizeof(struct sockaddr_in);
     while (connectivity) {
         struct sockaddr_in client_addr = {0};
@@ -629,13 +626,13 @@ void* tcp_auth(void* args){
             continue;
         }
         else if(client_desc==-1) break;
-        tcp_args tcpArgs;
+        tcpArgs new_tcp_args;
         pthread_t threadTCP;
-        tcpArgs.client_desc=client_desc;
-        tcpArgs.elevation_texture = arg->elevation_texture;
-        tcpArgs.surface_texture = arg->surface_texture;
+        new_tcp_args.client_desc=client_desc;
+        new_tcp_args.elevation_texture = tcp_args->elevation_texture;
+        new_tcp_args.surface_texture = tcp_args->surface_texture;
         //Create a thread for each client
-        int ret = pthread_create(&threadTCP, NULL,tcp_flow, &tcpArgs);
+        int ret = pthread_create(&threadTCP, NULL,tcp_flow, &new_tcp_args);
         PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
         ret = pthread_detach(threadTCP);
     }
@@ -754,9 +751,9 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret, "Failed bind() on server_udp socket");
 
     debug_print("[Main] UDP socket created \n");
-    tcp_args tcpArgs;
-    tcpArgs.surface_texture=surface_texture;
-    tcpArgs.elevation_texture=surface_elevation;
+    tcpArgs tcp_args;
+    tcp_args.surface_texture=surface_texture;
+    tcp_args.elevation_texture=surface_elevation;
     World_init(&serverWorld, surface_elevation, surface_texture,  0.5, 0.5, 0.5);
 
 
@@ -767,7 +764,7 @@ int main(int argc, char **argv) {
     PTHREAD_ERROR_HELPER(ret, "pthread_create on thread tcp failed");
     ret = pthread_create(&GC_thread, NULL,garbage_collector, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
-    ret = pthread_create(&tcp_thread, NULL,tcp_auth, &tcpArgs);
+    ret = pthread_create(&tcp_thread, NULL,tcp_auth, &tcp_args);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
     ret = pthread_create(&world_thread, NULL,world_loop, NULL);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on world_loop thread failed");
