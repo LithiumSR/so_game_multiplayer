@@ -218,8 +218,6 @@ void* udp_receiver(void* args){
 						}
                     Image* img = getVehicleTexture(socket_tcp,wup->updates[i].id);
                     if(img==NULL) continue;
-                    Vehicle_destroy(lw->vehicles[id_struct]);
-                    free(lw->vehicles[id_struct]);
                     Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                     Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                     lw->vehicles[id_struct]=new_vehicle;
