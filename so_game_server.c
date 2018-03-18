@@ -31,16 +31,13 @@ ClientListHead* users;
 uint16_t  port_number_no;
 int server_tcp=-1;
 int server_udp;
+
 typedef struct {
     int client_desc;
     Image* elevation_texture;
     Image* surface_texture;
-} tcp_args;
+} tcpArgs;
 
-typedef struct {
-    tcp_args args;
-    int id_client; //I will use the socket as ID
-} auth_args;
 
 void handle_signal(int signal){
     // Find out which signal we're handling
@@ -262,8 +259,8 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 
 //Handle authentication and disconnection
 void* tcp_flow(void* args){
-    tcp_args* arg=(tcp_args*)args;
-    int sock_fd=arg->client_desc;
+    tcpArgs* tcp_args=(tcpArgs*)args;
+    int sock_fd=tcp_args->client_desc;
     pthread_mutex_lock(&mutex);
     ClientListItem* user=malloc(sizeof(ClientListItem));
     user->v_texture = NULL;
@@ -301,7 +298,7 @@ void* tcp_flow(void* args){
             else if(ret<=0) goto EXIT;
             msg_len+=ret;
             }
-        int ret=TCP_Handler(sock_fd,buf_rcv,arg->surface_texture,arg->elevation_texture,arg->client_desc,&isActive);
+        int ret=TCP_Handler(sock_fd,buf_rcv,tcp_args->surface_texture,tcp_args->elevation_texture,tcp_args->client_desc,&isActive);
         if (ret==-1) ClientList_print(users);
     }
     EXIT: printf("Freeing resources...");
@@ -702,13 +699,13 @@ int main(int argc, char **argv) {
             continue;
         }
         else if(client_desc==-1) break;
-        tcp_args tcpArgs;
+        tcpArgs tcp_args;
         pthread_t threadTCP;
-        tcpArgs.client_desc=client_desc;
-        tcpArgs.elevation_texture = surface_elevation;
-        tcpArgs.surface_texture = surface_texture;
+        tcp_args.client_desc=client_desc;
+        tcp_args.elevation_texture = surface_elevation;
+        tcp_args.surface_texture = surface_texture;
         //Create a thread for each client
-        ret = pthread_create(&threadTCP, NULL,tcp_flow, &tcpArgs);
+        ret = pthread_create(&threadTCP, NULL,tcp_flow, &tcp_args);
         PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
         ret = pthread_detach(threadTCP);
     }
