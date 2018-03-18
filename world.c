@@ -77,9 +77,10 @@ Vehicle* World_getVehicle(World* w, int vehicle_id){
   ListItem* item=w->vehicles.first;
   while(item){
     Vehicle* v=(Vehicle*)item;
-    if(v->id==vehicle_id)
+    if(v->id==vehicle_id){
       sem_post(&sem);
       return v;
+    }
     item=item->next;
   }
   sem_post(&sem);
