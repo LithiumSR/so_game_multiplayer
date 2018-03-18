@@ -729,7 +729,7 @@ int main(int argc, char **argv) {
     pthread_mutex_lock(&mutex);
     ClientList_destroy(users);
     pthread_mutex_unlock(&mutex);
-
+	pthread_mutex_destroy(&mutex);
     //Close descriptors
     ret = close(server_tcp);
     ERROR_HELPER(ret,"Failed close() on server_tcp socket");
