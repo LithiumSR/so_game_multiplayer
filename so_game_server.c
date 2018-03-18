@@ -719,8 +719,6 @@ int main(int argc, char **argv) {
     //Delete list and other structures
     pthread_mutex_lock(&mutex);
     ClientList_destroy(users);
-    Vehicle_destroy(vehicle);
-    free(vehicle);
     pthread_mutex_unlock(&mutex);
     pthread_mutex_destroy(&mutex);
     World_destroy(&serverWorld);
