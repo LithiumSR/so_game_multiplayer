@@ -21,6 +21,7 @@
 #define NO_ACCESS -2
 #define SENDER_SLEEP 200*1000
 #define RECEIVER_SLEEP 500*1000
+#define MAX_FAILED_ATTEMPTS 20
 #if CACHE_TEXTURE == 1
     #define _USE_CACHED_TEXTURE_
 #endif
@@ -39,6 +40,7 @@ int connectivity=1;
 int exchangeUpdate=1;
 int socket_desc; //socket tcp
 struct timeval last_update_time;
+int offline_server_counter=0;
 
 typedef struct localWorld{
     int  ids[WORLDSIZE];
@@ -113,12 +115,22 @@ int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
     Packet_free(&(vup->header));
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
+    if(last_update_time.tv_sec!=-1) offline_server_counter++;
+    if(offline_server_counter>=MAX_FAILED_ATTEMPTS) {
+        connectivity=0;
+        exchangeUpdate=0;
+        fprintf(stdout,"[WARNING] Server is not avaiable. Terminating the client now...");
+        exit(0);
+    }
+    
     if(last_update_time.tv_sec!=-1 && current_time.tv_sec-last_update_time.tv_sec >MAX_TIME_WITHOUT_WORLDUPDATE){
         connectivity=0;
         exchangeUpdate=0;
         fprintf(stdout,"[WARNING] Server is not avaiable. Terminating the client now...");
         exit(0);
     }
+    else offline_server_counter=0;
+    
     if(bytes_sent<0) return -1;
     return 0;
 }
