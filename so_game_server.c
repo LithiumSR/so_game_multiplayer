@@ -18,6 +18,7 @@
 #include "so_game_protocol.h"
 #include "client_list.h"
 #define RECEIVER_SLEEP 50*1000
+#define WORLD_LOOP_SLEEP 70*1000
 #if SERVER_SIDE_POSITION_CHECK == 1
     #define _USE_SERVER_SIDE_FOG_
 #endif
@@ -645,7 +646,7 @@ void* world_loop(void* args){
 	debug_print("[WorldLoop] World Update loop initialized \n");
 	while (connectivity){
 		World_update(&serverWorld);
-		usleep(15000);
+		usleep(WORLD_LOOP_SLEEP);
 	}
 	pthread_exit(NULL);
 }
