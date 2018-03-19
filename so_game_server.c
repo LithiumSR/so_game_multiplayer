@@ -768,11 +768,9 @@ int main(int argc, char **argv) {
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
     ret = pthread_create(&world_thread, NULL,world_loop, NULL);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on world_loop thread failed");
-    
+    fprintf(stdout,"[Main] World created. Now waiting for clients to connect... \n");
+    fflush(stdoud);
 
-    fprintf(stdout,"[Main] World created. Now waiting for clients to connect...");
-
-    fprintf(stdout,"[Main] Shutting down the server... \n");
     //Wait for threads to finish
     
     ret=pthread_join(world_thread,NULL);
