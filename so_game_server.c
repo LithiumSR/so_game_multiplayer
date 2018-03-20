@@ -769,7 +769,7 @@ int main(int argc, char **argv) {
     ret = pthread_create(&world_thread, NULL,world_loop, NULL);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on world_loop thread failed");
     fprintf(stdout,"[Main] World created. Now waiting for clients to connect... \n");
-    fflush(stdoud);
+    fflush(stdout);
 
     //Wait for threads to finish
     
