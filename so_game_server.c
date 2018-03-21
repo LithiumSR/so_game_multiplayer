@@ -24,8 +24,8 @@
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
-int exchangeUpdate=1;
-int cleanGarbage=1;
+int exchange_update=1;
+int clean_garbage=1;
 int hasUsers=0;
 ClientListHead* users;
 uint16_t  port_number_no;
@@ -46,8 +46,8 @@ void handle_signal(int signal){
             break;
         case SIGINT:
             connectivity=0;
-            exchangeUpdate=0;
-            cleanGarbage=0;
+            exchange_update=0;
+            clean_garbage=0;
             if(server_tcp==-1) exit(0);
             shutdown(server_tcp, SHUT_RDWR);
             shutdown(server_udp, SHUT_RDWR);
@@ -94,7 +94,7 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
             client->rotational_force=vup->rotational_force;
             client->translational_force=vup->translational_force;
             client->user_addr=client_addr;
-            client->isAddrReady=1;
+            client->is_addr_ready=1;
             client->last_update_time=vup->time;
             fprintf(stdout,"[UDP_Receiver] Applied VehicleUpdatePacket of %d bytes from id %d... \n",ph->size,vup->id);
             END: pthread_mutex_unlock(&mutex);
@@ -268,8 +268,8 @@ void* tcp_flow(void* args){
     user->id=sock_fd;
     user->prev_x=-1;
     user->prev_y=-1;
-    user->isAddrReady=0;
-    user->forceRefresh=1;
+    user->is_addr_ready=0;
+    user->force_refresh=1;
     user->v_texture=NULL;
     user->last_update_time.tv_sec=-1;
     printf("[New user] Adding client with id %d \n",sock_fd);
@@ -320,7 +320,7 @@ void* tcp_flow(void* args){
 //Receive and apply VehicleUpdatePacket from clients
 void* udp_receiver(void* args){
     int socket_udp=*(int*)args;
-    while(connectivity && exchangeUpdate){
+    while(connectivity && exchange_update){
         if(!hasUsers){
             sleep(1);
             continue;
@@ -348,7 +348,7 @@ void* udp_receiver(void* args){
 #ifdef _USE_SERVER_SIDE_FOG_
 void* udp_sender(void* args){
     int socket_udp=*(int*)args;
-    while(connectivity && exchangeUpdate){
+    while(connectivity && exchange_update){
         if(!hasUsers){
             sleep(1);
             continue;
@@ -361,7 +361,7 @@ void* udp_sender(void* args){
         gettimeofday(&time,NULL);
         while(client!=NULL){
             char buf_send[BUFFERSIZE];
-            if (client->isAddrReady!=1) {
+            if (client->is_addr_ready!=1) {
                 client=client->next;
                 continue;
             }
@@ -372,7 +372,7 @@ void* udp_sender(void* args){
             int n=0;
             ClientListItem* tmp= users->first;
             while(tmp!=NULL){
-                if (tmp->isAddrReady && (abs(tmp->x-client->x)<=HIDE_RANGE && abs(tmp->y-client->y)<=HIDE_RANGE)) {
+                if (tmp->is_addr_ready && (abs(tmp->x-client->x)<=HIDE_RANGE && abs(tmp->y-client->y)<=HIDE_RANGE)) {
                     n++;
                 }
                 tmp=tmp->next;
@@ -389,17 +389,17 @@ void* udp_sender(void* args){
             ClientList_print(users);
             int k=0;
             for(int i=0;tmp!=NULL;i++){
-                if(!(tmp->isAddrReady && (abs(tmp->x-client->x)<=HIDE_RANGE && abs(tmp->y-client->y)<=HIDE_RANGE))) {
+                if(!(tmp->is_addr_ready && (abs(tmp->x-client->x)<=HIDE_RANGE && abs(tmp->y-client->y)<=HIDE_RANGE))) {
                     tmp=tmp->next;
                     continue;
                 }
 
                 ClientUpdate* cup= &(wup->updates[k]);
-                if(tmp->forceRefresh==1) {
-                    cup->forceRefresh=1;
-                    tmp->forceRefresh=0;
+                if(tmp->force_refresh==1) {
+                    cup->force_refresh=1;
+                    tmp->force_refresh=0;
                 }
-                else cup->forceRefresh=0;
+                else cup->force_refresh=0;
                 cup->y=tmp->y;
                 cup->x=tmp->x;
                 cup->theta=tmp->theta;
@@ -435,7 +435,7 @@ void* udp_sender(void* args){
 #ifndef _USE_SERVER_SIDE_FOG_
 void* udp_sender(void* args){
     int socket_udp=*(int*)args;
-    while(connectivity && exchangeUpdate){
+    while(connectivity && exchange_update){
         if(!hasUsers){
             sleep(1);
             continue;
@@ -450,7 +450,7 @@ void* udp_sender(void* args){
         int n;
         ClientListItem* client= users->first;
         for(n=0;client!=NULL;client=client->next){
-            if(client->isAddrReady) n++;
+            if(client->is_addr_ready) n++;
         }
         wup->num_vehicles=n;
         fprintf(stdout,"[UDP_Sender] Creating WorldUpdatePacket containing info about %d users \n",n);
@@ -463,16 +463,16 @@ void* udp_sender(void* args){
         client= users->first;
         gettimeofday(&wup->time, NULL);
         for(int i=0;client!=NULL;i++){
-            if(!(client->isAddrReady)) {
+            if(!(client->is_addr_ready)) {
                 client = client->next;
                 continue;
             }
             ClientUpdate* cup= &(wup->updates[i]);
-            if(client->forceRefresh==1) {
-                cup->forceRefresh=1;
-                client->forceRefresh=0;
+            if(client->force_refresh==1) {
+                cup->force_refresh=1;
+                client->force_refresh=0;
             }
-            else cup->forceRefresh=0;
+            else cup->force_refresh=0;
             cup->y=client->y;
             cup->x=client->x;
             cup->theta=client->theta;
@@ -491,7 +491,7 @@ void* udp_sender(void* args){
 			}
         client=users->first;
         while(client!=NULL){
-            if(client->isAddrReady==1){
+            if(client->is_addr_ready==1){
                     int ret = sendto(socket_udp, buf_send, size, 0, (struct sockaddr*) &client->user_addr, (socklen_t) sizeof(client->user_addr));
                     debug_print("[UDP_Send] Sent WorldUpdate of %d bytes to client with id %d \n",ret,client->id);
                 }
@@ -510,7 +510,7 @@ void* udp_sender(void* args){
 void* garbage_collector(void* args){
     debug_print("[GC] Garbage collector initialized \n");
     int socket_udp=*(int*)args;
-    while(cleanGarbage){
+    while(clean_garbage){
         if(hasUsers==0) goto END;
         pthread_mutex_lock(&mutex);
         ClientListItem* client=users->first;
@@ -519,7 +519,7 @@ void* garbage_collector(void* args){
         while(client!=NULL){
             long creation_time=(long)client->creation_time.tv_sec;
             long last_update_time=(long)client->last_update_time.tv_sec;
-            if((client->isAddrReady==1 && (current_time-last_update_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE) || (client->isAddrReady!=1 && (current_time-creation_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE)){
+            if((client->is_addr_ready==1 && (current_time-last_update_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE) || (client->is_addr_ready!=1 && (current_time-creation_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE)){
                 ClientListItem* tmp=client;
                 client=client->next;
                 sendDisconnect(socket_udp,tmp->user_addr);
@@ -532,7 +532,7 @@ void* garbage_collector(void* args){
                 close(del->id);
                 free(del);
             }
-            else if (client->isAddrReady==1) {
+            else if (client->is_addr_ready==1) {
                 int x,prev_x,y,prev_y;
                 x=(int)client->x;
                 y=(int)client->y;

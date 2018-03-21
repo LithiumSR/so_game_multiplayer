@@ -61,7 +61,7 @@ typedef struct {
 // id is the id of the vehicle
 typedef struct {
   int id;
-  int forceRefresh;
+  int force_refresh;
   float x;
   float y;
   float theta;

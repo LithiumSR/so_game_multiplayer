@@ -16,9 +16,9 @@ typedef struct ClientListItem {
   int id;
   struct sockaddr_in user_addr;
   struct timeval last_update_time,creation_time;
-  int isAddrReady;
+  int is_addr_ready;
   int afk_counter;
-  int forceRefresh;
+  int force_refresh;
 } ClientListItem;
 
 typedef struct ClientListHead {
