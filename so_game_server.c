@@ -25,14 +25,14 @@
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
-int exchangeUpdate=1;
-int cleanGarbage=1;
-int hasUsers=0;
+int exchange_update=1;
+int clean_garbage=1;
+int has_users=0;
 ClientListHead* users;
 uint16_t  port_number_no;
 int server_tcp=-1;
 int server_udp;
-World serverWorld;
+World server_world;
 
 typedef struct {
     int client_desc;
@@ -47,8 +47,8 @@ void handle_signal(int signal){
             break;
         case SIGINT:
             connectivity=0;
-            exchangeUpdate=0;
-            cleanGarbage=0;
+            exchange_update=0;
+            clean_garbage=0;
             shutdown(server_tcp, SHUT_RDWR);
             shutdown(server_udp, SHUT_RDWR);
             break;
@@ -97,7 +97,7 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
             pthread_mutex_lock(&client->vehicle->mutex);
             Vehicle_setForcesUpdate(client->vehicle,vup->translational_force,vup->rotational_force);
             Vehicle_setXYTheta(client->vehicle,vup->x,vup->y,vup->theta);
-            World_manualUpdate(&serverWorld,client->vehicle,vup->time);
+            World_manualUpdate(&server_world,client->vehicle,vup->time);
             pthread_mutex_unlock(&client->vehicle->mutex);
             client->user_addr=client_addr;
             client->is_addr_ready=1;
@@ -151,10 +151,10 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
             if (el==NULL && !el->inside_world) {
                 PacketHeader pheader;
                 pheader.type=PostDisconnect;
-                IdPacket* idPckt = (IdPacket*)malloc(sizeof(IdPacket));
-                idPckt->header=pheader;
-                int msg_len= Packet_serialize(buf_send, &idPckt->header);
-                idPckt->id=-1;
+                IdPacket* id_pckt = (IdPacket*)malloc(sizeof(IdPacket));
+                id_pckt->header=pheader;
+                int msg_len= Packet_serialize(buf_send, &id_pckt->header);
+                id_pckt->id=-1;
                 int bytes_sent=0;
 				int ret=0;
                 while(bytes_sent<msg_len){
@@ -163,7 +163,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 					ERROR_HELPER(ret,"Can't send map texture over TCP");
 					bytes_sent+=ret;
 				}
-				free(idPckt);
+				free(id_pckt);
 				free(image_packet);
 				pthread_mutex_unlock(&mutex);
                 return -1;
@@ -251,10 +251,10 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
             }
         user->v_texture=user_texture;
         Vehicle* vehicle=(Vehicle*) malloc(sizeof(Vehicle));
-        Vehicle_init(vehicle, &serverWorld, id, user->v_texture);
+        Vehicle_init(vehicle, &server_world, id, user->v_texture);
         user->vehicle=vehicle;
         user->inside_world=1;
-        World_addVehicle(&serverWorld, vehicle);
+        World_addVehicle(&server_world, vehicle);
         pthread_mutex_unlock(&mutex);
         debug_print("[Set Texture] Vehicle texture applied to user with id %d \n",id);
         free(deserialized_packet);
@@ -293,7 +293,7 @@ void* tcp_flow(void* args){
     printf("[New user] Adding client with id %d \n",sock_fd);
     ClientList_insert(users,user);
     ClientList_print(users);
-    hasUsers=1;
+    has_users=1;
     pthread_mutex_unlock(&mutex);
     int ph_len=sizeof(PacketHeader);
     int isActive=1;
@@ -326,12 +326,12 @@ void* tcp_flow(void* args){
     ClientListItem* del=ClientList_detach(users,el);
     if(del==NULL) goto END;
     if(!del->inside_world) goto END;
-    World_detachVehicle(&serverWorld,del->vehicle);
+    World_detachVehicle(&server_world,del->vehicle);
     Vehicle_destroy(del->vehicle);
     free(del->vehicle);
     Image* user_texture=del->v_texture;
     if (user_texture!=NULL) Image_free(user_texture);
-    if(users->size==0) hasUsers=0;
+    if(users->size==0) has_users=0;
     free(del);
     ClientList_print(users);
     END: pthread_mutex_unlock(&mutex);
@@ -342,8 +342,8 @@ void* tcp_flow(void* args){
 //Receive and apply VehicleUpdatePacket from clients
 void* udp_receiver(void* args){
     int socket_udp=*(int*)args;
-    while(connectivity && exchangeUpdate){
-        if(!hasUsers){
+    while(connectivity && exchange_update){
+        if(!has_users){
             sleep(1);
             continue;
         }
@@ -370,8 +370,8 @@ void* udp_receiver(void* args){
 #ifdef _USE_SERVER_SIDE_FOG_
 void* udp_sender(void* args){
     int socket_udp=*(int*)args;
-    while(connectivity && exchangeUpdate){
-        if(!hasUsers){
+    while(connectivity && exchange_update){
+        if(!has_users){
             sleep(1);
             continue;
         }
@@ -465,8 +465,8 @@ void* udp_sender(void* args){
 #ifndef _USE_SERVER_SIDE_FOG_
 void* udp_sender(void* args){
     int socket_udp=*(int*)args;
-    while(connectivity && exchangeUpdate){
-        if(!hasUsers){
+    while(connectivity && exchange_update){
+        if(!has_users){
             sleep(1);
             continue;
         }
@@ -489,7 +489,7 @@ void* udp_sender(void* args){
             sleep(1);
             continue;
         }
-        World_update(&serverWorld);
+        World_update(&server_world);
         wup->updates=(ClientUpdate*)malloc(sizeof(ClientUpdate)*n);
         client= users->first;
         gettimeofday(&wup->time, NULL);
@@ -544,8 +544,8 @@ void* udp_sender(void* args){
 void* garbage_collector(void* args){
     debug_print("[GC] Garbage collector initialized \n");
     int socket_udp=*(int*)args;
-    while(cleanGarbage){
-        if(hasUsers==0) goto END;
+    while(clean_garbage){
+        if(has_users==0) goto END;
         pthread_mutex_lock(&mutex);
         ClientListItem* client=users->first;
         long current_time=(long)time(NULL);
@@ -560,13 +560,13 @@ void* garbage_collector(void* args){
                 ClientListItem* del=ClientList_detach(users,tmp);
                 if (del==NULL) continue;
                 if(!del->inside_world) goto SKIP;
-                World_detachVehicle(&serverWorld,del->vehicle);
+                World_detachVehicle(&server_world,del->vehicle);
                 Vehicle_destroy(del->vehicle);
                 free(del->vehicle);
                 Image* user_texture=del->v_texture;
                 if (user_texture!=NULL) Image_free(user_texture);
                 count++;
-                if(users->size==0) hasUsers=0;
+                if(users->size==0) has_users=0;
                 SKIP: close(del->id);
                 free(del);
             }
@@ -591,13 +591,13 @@ void* garbage_collector(void* args){
                         ClientListItem* del=ClientList_detach(users,tmp);
                         if (del==NULL) continue;
                         if(!del->inside_world) goto SKIP2;
-                        World_detachVehicle(&serverWorld,del->vehicle);
+                        World_detachVehicle(&server_world,del->vehicle);
                         Vehicle_destroy(del->vehicle);
                         free(del->vehicle);
                         Image* user_texture=del->v_texture;
                         if (user_texture!=NULL) Image_free(user_texture);
                         count++;
-                        if(users->size==0) hasUsers=0;
+                        if(users->size==0) has_users=0;
                         SKIP2: close(del->id);
                         free(del);
                         }
@@ -648,7 +648,7 @@ void* tcp_auth(void* args){
 void* world_loop(void* args){
 	debug_print("[WorldLoop] World Update loop initialized \n");
 	while (connectivity){
-		World_update(&serverWorld);
+		World_update(&server_world);
 		usleep(WORLD_LOOP_SLEEP);
 	}
 	pthread_exit(NULL);
@@ -760,17 +760,17 @@ int main(int argc, char **argv) {
     tcpArgs tcp_args;
     tcp_args.surface_texture=surface_texture;
     tcp_args.elevation_texture=surface_elevation;
-    World_init(&serverWorld, surface_elevation, surface_texture,  0.5, 0.5, 0.5);
+    World_init(&server_world, surface_elevation, surface_texture,  0.5, 0.5, 0.5);
 
 
-    pthread_t UDP_receiver,UDP_sender,GC_thread,tcp_thread, world_thread;
+    pthread_t UDP_receiver,UDP_sender,GC_thread,TCP_thread, world_thread;
     ret = pthread_create(&UDP_receiver, NULL,udp_receiver, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on thread tcp failed");
     ret = pthread_create(&UDP_sender, NULL,udp_sender, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on thread tcp failed");
     ret = pthread_create(&GC_thread, NULL,garbage_collector, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
-    ret = pthread_create(&tcp_thread, NULL,tcp_auth, &tcp_args);
+    ret = pthread_create(&TCP_thread, NULL,tcp_auth, &tcp_args);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
     ret = pthread_create(&world_thread, NULL,world_loop, NULL);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on world_loop thread failed");
@@ -785,7 +785,7 @@ int main(int argc, char **argv) {
     ret=pthread_join(UDP_receiver,NULL);
     ERROR_HELPER(ret,"Join on UDP_receiver thread failed");
     debug_print("[Main] UDP_receiver ended... \n");
-    ret=pthread_join(tcp_thread,NULL);
+    ret=pthread_join(TCP_thread,NULL);
     ERROR_HELPER(ret,"Join on tcp_auth thread failed");
     debug_print("[Main] TCP_receiver/sender ended... \n");
     ret=pthread_join(UDP_sender,NULL);
@@ -806,7 +806,7 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret,"Failed close() on server_tcp socket");
     ret = close(server_udp);
     ERROR_HELPER(ret,"Failed close() on server_udp socket");
-    World_destroy(&serverWorld);
+    World_destroy(&server_world);
     Image_free(surface_elevation);
 	Image_free(surface_texture);
     exit(EXIT_SUCCESS);
