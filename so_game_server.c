@@ -26,7 +26,7 @@ pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
 int exchange_update=1;
 int clean_garbage=1;
-int hasUsers=0;
+int has_users=0;
 ClientListHead* users;
 uint16_t  port_number_no;
 int server_tcp=-1;
@@ -275,7 +275,7 @@ void* tcp_flow(void* args){
     printf("[New user] Adding client with id %d \n",sock_fd);
     ClientList_insert(users,user);
     ClientList_print(users);
-    hasUsers=1;
+    has_users=1;
     pthread_mutex_unlock(&mutex);
     int ph_len=sizeof(PacketHeader);
     int isActive=1;
@@ -309,7 +309,7 @@ void* tcp_flow(void* args){
     if(del==NULL) goto END;
     Image* user_texture=del->v_texture;
     if (user_texture!=NULL) Image_free(user_texture);
-    if(users->size==0) hasUsers=0;
+    if(users->size==0) has_users=0;
     free(del);
     ClientList_print(users);
     END: pthread_mutex_unlock(&mutex);
@@ -321,7 +321,7 @@ void* tcp_flow(void* args){
 void* udp_receiver(void* args){
     int socket_udp=*(int*)args;
     while(connectivity && exchange_update){
-        if(!hasUsers){
+        if(!has_users){
             sleep(1);
             continue;
         }
@@ -349,7 +349,7 @@ void* udp_receiver(void* args){
 void* udp_sender(void* args){
     int socket_udp=*(int*)args;
     while(connectivity && exchange_update){
-        if(!hasUsers){
+        if(!has_users){
             sleep(1);
             continue;
         }
@@ -436,7 +436,7 @@ void* udp_sender(void* args){
 void* udp_sender(void* args){
     int socket_udp=*(int*)args;
     while(connectivity && exchange_update){
-        if(!hasUsers){
+        if(!has_users){
             sleep(1);
             continue;
         }
@@ -511,7 +511,7 @@ void* garbage_collector(void* args){
     debug_print("[GC] Garbage collector initialized \n");
     int socket_udp=*(int*)args;
     while(clean_garbage){
-        if(hasUsers==0) goto END;
+        if(has_users==0) goto END;
         pthread_mutex_lock(&mutex);
         ClientListItem* client=users->first;
         long current_time=(long)time(NULL);
@@ -528,7 +528,7 @@ void* garbage_collector(void* args){
                 Image* user_texture=del->v_texture;
                 if (user_texture!=NULL) Image_free(user_texture);
                 count++;
-                if(users->size==0) hasUsers=0;
+                if(users->size==0) has_users=0;
                 close(del->id);
                 free(del);
             }
@@ -555,7 +555,7 @@ void* garbage_collector(void* args){
                         Image* user_texture=del->v_texture;
                         if (user_texture!=NULL) Image_free(user_texture);
                         count++;
-                        if(users->size==0) hasUsers=0;
+                        if(users->size==0) has_users=0;
                         close(del->id);
                         free(del);
                         }
