@@ -42,13 +42,13 @@ void Vehicle_init(Vehicle* v, struct World* w, int id, Image* texture);
 
 void Vehicle_reset(Vehicle* v);
 
-void getForces(Vehicle* v, float* translational_update, float* rotational_update);
+void Vehicle_getForcesUpdate(Vehicle* v, float* translational_update, float* rotational_update);
 
-void getXYTheta(Vehicle* v,float* x, float* y, float* theta);
+void Vehicle_getXYTheta(Vehicle* v,float* x, float* y, float* theta);
 
-void setForces(Vehicle* v, float translational_update, float rotational_update);
+void Vehicle_setForcesUpdate(Vehicle* v, float translational_update, float rotational_update);
 
-void setXYTheta(Vehicle* v, float x, float y, float theta);
+void Vehicle_setXYTheta(Vehicle* v, float x, float y, float theta);
 
 int Vehicle_update(Vehicle* v, float dt);
 
