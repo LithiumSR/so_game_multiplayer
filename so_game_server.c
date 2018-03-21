@@ -32,7 +32,7 @@ ClientListHead* users;
 uint16_t  port_number_no;
 int server_tcp=-1;
 int server_udp;
-World serverWorld;
+World server_world;
 
 typedef struct {
     int client_desc;
@@ -148,10 +148,10 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
                 pthread_mutex_unlock(&mutex);
                 PacketHeader pheader;
                 pheader.type=PostDisconnect;
-                IdPacket* idPckt = (IdPacket*)malloc(sizeof(IdPacket));
-                idPckt->header=pheader;
-                int msg_len= Packet_serialize(buf_send, &idPckt->header);
-                idPckt->id=-1;
+                IdPacket* id_pckt = (IdPacket*)malloc(sizeof(IdPacket));
+                id_pckt->header=pheader;
+                int msg_len= Packet_serialize(buf_send, &id_pckt->header);
+                id_pckt->id=-1;
                 int bytes_sent=0;
 				int ret=0;
                 while(bytes_sent<msg_len){
@@ -160,7 +160,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 					ERROR_HELPER(ret,"Can't send map texture over TCP");
 					bytes_sent+=ret;
 				}
-				free(idPckt);
+				free(id_pckt);
 				free(image_packet);
                 return -1;
             }
@@ -249,9 +249,9 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         user->v_texture=user_texture;
         user->inside_world=1;
         Vehicle* vehicle=(Vehicle*) malloc(sizeof(Vehicle));
-        Vehicle_init(vehicle, &serverWorld, id, user->v_texture);
+        Vehicle_init(vehicle, &server_world, id, user->v_texture);
         user->vehicle=vehicle;
-        World_addVehicle(&serverWorld, vehicle);
+        World_addVehicle(&server_world, vehicle);
         debug_print("[Set Texture] AGGIUNTO VEICOLO con id %d",id);
         pthread_mutex_unlock(&mutex);
         debug_print("[Set Texture] Vehicle texture applied to user with id %d \n",id);
@@ -324,7 +324,7 @@ void* tcp_flow(void* args){
     ClientListItem* del=ClientList_detach(users,el);
     if(del==NULL) goto END;
     if(!del->inside_world) goto END;
-    World_detachVehicle(&serverWorld,del->vehicle);
+    World_detachVehicle(&server_world,del->vehicle);
     Vehicle_destroy(del->vehicle);
     free(del->vehicle);
     Image* user_texture=del->v_texture;
@@ -485,7 +485,7 @@ void* udp_sender(void* args){
             sleep(1);
             continue;
         }
-        World_update(&serverWorld);
+        World_update(&server_world);
         wup->updates=(ClientUpdate*)malloc(sizeof(ClientUpdate)*n);
         client= users->first;
         gettimeofday(&wup->time, NULL);
@@ -554,7 +554,7 @@ void* garbage_collector(void* args){
                 ClientListItem* del=ClientList_detach(users,tmp);
                 if (del==NULL) continue;
                 if(!del->inside_world) goto SKIP;
-                World_detachVehicle(&serverWorld,del->vehicle);
+                World_detachVehicle(&server_world,del->vehicle);
                 Vehicle_destroy(del->vehicle);
                 free(del->vehicle);
                 Image* user_texture=del->v_texture;
@@ -585,7 +585,7 @@ void* garbage_collector(void* args){
                         ClientListItem* del=ClientList_detach(users,tmp);
                         if (del==NULL) continue;
                         if(!del->inside_world) goto SKIP2;
-                        World_detachVehicle(&serverWorld,del->vehicle);
+                        World_detachVehicle(&server_world,del->vehicle);
                         Vehicle_destroy(del->vehicle);
                         free(del->vehicle);
                         Image* user_texture=del->v_texture;
@@ -642,7 +642,7 @@ void* tcp_auth(void* args){
 void* world_loop(void* args){
 	debug_print("[WorldLoop] World Update loop initialized \n");
 	while (connectivity){
-		World_update(&serverWorld);
+		World_update(&server_world);
 		usleep(WORLD_LOOP_SLEEP);
 	}
 	pthread_exit(NULL);
@@ -754,7 +754,7 @@ int main(int argc, char **argv) {
     tcpArgs tcp_args;
     tcp_args.surface_texture=surface_texture;
     tcp_args.elevation_texture=surface_elevation;
-    World_init(&serverWorld, surface_elevation, surface_texture,  0.5, 0.5, 0.5);
+    World_init(&server_world, surface_elevation, surface_texture,  0.5, 0.5, 0.5);
 
 
     pthread_t UDP_receiver,UDP_sender,GC_thread,tcp_thread, world_thread;
@@ -800,7 +800,7 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret,"Failed close() on server_tcp socket");
     ret = close(server_udp);
     ERROR_HELPER(ret,"Failed close() on server_udp socket");
-    World_destroy(&serverWorld);
+    World_destroy(&server_world);
     Image_free(surface_elevation);
 	Image_free(surface_texture);
     exit(EXIT_SUCCESS);
