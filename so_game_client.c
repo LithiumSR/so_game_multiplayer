@@ -106,8 +106,10 @@ int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
     VehicleUpdatePacket* vup=(VehicleUpdatePacket*)malloc(sizeof(VehicleUpdatePacket));
     vup->header=ph;
     gettimeofday(&vup->time, NULL);
-    getForcesUpdate(vehicle,&(vup->translational_force),&(vup->rotational_force));
-    getXYTheta(vehicle,&(vup->x),&(vup->y),&(vup->theta));
+    sem_wait(&vehicle->ext_sem);
+    Vehicle_getForcesUpdate(vehicle,&(vup->translational_force),&(vup->rotational_force));
+    Vehicle_getXYTheta(vehicle,&(vup->x),&(vup->y),&(vup->theta));
+    sem_post(&vehicle->ext_sem);
     vup->id=id;
     int size=Packet_serialize(buf_send, &vup->header);
     int bytes_sent = sendto(socket_udp, buf_send, size, 0, (const struct sockaddr *) &server_addr,(socklen_t) serverlen);
@@ -198,8 +200,9 @@ void* udp_receiver(void* args){
         char mask[WORLDSIZE];
         for(int k=0;k<WORLDSIZE;k++) mask[k]=NO_ACCESS;
         float x,y,theta;
-        getXYTheta(vehicle,&x,&y,&theta);
-
+        sem_wait(&vehicle->ext_sem);
+        Vehicle_getXYTheta(vehicle,&x,&y,&theta);
+		sem_post(&vehicle->ext_sem);
         #ifdef _USE_CACHED_TEXTURE_
         int ignored=0;
 
@@ -218,9 +221,12 @@ void* udp_receiver(void* args){
                     Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                     Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                     lw->vehicles[new_position]=new_vehicle;
-                    setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                    setForcesUpdate(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+		    sem_wait(&lw->vehicles[new_position]->ext_sem);
+                    Vehicle_setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                    Vehicle_setForcesUpdate(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                     World_addVehicle(&world, new_vehicle);
+                    World_manualUpdate(&world,lw->vehicles[new_position],wup->time);
+                    sem_post(&lw->vehicles[new_position]->ext_sem);
                     lw->isDisabled[new_position]=0; //Just to play safe
                     lw->hasVehicle[new_position]=1;
                 }
@@ -241,9 +247,12 @@ void* udp_receiver(void* args){
                         Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                         Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                         lw->vehicles[id_struct]=new_vehicle;
-                        setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                        setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+                        sem_wait(&lw->vehicles[id_struct]->ext_sem);
+                        Vehicle_setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                        Vehicle_setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                         World_addVehicle(&world, new_vehicle);
+                        World_manualUpdate(&world,lw->vehicles[id_struct],wup->time);
+                        sem_post(&lw->vehicles[id_struct]->ext_sem);
                         lw->hasVehicle[id_struct]=1;
                         lw->isDisabled[id_struct]=0;
                         continue;
@@ -253,17 +262,23 @@ void* udp_receiver(void* args){
                             printf("[INFO] Reusing old texture \n");
                             fprintf(stdout,"Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                             Vehicle* old_vehicle=lw->vehicles[id_struct];
-                            setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                            setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+                            sem_wait(&lw->vehicles[id_struct]->ext_sem);
+                            Vehicle_setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                            Vehicle_setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                             World_addVehicle(&world, old_vehicle);
+                            World_manualUpdate(&world,lw->vehicles[id_struct],wup->time);
+                            sem_post(&lw->vehicles[id_struct]->ext_sem);
                             lw->isDisabled[id_struct]=0;
                             //lw->hasVehicle[id_struct]=1;
                         }
                         else {
                             printf("[INFO] Updating vehicles  \n");
                             fprintf(stdout,"Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                            setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                            setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+                            sem_wait(&lw->vehicles[id_struct]->ext_sem);
+                            Vehicle_setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                            Vehicle_setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+                            World_manualUpdate(&world,lw->vehicles[id_struct],wup->time);
+                            sem_post(&lw->vehicles[id_struct]->ext_sem);
                             //lw->isDisabled[id_struct]=0;
                             //lw->hasVehicle[id_struct]=1;
                         }
@@ -327,10 +342,13 @@ void* udp_receiver(void* args){
                 if (img==NULL) continue;
                 Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                 Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
+                sem_wait(&lw->vehicles[new_position]->ext_sem);
                 lw->vehicles[new_position]=new_vehicle;
-                setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                setForcesUpdate(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+                Vehicle_setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                Vehicle_setForcesUpdate(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                 World_addVehicle(&world, new_vehicle);
+                World_manualUpdate(&world,lw->vehicles[new_position],wup->time);
+                sem_post(&lw->vehicles[new_position]->ext_sem);
                 lw->hasVehicle[new_position]=1;
             }
             else {
@@ -350,15 +368,21 @@ void* udp_receiver(void* args){
                     Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                     Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                     lw->vehicles[id_struct]=new_vehicle;
-                    setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                    setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+                    sem_wait(&lw->vehicles[id_struct]->ext_sem);
+                    Vehicle_setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                    Vehicle_setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                     World_addVehicle(&world, new_vehicle);
+                    World_manualUpdate(&world,lw->vehicles[id_struct],wup->time);
+                    sem_post(&lw->vehicles[id_struct]->ext_sem);
                     lw->hasVehicle[id_struct]=1;
                     continue;
                 }
                 fprintf(stdout,"Updating Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-                setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+                sem_wait(&lw->vehicles[id_struct]->ext_sem);
+                Vehicle_setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+                Vehicle_setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
+                World_manualUpdate(&world,lw->vehicles[id_struct],wup->time);
+                sem_post(&lw->vehicles[id_struct]->ext_sem);
             }
         }
 

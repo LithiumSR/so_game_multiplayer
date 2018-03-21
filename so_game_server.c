@@ -94,8 +94,11 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
                 return 0;
             }
             if(!(client->last_update_time.tv_sec==-1 || timercmp(&vup->time,&client->last_update_time,>))) goto END;
-            setForcesUpdate(client->vehicle,vup->translational_force,vup->rotational_force);
-            setXYTheta(client->vehicle,vup->x,vup->y,vup->theta);
+            sem_wait(&client->vehicle->ext_sem);
+            Vehicle_setForcesUpdate(client->vehicle,vup->translational_force,vup->rotational_force);
+            Vehicle_setXYTheta(client->vehicle,vup->x,vup->y,vup->theta);
+            World_manualUpdate(&serverWorld,client->vehicle,vup->time);
+            sem_post(&client->vehicle->ext_sem);
             client->user_addr=client_addr;
             client->isAddrReady=1;
             client->last_update_time=vup->time;
@@ -144,8 +147,8 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
             im_head.type=PostTexture;
             pthread_mutex_lock(&mutex);
             ClientListItem* el=ClientList_find_by_id(users,image_request->id);
+
             if (el==NULL && !el->insideWorld) {
-                pthread_mutex_unlock(&mutex);
                 PacketHeader pheader;
                 pheader.type=PostDisconnect;
                 IdPacket* idPckt = (IdPacket*)malloc(sizeof(IdPacket));
@@ -162,11 +165,12 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 				}
 				free(idPckt);
 				free(image_packet);
+				pthread_mutex_unlock(&mutex);
                 return -1;
             }
+            pthread_mutex_unlock(&mutex);
             image_packet->id=image_request->id;
             image_packet->image=el->v_texture;
-            pthread_mutex_unlock(&mutex);
             image_packet->header=im_head;
             int msg_len= Packet_serialize(buf_send, &image_packet->header);
             debug_print("[Send Vehicle Texture] bytes written in the buffer: %d\n", msg_len);
@@ -229,7 +233,6 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
     else if(header->type==PostTexture){
         ImagePacket* deserialized_packet = (ImagePacket*)Packet_deserialize(buf_rcv, header->size);
         Image* user_texture=deserialized_packet->image;
-
         pthread_mutex_lock(&mutex);
         ClientListItem* user= ClientList_find_by_id(users,deserialized_packet->id);
         ClientList_print(users);
@@ -252,7 +255,6 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         Vehicle_init(vehicle, &serverWorld, id, user->v_texture);
         user->vehicle=vehicle;
         World_addVehicle(&serverWorld, vehicle);
-        debug_print("[Set Texture] AGGIUNTO VEICOLO con id %d",id);
         pthread_mutex_unlock(&mutex);
         debug_print("[Set Texture] Vehicle texture applied to user with id %d \n",id);
         free(deserialized_packet);
@@ -395,8 +397,10 @@ void* udp_sender(void* args){
             ClientListItem* check=users->first;
             while(check!=NULL){
                 if(check->insideWorld && check->isAddrReady){
-                    getXYTheta(check->vehicle,&check->x,&check->y,&check->theta);
-                    getForcesUpdate(check->vehicle,&check->translational_force,&check->rotational_force);
+		    sem_wait(&client->vehicle->ext_sem);
+                    Vehicle_getXYTheta(check->vehicle,&check->x,&check->y,&check->theta);
+                    Vehicle_getForcesUpdate(check->vehicle,&check->translational_force,&check->rotational_force);
+                    sem_post(&client->vehicle->ext_sem);
                 }
                 check=check->next;
             }
@@ -500,8 +504,10 @@ void* udp_sender(void* args){
                 client->forceRefresh=0;
             }
             else cup->forceRefresh=0;
-            getXYTheta(client->vehicle,&(client->x),&(client->y),&(cup->theta));
-            getForcesUpdate(client->vehicle,&(client->translational_force),&(client->rotational_force));
+            sem_wait(&client->vehicle->ext_sem);
+            Vehicle_getXYTheta(client->vehicle,&(client->x),&(client->y),&(cup->theta));
+            Vehicle_getForcesUpdate(client->vehicle,&(client->translational_force),&(client->rotational_force));
+            sem_post(&client->vehicle->ext_sem);
             cup->id=client->id;
             cup->x=client->x;
             cup->y=client->y;
@@ -769,7 +775,7 @@ int main(int argc, char **argv) {
     ret = pthread_create(&world_thread, NULL,world_loop, NULL);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on world_loop thread failed");
     fprintf(stdout,"[Main] World created. Now waiting for clients to connect... \n");
-    fflush(stdoud);
+    fflush(stdout);
 
     //Wait for threads to finish
     
