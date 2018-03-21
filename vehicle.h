@@ -14,7 +14,7 @@ typedef struct Vehicle {
   struct World* world;
   Image* texture;
   sem_t vsem;
-  sem_t ext_sem;
+  pthread_mutex_t mutex;
 
   // these are the forces that will be applied after the update and the critical section
   float translational_force_update;

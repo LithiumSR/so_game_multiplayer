@@ -88,19 +88,19 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
                 return -1;
             }
 
-            if(!client->insideWorld){
+            if(!client->inside_world){
                 debug_print("[Info] Skipping update of a vehicle that isn't inside the world simulation \n");
                 pthread_mutex_unlock(&mutex);
                 return 0;
             }
             if(!(client->last_update_time.tv_sec==-1 || timercmp(&vup->time,&client->last_update_time,>))) goto END;
-            sem_wait(&client->vehicle->ext_sem);
+            pthread_mutex_lock(&client->vehicle->mutex);
             Vehicle_setForcesUpdate(client->vehicle,vup->translational_force,vup->rotational_force);
             Vehicle_setXYTheta(client->vehicle,vup->x,vup->y,vup->theta);
             World_manualUpdate(&serverWorld,client->vehicle,vup->time);
-            sem_post(&client->vehicle->ext_sem);
+            pthread_mutex_unlock(&client->vehicle->mutex);
             client->user_addr=client_addr;
-            client->isAddrReady=1;
+            client->is_addr_ready=1;
             client->last_update_time=vup->time;
             END: pthread_mutex_unlock(&mutex);
             fprintf(stdout,"[UDP_Receiver] Applied VehicleUpdatePacket with force_translational_update: %f force_rotation_update: %f.. \n",vup->translational_force,vup->rotational_force);
@@ -148,7 +148,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
             pthread_mutex_lock(&mutex);
             ClientListItem* el=ClientList_find_by_id(users,image_request->id);
 
-            if (el==NULL && !el->insideWorld) {
+            if (el==NULL && !el->inside_world) {
                 PacketHeader pheader;
                 pheader.type=PostDisconnect;
                 IdPacket* idPckt = (IdPacket*)malloc(sizeof(IdPacket));
@@ -244,16 +244,16 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
              Packet_free(&(deserialized_packet->header));
             return -1;
         }
-        if (user->insideWorld) {
+        if (user->inside_world) {
             pthread_mutex_unlock(&mutex);
             Packet_free(&(deserialized_packet->header));
             return 0;
             }
         user->v_texture=user_texture;
-        user->insideWorld=1;
         Vehicle* vehicle=(Vehicle*) malloc(sizeof(Vehicle));
         Vehicle_init(vehicle, &serverWorld, id, user->v_texture);
         user->vehicle=vehicle;
+        user->inside_world=1;
         World_addVehicle(&serverWorld, vehicle);
         pthread_mutex_unlock(&mutex);
         debug_print("[Set Texture] Vehicle texture applied to user with id %d \n",id);
@@ -282,9 +282,9 @@ void* tcp_flow(void* args){
     user->v_texture = NULL;
     gettimeofday(&user->creation_time, NULL);
     user->id=sock_fd;
-    user->isAddrReady=0;
-    user->forceRefresh=1;
-    user->insideWorld=0;
+    user->is_addr_ready=0;
+    user->force_refresh=1;
+    user->inside_world=0;
     user->v_texture=NULL;
     user->vehicle=NULL;
     user->prev_x=-1;
@@ -325,7 +325,7 @@ void* tcp_flow(void* args){
     if(el==NULL) goto END;
     ClientListItem* del=ClientList_detach(users,el);
     if(del==NULL) goto END;
-    if(!del->insideWorld) goto END;
+    if(!del->inside_world) goto END;
     World_detachVehicle(&serverWorld,del->vehicle);
     Vehicle_destroy(del->vehicle);
     free(del->vehicle);
@@ -383,7 +383,7 @@ void* udp_sender(void* args){
         gettimeofday(&time,NULL);
         while(client!=NULL){
             char buf_send[BUFFERSIZE];
-            if (client->isAddrReady!=1 || !client->insideWorld) {
+            if (client->is_addr_ready!=1 || !client->inside_world) {
                 client=client->next;
                 continue;
             }
@@ -396,19 +396,19 @@ void* udp_sender(void* args){
             //refresh list x,y,theta before proceding
             ClientListItem* check=users->first;
             while(check!=NULL){
-                if(check->insideWorld && check->isAddrReady){
-		    sem_wait(&client->vehicle->ext_sem);
+                if(check->inside_world && check->is_addr_ready){
+					pthread_mutex_lock(&client->vehicle->mutex);
                     Vehicle_getXYTheta(check->vehicle,&check->x,&check->y,&check->theta);
                     Vehicle_getForcesUpdate(check->vehicle,&check->translational_force,&check->rotational_force);
-                    sem_post(&client->vehicle->ext_sem);
+                    pthread_mutex_unlock(&client->vehicle->mutex);
                 }
                 check=check->next;
             }
             //find num of eligible clients to receive the worldUpdatePacket
             ClientListItem* tmp= users->first;
             while(tmp!=NULL){
-                if(tmp->isAddrReady && tmp->insideWorld && tmp->id==client->id) n++;
-                else if(tmp->isAddrReady && tmp->insideWorld && (abs(tmp->x-client->x)<=HIDE_RANGE && abs(tmp->y-client->y)<=HIDE_RANGE)) {
+                if(tmp->is_addr_ready && tmp->inside_world && tmp->id==client->id) n++;
+                else if(tmp->is_addr_ready && tmp->inside_world && (abs(tmp->x-client->x)<=HIDE_RANGE && abs(tmp->y-client->y)<=HIDE_RANGE)) {
                     n++;
                 }
                 tmp=tmp->next;
@@ -426,16 +426,16 @@ void* udp_sender(void* args){
             int k=0;
             //Place data in the WorldUpdatePacket
             while(tmp!=NULL){
-                if(!(tmp->isAddrReady && tmp->insideWorld && (abs(tmp->x-client->x)<=HIDE_RANGE && abs(tmp->y-client->y)<=HIDE_RANGE))) {
+                if(!(tmp->is_addr_ready && tmp->inside_world && (abs(tmp->x-client->x)<=HIDE_RANGE && abs(tmp->y-client->y)<=HIDE_RANGE))) {
                     tmp=tmp->next;
                     continue;
                 }
                 ClientUpdate* cup= &(wup->updates[k]);
-                if(tmp->forceRefresh==1) {
-                    cup->forceRefresh=1;
-                    tmp->forceRefresh=0;
+                if(tmp->force_refresh==1) {
+                    cup->force_refresh=1;
+                    tmp->force_refresh=0;
                 }
-                else cup->forceRefresh=0;
+                else cup->force_refresh=0;
                 cup->y=tmp->y;
                 cup->x=tmp->x;
                 cup->theta=tmp->theta;
@@ -480,7 +480,7 @@ void* udp_sender(void* args){
         int n;
         ClientListItem* client= users->first;
         for(n=0;client!=NULL;client=client->next){
-            if(client->isAddrReady && client->insideWorld) n++;
+            if(client->is_addr_ready && client->inside_world) n++;
         }
         wup->num_vehicles=n;
         fprintf(stdout,"[UDP_Sender] Creating WorldUpdatePacket containing info about %d users \n",n);
@@ -494,20 +494,20 @@ void* udp_sender(void* args){
         client= users->first;
         gettimeofday(&wup->time, NULL);
         for(int i=0;client!=NULL;i++){
-            if(!(client->isAddrReady && client->insideWorld)) {
+            if(!(client->is_addr_ready && client->inside_world)) {
                 client = client->next;
                 continue;
             }
             ClientUpdate* cup= &(wup->updates[i]);
-            if(client->forceRefresh==1) {
-                cup->forceRefresh=1;
-                client->forceRefresh=0;
+            if(client->force_refresh==1) {
+                cup->force_refresh=1;
+                client->force_refresh=0;
             }
-            else cup->forceRefresh=0;
-            sem_wait(&client->vehicle->ext_sem);
+            else cup->force_refresh=0;
+            pthread_mutex_lock(&client->vehicle->mutex);
             Vehicle_getXYTheta(client->vehicle,&(client->x),&(client->y),&(cup->theta));
             Vehicle_getForcesUpdate(client->vehicle,&(client->translational_force),&(client->rotational_force));
-            sem_post(&client->vehicle->ext_sem);
+            pthread_mutex_unlock(&client->vehicle->mutex);
             cup->id=client->id;
             cup->x=client->x;
             cup->y=client->y;
@@ -525,7 +525,7 @@ void* udp_sender(void* args){
 			}
         client=users->first;
         while(client!=NULL){
-            if(client->isAddrReady==1 && client->insideWorld){
+            if(client->is_addr_ready==1 && client->inside_world){
                     int ret = sendto(socket_udp, buf_send, size, 0, (struct sockaddr*) &client->user_addr, (socklen_t) sizeof(client->user_addr));
                     debug_print("[UDP_Send] Sent WorldUpdate of %d bytes to client with id %d \n",ret,client->id);
                 }
@@ -553,13 +553,13 @@ void* garbage_collector(void* args){
         while(client!=NULL){
             long creation_time=(long)client->creation_time.tv_sec;
             long last_update_time=(long)client->last_update_time.tv_sec;
-            if((client->isAddrReady==1 && (current_time-last_update_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE) || (client->isAddrReady!=1 && (current_time-creation_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE)){
+            if((client->is_addr_ready==1 && (current_time-last_update_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE) || (client->is_addr_ready!=1 && (current_time-creation_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE)){
                 ClientListItem* tmp=client;
                 client=client->next;
                 sendDisconnect(socket_udp,tmp->user_addr);
                 ClientListItem* del=ClientList_detach(users,tmp);
                 if (del==NULL) continue;
-                if(!del->insideWorld) goto SKIP;
+                if(!del->inside_world) goto SKIP;
                 World_detachVehicle(&serverWorld,del->vehicle);
                 Vehicle_destroy(del->vehicle);
                 free(del->vehicle);
@@ -570,7 +570,7 @@ void* garbage_collector(void* args){
                 SKIP: close(del->id);
                 free(del);
             }
-            else if (client->isAddrReady==1) {
+            else if (client->is_addr_ready==1) {
                 int x,prev_x,y,prev_y;
                 x=(int)client->x;
                 y=(int)client->y;
@@ -590,7 +590,7 @@ void* garbage_collector(void* args){
                         sendDisconnect(socket_udp,tmp->user_addr);
                         ClientListItem* del=ClientList_detach(users,tmp);
                         if (del==NULL) continue;
-                        if(!del->insideWorld) goto SKIP2;
+                        if(!del->inside_world) goto SKIP2;
                         World_detachVehicle(&serverWorld,del->vehicle);
                         Vehicle_destroy(del->vehicle);
                         free(del->vehicle);
