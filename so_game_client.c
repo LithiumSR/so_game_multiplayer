@@ -305,20 +305,20 @@ int main(int argc, char **argv) {
     ERROR_HELPER(ret,"Error: cannot handle SIGINT");
 
     //setting up localWorld
-    localWorld* my_local_world = (localWorld*)malloc(sizeof(localWorld));
-    my_local_world->vehicles=(Vehicle**)malloc(sizeof(Vehicle*)*WORLDSIZE);
+    localWorld* local_world = (localWorld*)malloc(sizeof(localWorld));
+    local_world->vehicles=(Vehicle**)malloc(sizeof(Vehicle*)*WORLDSIZE);
     for(int i=0;i<WORLDSIZE;i++){
-        my_local_world->ids[i]=-1;
-        my_local_world->has_vehicle[i]=0;
+        local_world->ids[i]=-1;
+        local_world->has_vehicle[i]=0;
         #ifdef _USE_CACHE_TEXTURE_
-        my_local_world->isDisabled[i]=0;
+        local_world->isDisabled[i]=0;
         #endif
     }
 
     //Talk with server
     fprintf(stdout,"[Main] Starting ID,map_elevation,map_texture requests \n");
     id=getID(socket_desc);
-    my_local_world->ids[0]=id;
+    local_world->ids[0]=id;
     fprintf(stdout,"[Main] ID number %d received \n",id);
     Image* surface_elevation=getElevationMap(socket_desc);
     fprintf(stdout,"[Main] Map elevation received \n");
@@ -334,8 +334,8 @@ int main(int argc, char **argv) {
     vehicle=(Vehicle*) malloc(sizeof(Vehicle));
     Vehicle_init(vehicle, &world, id, my_texture);
     World_addVehicle(&world, vehicle);
-    my_local_world->vehicles[0]=vehicle;
-    my_local_world->has_vehicle[0]=1;
+    local_world->vehicles[0]=vehicle;
+    local_world->has_vehicle[0]=1;
     if(SINGLEPLAYER) goto SKIP;
 
     //UDP Init
@@ -354,7 +354,7 @@ int main(int argc, char **argv) {
     udp_args.socket_tcp=socket_desc;
     udp_args.server_addr=udp_server;
     udp_args.socket_udp=socket_udp;
-    udp_args.lw=my_local_world;
+    udp_args.lw=local_world;
     ret = pthread_create(&UDP_sender, NULL, udp_sender, &udp_args);
     PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_sender");
     ret = pthread_create(&UDP_receiver, NULL, udp_receiver, &udp_args);
@@ -384,19 +384,19 @@ int main(int argc, char **argv) {
     //Clean resources
 
     for(int i=0;i<WORLDSIZE;i++){
-        if(my_local_world->ids[i]==-1) continue;
+        if(local_world->ids[i]==-1) continue;
         if(i==0) continue;
-        my_local_world->users_online--;
-        if(!my_local_world->has_vehicle[i]) continue;
-        Image* im=my_local_world->vehicles[i]->texture;
-        World_detachVehicle(&world,my_local_world->vehicles[i]);
+        local_world->users_online--;
+        if(!local_world->has_vehicle[i]) continue;
+        Image* im=local_world->vehicles[i]->texture;
+        World_detachVehicle(&world,local_world->vehicles[i]);
         if (im!=NULL) Image_free(im);
-        Vehicle_destroy(my_local_world->vehicles[i]);
-        free(my_local_world->vehicles[i]);
+        Vehicle_destroy(local_world->vehicles[i]);
+        free(local_world->vehicles[i]);
     }
 
-    free(my_local_world->vehicles);
-    free(my_local_world);
+    free(local_world->vehicles);
+    free(local_world);
     ret=close(socket_desc);
     ERROR_HELPER(ret,"Failed to close TCP socket");
     if (!SINGLEPLAYER) ret=close(socket_udp);

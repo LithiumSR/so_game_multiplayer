@@ -145,10 +145,10 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
                 pthread_mutex_unlock(&mutex);
                 PacketHeader pheader;
                 pheader.type=PostDisconnect;
-                IdPacket* idPckt = (IdPacket*)malloc(sizeof(IdPacket));
-                idPckt->header=pheader;
-                int msg_len= Packet_serialize(buf_send, &idPckt->header);
-                idPckt->id=-1;
+                IdPacket* id_pckt = (IdPacket*)malloc(sizeof(IdPacket));
+                id_pckt->header=pheader;
+                int msg_len= Packet_serialize(buf_send, &id_pckt->header);
+                id_pckt->id=-1;
                 int bytes_sent=0;
 				int ret=0;
                 while(bytes_sent<msg_len){
@@ -157,7 +157,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 					ERROR_HELPER(ret,"Can't send map texture over TCP");
 					bytes_sent+=ret;
 				}
-				free(idPckt);
+				free(id_pckt);
 				free(image_packet);
                 return -1;
             }
