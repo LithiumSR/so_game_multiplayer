@@ -14,6 +14,7 @@ typedef struct Vehicle {
   struct World* world;
   Image* texture;
   sem_t vsem;
+  sem_t ext_sem;
 
   // these are the forces that will be applied after the update and the critical section
   float translational_force_update;
@@ -42,19 +43,15 @@ void Vehicle_init(Vehicle* v, struct World* w, int id, Image* texture);
 
 void Vehicle_reset(Vehicle* v);
 
-void getForces(Vehicle* v, float* translational_update, float* rotational_update);
+void Vehicle_getXYTheta(Vehicle* v,float* x, float* y, float* theta);
 
-void getXYTheta(Vehicle* v,float* x, float* y, float* theta);
-
-void setForces(Vehicle* v, float translational_update, float rotational_update);
-
-void setXYTheta(Vehicle* v, float x, float y, float theta);
+void Vehicle_setXYTheta(Vehicle* v, float x, float y, float theta);
 
 int Vehicle_update(Vehicle* v, float dt);
 
-void getForcesUpdate(Vehicle* v, float* translational_update, float* rotational_update);
+void Vehicle_getForcesUpdate(Vehicle* v, float* translational_update, float* rotational_update);
 
-void setForcesUpdate(Vehicle* v, float translational_update, float rotational_update);
+void Vehicle_setForcesUpdate(Vehicle* v, float translational_update, float rotational_update);
 
 
 void Vehicle_destroy(Vehicle* v);
