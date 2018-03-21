@@ -114,7 +114,7 @@ int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
     Packet_free(&(vup->header));
     struct timeval current_time;
     gettimeofday(&current_time, NULL);
-    if(last_update_time.tv_sec!=-1) offline_server_counter++;
+    if(last_update_time.tv_sec==-1) offline_server_counter++;
     if(offline_server_counter>=MAX_FAILED_ATTEMPTS) {
         connectivity=0;
         exchange_update=0;
@@ -128,7 +128,7 @@ int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
         fprintf(stdout,"[WARNING] Server is not avaiable. Terminating the client now...");
         exit(0);
     }
-    else offline_server_counter=0;
+    else if(last_update_time.tv_sec!=-1) offline_server_counter=0;
     
     if(bytes_sent<0) return -1;
     return 0;
