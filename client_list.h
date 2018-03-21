@@ -10,10 +10,10 @@ typedef struct ClientListItem {
   struct sockaddr_in user_addr;
   struct timeval last_update_time;
   struct timeval  creation_time;
-  char isAddrReady;
+  char is_addr_ready;
   int afk_counter;
-  char forceRefresh;
-  char insideWorld;
+  char force_refresh;
+  char inside_world;
   Vehicle* vehicle;
   Image * v_texture;
   float rotational_force,translational_force;
