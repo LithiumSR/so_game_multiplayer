@@ -94,8 +94,8 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
                 return 0;
             }
             if(!(client->last_update_time.tv_sec==-1 || timercmp(&vup->time,&client->last_update_time,>))) goto END;
-            setForcesUpdate(client->vehicle,vup->translational_force,vup->rotational_force);
-            setXYTheta(client->vehicle,vup->x,vup->y,vup->theta);
+            Vehicle_setForcesUpdate(client->vehicle,vup->translational_force,vup->rotational_force);
+            Vehicle_setXYTheta(client->vehicle,vup->x,vup->y,vup->theta);
             client->user_addr=client_addr;
             client->isAddrReady=1;
             client->last_update_time=vup->time;
@@ -395,8 +395,8 @@ void* udp_sender(void* args){
             ClientListItem* check=users->first;
             while(check!=NULL){
                 if(check->insideWorld && check->isAddrReady){
-                    getXYTheta(check->vehicle,&check->x,&check->y,&check->theta);
-                    getForcesUpdate(check->vehicle,&check->translational_force,&check->rotational_force);
+                    Vehicle_getXYTheta(check->vehicle,&check->x,&check->y,&check->theta);
+                    Vehicle_getForcesUpdate(check->vehicle,&check->translational_force,&check->rotational_force);
                 }
                 check=check->next;
             }
@@ -500,8 +500,8 @@ void* udp_sender(void* args){
                 client->forceRefresh=0;
             }
             else cup->forceRefresh=0;
-            getXYTheta(client->vehicle,&(client->x),&(client->y),&(cup->theta));
-            getForcesUpdate(client->vehicle,&(client->translational_force),&(client->rotational_force));
+            Vehicle_getXYTheta(client->vehicle,&(client->x),&(client->y),&(cup->theta));
+            Vehicle_getForcesUpdate(client->vehicle,&(client->translational_force),&(client->rotational_force));
             cup->id=client->id;
             cup->x=client->x;
             cup->y=client->y;
