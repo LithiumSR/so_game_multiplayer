@@ -132,7 +132,6 @@ int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
         exit(0);
     }
     else if(last_update_time.tv_sec!=-1) offline_server_counter=0;
-    
     if(bytes_sent<0) return -1;
     return 0;
 }
@@ -197,19 +196,19 @@ void* udp_receiver(void* args){
         WorldUpdatePacket* wup = (WorldUpdatePacket*)Packet_deserialize(buf_rcv, bytes_read);
         debug_print("WorldUpdatePacket contains %d vehicles besides mine \n",wup->num_vehicles-1);
         if (last_update_time.tv_sec!=-1 && timercmp(&last_update_time,&wup->time,>=)){
-			fprintf(stdout,"[INFO] Ignoring a WorldUpdatePacket... \n");
-			Packet_free(&wup->header);
-			usleep(RECEIVER_SLEEP);
-            continue;
-		}
-		
-		last_update_time=wup->time;	
+			    fprintf(stdout,"[INFO] Ignoring a WorldUpdatePacket... \n");
+			    Packet_free(&wup->header);
+			    usleep(RECEIVER_SLEEP);
+          continue;
+		    }
+		    last_update_time=wup->time;	
         char mask[WORLDSIZE];
         for(int k=0;k<WORLDSIZE;k++) mask[k]=NO_ACCESS;
         float x,y,theta;
         pthread_mutex_lock(&vehicle->mutex);
         Vehicle_getXYTheta(vehicle,&x,&y,&theta);
-		pthread_mutex_unlock(&vehicle->mutex);
+		    pthread_mutex_unlock(&vehicle->mutex);
+      
         #ifdef _USE_CACHED_TEXTURE_
         int ignored=0;
 
@@ -228,7 +227,7 @@ void* udp_receiver(void* args){
                     Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
                     Vehicle_init(new_vehicle,&world,wup->updates[i].id,img);
                     lw->vehicles[new_position]=new_vehicle;
-					pthread_mutex_lock(&lw->vehicles[new_position]->mutex);
+					          pthread_mutex_lock(&lw->vehicles[new_position]->mutex);
                     Vehicle_setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
                     Vehicle_setForcesUpdate(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
                     World_addVehicle(&world, new_vehicle);

@@ -147,7 +147,6 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
             im_head.type=PostTexture;
             pthread_mutex_lock(&mutex);
             ClientListItem* el=ClientList_find_by_id(users,image_request->id);
-
             if (el==NULL && !el->inside_world) {
                 PacketHeader pheader;
                 pheader.type=PostDisconnect;
@@ -156,16 +155,16 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
                 int msg_len= Packet_serialize(buf_send, &id_pckt->header);
                 id_pckt->id=-1;
                 int bytes_sent=0;
-				int ret=0;
+				        int ret=0;
                 while(bytes_sent<msg_len){
-					ret=send(socket_desc,buf_send+bytes_sent,msg_len-bytes_sent,0);
-					if (ret==-1 && errno==EINTR) continue;
-					ERROR_HELPER(ret,"Can't send map texture over TCP");
-					bytes_sent+=ret;
-				}
-				free(id_pckt);
-				free(image_packet);
-				pthread_mutex_unlock(&mutex);
+				        	ret=send(socket_desc,buf_send+bytes_sent,msg_len-bytes_sent,0);
+				        	if (ret==-1 && errno==EINTR) continue;
+				         	ERROR_HELPER(ret,"Can't send map texture over TCP");
+			        		bytes_sent+=ret;
+			        	}
+				        free(id_pckt);
+				        free(image_packet);
+				        pthread_mutex_unlock(&mutex);
                 return -1;
             }
             pthread_mutex_unlock(&mutex);
@@ -397,7 +396,7 @@ void* udp_sender(void* args){
             ClientListItem* check=users->first;
             while(check!=NULL){
                 if(check->inside_world && check->is_addr_ready){
-					pthread_mutex_lock(&client->vehicle->mutex);
+					          pthread_mutex_lock(&client->vehicle->mutex);
                     Vehicle_getXYTheta(check->vehicle,&check->x,&check->y,&check->theta);
                     Vehicle_getForcesUpdate(check->vehicle,&check->translational_force,&check->rotational_force);
                     pthread_mutex_unlock(&client->vehicle->mutex);
