@@ -192,8 +192,14 @@ void* udp_receiver(void* args){
             exit(-1);
         }
         WorldUpdatePacket* wup = (WorldUpdatePacket*)Packet_deserialize(buf_rcv, bytes_read);
-        debug_print("WorldUpdatePacket contains %d vehicles besides mine \n",wup->num_vehicles-1);
-        last_update_time=wup->time;
+        if (last_update_time.tv_sec!=-1 && timercmp(&last_update_time,&wup->time,>=)){
+			fprintf(stdout,"[INFO] Ignoring a WorldUpdatePacket... \n");
+			Packet_free(&wup->header);
+			usleep(RECEIVER_SLEEP);
+            continue;
+		}
+		last_update_time=wup->time;	
+		debug_print("WorldUpdatePacket contains %d vehicles besides mine \n",wup->num_vehicles-1);
         char mask[WORLDSIZE];
         for(int k=0;k<WORLDSIZE;k++) mask[k]=NO_ACCESS;
         float x,y,theta;
