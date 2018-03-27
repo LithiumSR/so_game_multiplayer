@@ -202,7 +202,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 			ERROR_HELPER(ret,"Can't send map texture over TCP");
 			if (ret==0) break;
 			bytes_sent+=ret;
-            }
+		}
         free(image_packet);
         debug_print("[Send Map Texture] Sent %d bytes \n",bytes_sent);
         return 0;
@@ -225,7 +225,8 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 			ERROR_HELPER(ret,"Can't send map elevation over TCP");
 			if (ret==0) break;
 			bytes_sent+=ret;
-            }
+		}
+		
         free(image_packet);
         debug_print("[Send Map Elevation] Sent %d bytes \n",bytes_sent);
         return 0;
@@ -241,14 +242,14 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
         if (user==NULL){
             debug_print("[Set Texture] User not found \n");
             pthread_mutex_unlock(&mutex);
-             Packet_free(&(deserialized_packet->header));
+            Packet_free(&(deserialized_packet->header));
             return -1;
         }
         if (user->inside_world) {
             pthread_mutex_unlock(&mutex);
             Packet_free(&(deserialized_packet->header));
             return 0;
-            }
+		}
         user->v_texture=user_texture;
         Vehicle* vehicle=(Vehicle*) malloc(sizeof(Vehicle));
         Vehicle_init(vehicle, &server_world, id, user->v_texture);
@@ -301,12 +302,11 @@ void* tcp_flow(void* args){
         int msg_len=0;
         char buf_rcv[BUFFERSIZE];
         while(msg_len<ph_len){
-            int ret=recv(sock_fd, buf_rcv+msg_len, ph_len-msg_len, 0);
+			int ret=recv(sock_fd, buf_rcv+msg_len, ph_len-msg_len, 0);
             if (ret==-1 && errno == EINTR) continue;
             else if (ret<=0) goto EXIT;
             msg_len+=ret;
-            }
-
+        }
         PacketHeader* header=(PacketHeader*)buf_rcv;
         int size_remaining=header->size-ph_len;
         msg_len=0;
@@ -315,7 +315,7 @@ void* tcp_flow(void* args){
             if (ret==-1 && errno == EINTR) continue;
             else if(ret<=0) goto EXIT;
             msg_len+=ret;
-            }
+		}
         int ret=TCP_Handler(sock_fd,buf_rcv,tcp_args->surface_texture,tcp_args->elevation_texture,tcp_args->client_desc,&isActive);
         if (ret==-1) ClientList_print(users);
     }
@@ -522,15 +522,15 @@ void* udp_sender(void* args){
             pthread_mutex_unlock(&mutex);
             sleep(1);
             continue;
-			}
+        }
         client=users->first;
         while(client!=NULL){
             if(client->is_addr_ready==1 && client->inside_world){
-                    int ret = sendto(socket_udp, buf_send, size, 0, (struct sockaddr*) &client->user_addr, (socklen_t) sizeof(client->user_addr));
-                    debug_print("[UDP_Send] Sent WorldUpdate of %d bytes to client with id %d \n",ret,client->id);
-                }
-            client=client->next;
-            }
+				int ret = sendto(socket_udp, buf_send, size, 0, (struct sockaddr*) &client->user_addr, (socklen_t) sizeof(client->user_addr));
+				debug_print("[UDP_Send] Sent WorldUpdate of %d bytes to client with id %d \n",ret,client->id);
+			}
+			client=client->next;
+        }
         Packet_free(&(wup->header));
         fprintf(stdout,"[UDP_Send] WorldUpdatePacket sent to each client \n");
         pthread_mutex_unlock(&mutex);
@@ -582,10 +582,11 @@ void* garbage_collector(void* args){
                     client->afk_counter=0;
                     client=client->next;
                 }
+                
                 else if(abs(x-prev_x)<AFK_RANGE && abs(y-prev_y)<AFK_RANGE) {
                     client->afk_counter++;
                     if(client->afk_counter>=MAX_AFK_COUNTER){
-                        ClientListItem* tmp=client;
+						ClientListItem* tmp=client;
                         client=client->next;
                         sendDisconnect(socket_udp,tmp->user_addr);
                         ClientListItem* del=ClientList_detach(users,tmp);
@@ -600,15 +601,15 @@ void* garbage_collector(void* args){
                         if(users->size==0) has_users=0;
                         SKIP2: close(del->id);
                         free(del);
-                        }
-                    else client=client->next;
                     }
+                    else client=client->next;
+                }
                 else {
                     client->afk_counter=0;
                     client->prev_x=client->x;
                     client->prev_y=client->y;
                     client=client->next;
-                    }
+                }
             }
 
             else client=client->next;
