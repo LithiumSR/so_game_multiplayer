@@ -399,22 +399,21 @@ int main(int argc, char **argv) {
     if (argc<3) {
         printf("usage: %s <player texture> <port_number> \n", argv[1]);
         exit(-1);
-        }
+    }
     fprintf(stdout,"[Main] loading vehicle texture from %s ... ", argv[1]);
     Image* my_texture = Image_load(argv[1]);
     if (my_texture) {
         printf("Done! \n");
-        }
+    }
     else {
         printf("Fail! \n");
-        }
+    }
     long tmp= strtol(argv[2], NULL, 0);
 
     if (tmp < 1024 || tmp > 49151) {
-      fprintf(stderr, "Use a port number between 1024 and 49151.\n");
-      exit(EXIT_FAILURE);
-      }
-
+        fprintf(stderr, "Use a port number between 1024 and 49151.\n");
+        exit(EXIT_FAILURE);
+    }
     fprintf(stdout,"[Main] Starting... \n");
 
     #ifdef _USE_CACHED_TEXTURE_
@@ -526,7 +525,7 @@ int main(int argc, char **argv) {
         PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_receiver failed");
         ret= close(socket_udp);
         ERROR_HELPER(ret,"Failed to close UDP socket");
-        }
+    }
 
     fprintf(stdout,"[Main] Cleaning up... \n");
     sendGoodbye(socket_desc,id);

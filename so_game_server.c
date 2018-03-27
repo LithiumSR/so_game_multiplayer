@@ -196,7 +196,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 			ERROR_HELPER(ret,"Can't send map texture over TCP");
 			if (ret==0) break;
 			bytes_sent+=ret;
-            }
+        }
         free(image_packet);
         debug_print("[Send Map Texture] Sent %d bytes \n",bytes_sent);
         return 0;
@@ -219,7 +219,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 			ERROR_HELPER(ret,"Can't send map elevation over TCP");
 			if (ret==0) break;
 			bytes_sent+=ret;
-            }
+        }
         free(image_packet);
         debug_print("[Send Map Elevation] Sent %d bytes \n",bytes_sent);
         return 0;
@@ -287,8 +287,7 @@ void* tcp_flow(void* args){
             if (ret==-1 && errno == EINTR) continue;
             else if (ret<=0) goto EXIT;
             msg_len+=ret;
-            }
-
+        }
         PacketHeader* header=(PacketHeader*)buf_rcv;
         int size_remaining=header->size-ph_len;
         msg_len=0;
@@ -297,7 +296,7 @@ void* tcp_flow(void* args){
             if (ret==-1 && errno == EINTR) continue;
             else if(ret<=0) goto EXIT;
             msg_len+=ret;
-            }
+        }
         int ret=TCP_Handler(sock_fd,buf_rcv,tcp_args->surface_texture,tcp_args->elevation_texture,tcp_args->client_desc,&isActive);
         if (ret==-1) ClientList_print(users);
     }
@@ -416,14 +415,14 @@ void* udp_sender(void* args){
             if(size==0 || size==-1){
                 client=client->next;
                 continue;
-                }
+            }
 
             int ret = sendto(socket_udp, buf_send, size, 0, (struct sockaddr*) &client->user_addr, (socklen_t) sizeof(client->user_addr));
             debug_print("[UDP_Send] Sent WorldUpdate of %d bytes to client with id %d \n",ret,client->id);
             debug_print("Difference lenght check - wup: %d client found:%d \n" ,wup->num_vehicles,n);
             Packet_free(&(wup->header));
             client=client->next;
-            }
+        }
         fprintf(stdout,"[UDP_Send] WorldUpdatePacket sent to each client \n");
         pthread_mutex_unlock(&mutex);
         sleep(1);
@@ -488,7 +487,7 @@ void* udp_sender(void* args){
             pthread_mutex_unlock(&mutex);
             sleep(1);
             continue;
-			}
+		}
         client=users->first;
         while(client!=NULL){
             if(client->is_addr_ready==1){
@@ -558,17 +557,16 @@ void* garbage_collector(void* args){
                         if(users->size==0) has_users=0;
                         close(del->id);
                         free(del);
-                        }
-                    else client=client->next;
                     }
+                    else client=client->next;
+                }
                 else {
                     client->afk_counter=0;
                     client->prev_x=client->x;
                     client->prev_y=client->y;
                     client=client->next;
-                    }
+                }
             }
-
             else client=client->next;
         }
         if (count>0) fprintf(stdout,"[GC] Removed %d users from the client list \n",count);
@@ -590,14 +588,14 @@ int main(int argc, char **argv) {
     if (tmp < 1024 || tmp > 49151) {
         fprintf(stderr, "Use a port number between 1024 and 49151.\n");
         exit(EXIT_FAILURE);
-        }
+    }
 
     // load the images
     fprintf(stdout,"[Main] loading elevation image from %s ... ", elevation_filename);
     Image* surface_elevation = Image_load(elevation_filename);
     if (surface_elevation) {
         fprintf(stdout,"Done! \n");
-        }
+    }
     else {
         fprintf(stdout,"Fail! \n");
     }
