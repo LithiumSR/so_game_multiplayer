@@ -98,6 +98,12 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
             Vehicle_setForcesUpdate(client->vehicle,vup->translational_force,vup->rotational_force);
             Vehicle_setXYTheta(client->vehicle,vup->x,vup->y,vup->theta);
             World_manualUpdate(&server_world,client->vehicle,vup->time);
+            if(client->prev_x!=-1 && client->prev_y!=-1){
+				client->x_shift+=abs(client->x-client->prev_x);
+				client->y_shift+=abs(client->y-client->prev_y);
+			}
+			client->prev_x=client->x;
+			client->prev_y=client->y;
             pthread_mutex_unlock(&client->vehicle->mutex);
             client->user_addr=client_addr;
             client->is_addr_ready=1;
@@ -289,6 +295,8 @@ void* tcp_flow(void* args){
     user->v_texture=NULL;
     user->vehicle=NULL;
     user->afk_counter=0;
+    user->x_shift=0;
+    user->y_shift=0;
     user->prev_x=-1;
     user->prev_y=-1;
     user->last_update_time.tv_sec=-1;
@@ -507,12 +515,8 @@ void* udp_sender(void* args){
             }
             else cup->force_refresh=0;
             pthread_mutex_lock(&client->vehicle->mutex);
-            client->prev_x=client->x;
-			client->prev_y=client->y;
             Vehicle_getXYTheta(client->vehicle,&(client->x),&(client->y),&(cup->theta));
             Vehicle_getForcesUpdate(client->vehicle,&(client->translational_force),&(client->rotational_force));
-            client->x_shift+=abs(client->x-client->prev_x);
-            client->y_shift+=abs(client->y-client->prev_y);
             pthread_mutex_unlock(&client->vehicle->mutex);
             cup->id=client->id;
             cup->x=client->x;
@@ -578,8 +582,6 @@ void* garbage_collector(void* args){
             }
             else if (client->is_addr_ready==1 && client->x_shift<AFK_RANGE && client->y_shift<AFK_RANGE) {
 				 client->afk_counter++;
-				 printf("\n COUNTERRR!!! %d \n",client->afk_counter);
-				 
                  if(client->afk_counter>=MAX_AFK_COUNTER){
 					 ClientListItem* tmp=client;
 					 client=client->next;
@@ -596,7 +598,8 @@ void* garbage_collector(void* args){
                      if(users->size==0) has_users=0;
                      SKIP2: close(del->id);
                      free(del);
-                     }
+                }
+                
 				else {
 					client->x_shift=0;
 					client->y_shift=0;
