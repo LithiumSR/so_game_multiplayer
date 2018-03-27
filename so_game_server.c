@@ -196,7 +196,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 			ERROR_HELPER(ret,"Can't send map texture over TCP");
 			if (ret==0) break;
 			bytes_sent+=ret;
-            }
+        }
         free(image_packet);
         debug_print("[Send Map Texture] Sent %d bytes \n",bytes_sent);
         return 0;
@@ -219,7 +219,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 			ERROR_HELPER(ret,"Can't send map elevation over TCP");
 			if (ret==0) break;
 			bytes_sent+=ret;
-            }
+        }
         free(image_packet);
         debug_print("[Send Map Elevation] Sent %d bytes \n",bytes_sent);
         return 0;
@@ -243,7 +243,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
             pthread_mutex_unlock(&mutex);
             Packet_free(&(deserialized_packet->header));
             return 0;
-            }
+        }
         user->v_texture=user_texture;
         user->inside_world=1;
         Vehicle* vehicle=(Vehicle*) malloc(sizeof(Vehicle));
@@ -300,7 +300,7 @@ void* tcp_flow(void* args){
             if (ret==-1 && errno == EINTR) continue;
             else if (ret<=0) goto EXIT;
             msg_len+=ret;
-            }
+        }
 
         PacketHeader* header=(PacketHeader*)buf_rcv;
         int size_remaining=header->size-ph_len;
@@ -310,7 +310,7 @@ void* tcp_flow(void* args){
             if (ret==-1 && errno == EINTR) continue;
             else if(ret<=0) goto EXIT;
             msg_len+=ret;
-            }
+        }
         int ret=TCP_Handler(sock_fd,buf_rcv,tcp_args->surface_texture,tcp_args->elevation_texture,tcp_args->client_desc,&isActive);
         if (ret==-1) ClientList_print(users);
     }
@@ -342,7 +342,6 @@ void* udp_receiver(void* args){
             sleep(1);
             continue;
         }
-
         char buf_recv[BUFFERSIZE];
         struct sockaddr_in client_addr = {0};
         socklen_t addrlen= sizeof(struct sockaddr_in);
@@ -511,17 +510,16 @@ void* garbage_collector(void* args){
                         if(users->size==0) has_users=0;
                         SKIP2: close(del->id);
                         free(del);
-                        }
-                    else client=client->next;
                     }
+                    else client=client->next;
+                }
                 else {
                     client->afk_counter=0;
                     client->prev_x=client->x;
                     client->prev_y=client->y;
                     client=client->next;
-                    }
+                }
             }
-
             else client=client->next;
         }
         if (count>0) fprintf(stdout,"[GC] Removed %d users from the client list \n",count);
@@ -577,16 +575,16 @@ int main(int argc, char **argv) {
     if (tmp < 1024 || tmp > 49151) {
         fprintf(stderr, "Use a port number between 1024 and 49151.\n");
         exit(EXIT_FAILURE);
-        }
+    }
 
     fprintf(stdout,"[Main] loading vehicle texture from %s ... ", argv[1]);
     Image* my_texture = Image_load("./images/arrow-right.ppm");
     if (my_texture) {
         printf("Done! \n");
-        }
+    }
     else {
         printf("Fail! \n");
-        }
+    }
 
 
     // load the images
@@ -594,7 +592,7 @@ int main(int argc, char **argv) {
     Image* surface_elevation = Image_load(elevation_filename);
     if (surface_elevation) {
         fprintf(stdout,"Done! \n");
-        }
+    }
     else {
         fprintf(stdout,"Fail! \n");
     }
