@@ -103,7 +103,7 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
             client->is_addr_ready=1;
             client->last_update_time=vup->time;
             END: pthread_mutex_unlock(&mutex);
-            fprintf(stdout,"[UDP_Receiver] Applied VehicleUpdatePacket with force_translational_update: %f force_rotation_update: %f.. \n",vup->translational_force,vup->rotational_force);
+            //fprintf(stdout,"[UDP_Receiver] Applied VehicleUpdatePacket with force_translational_update: %f force_rotation_update: %f.. \n",vup->translational_force,vup->rotational_force);
             Packet_free(&vup->header);
             return 0;
         }
@@ -202,7 +202,8 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 			ERROR_HELPER(ret,"Can't send map texture over TCP");
 			if (ret==0) break;
 			bytes_sent+=ret;
-            }
+			}
+		
         free(image_packet);
         debug_print("[Send Map Texture] Sent %d bytes \n",bytes_sent);
         return 0;
@@ -287,6 +288,7 @@ void* tcp_flow(void* args){
     user->inside_world=0;
     user->v_texture=NULL;
     user->vehicle=NULL;
+    user->afk_counter=0;
     user->prev_x=-1;
     user->prev_y=-1;
     user->last_update_time.tv_sec=-1;
@@ -488,7 +490,7 @@ void* udp_sender(void* args){
             pthread_mutex_unlock(&mutex);
             sleep(1);
             continue;
-        }
+            }
         World_update(&server_world);
         wup->updates=(ClientUpdate*)malloc(sizeof(ClientUpdate)*n);
         client= users->first;
@@ -505,8 +507,12 @@ void* udp_sender(void* args){
             }
             else cup->force_refresh=0;
             pthread_mutex_lock(&client->vehicle->mutex);
+            client->prev_x=client->x;
+			client->prev_y=client->y;
             Vehicle_getXYTheta(client->vehicle,&(client->x),&(client->y),&(cup->theta));
             Vehicle_getForcesUpdate(client->vehicle,&(client->translational_force),&(client->rotational_force));
+            client->x_shift+=abs(client->x-client->prev_x);
+            client->y_shift+=abs(client->y-client->prev_y);
             pthread_mutex_unlock(&client->vehicle->mutex);
             cup->id=client->id;
             cup->x=client->x;
@@ -570,49 +576,41 @@ void* garbage_collector(void* args){
                 SKIP: close(del->id);
                 free(del);
             }
-            else if (client->is_addr_ready==1) {
-                int x,prev_x,y,prev_y;
-                x=(int)client->x;
-                y=(int)client->y;
-                prev_x=(int)client->prev_x;
-                prev_y=(int)client->prev_y;
-                if(prev_x==-1 || prev_y==-1) {
-                    client->prev_x=client->x;
-                    client->prev_y=client->y;
-                    client->afk_counter=0;
-                    client=client->next;
-                }
-                else if(abs(x-prev_x)<AFK_RANGE && abs(y-prev_y)<AFK_RANGE) {
-                    client->afk_counter++;
-                    if(client->afk_counter>=MAX_AFK_COUNTER){
-                        ClientListItem* tmp=client;
-                        client=client->next;
-                        sendDisconnect(socket_udp,tmp->user_addr);
-                        ClientListItem* del=ClientList_detach(users,tmp);
-                        if (del==NULL) continue;
-                        if(!del->inside_world) goto SKIP2;
-                        World_detachVehicle(&server_world,del->vehicle);
-                        Vehicle_destroy(del->vehicle);
-                        free(del->vehicle);
-                        Image* user_texture=del->v_texture;
-                        if (user_texture!=NULL) Image_free(user_texture);
-                        count++;
-                        if(users->size==0) has_users=0;
-                        SKIP2: close(del->id);
-                        free(del);
-                        }
-                    else client=client->next;
-                    }
-                else {
-                    client->afk_counter=0;
-                    client->prev_x=client->x;
-                    client->prev_y=client->y;
-                    client=client->next;
-                    }
+            else if (client->is_addr_ready==1 && client->x_shift<AFK_RANGE && client->y_shift<AFK_RANGE) {
+				 client->afk_counter++;
+				 printf("\n COUNTERRR!!! %d \n",client->afk_counter);
+				 
+                 if(client->afk_counter>=MAX_AFK_COUNTER){
+					 ClientListItem* tmp=client;
+					 client=client->next;
+                     sendDisconnect(socket_udp,tmp->user_addr);
+                     ClientListItem* del=ClientList_detach(users,tmp);
+                     if (del==NULL) continue;
+                     if(!del->inside_world) goto SKIP2;
+                     World_detachVehicle(&server_world,del->vehicle);
+                     Vehicle_destroy(del->vehicle);
+                     free(del->vehicle);
+                     Image* user_texture=del->v_texture;
+                     if (user_texture!=NULL) Image_free(user_texture);
+                     count++;
+                     if(users->size==0) has_users=0;
+                     SKIP2: close(del->id);
+                     free(del);
+                     }
+				else {
+					client->x_shift=0;
+					client->y_shift=0;
+					client=client->next;
+					continue;
+				}
             }
-
-            else client=client->next;
-        }
+            else {
+				client->afk_counter=0;
+				client->x_shift=0;
+				client->y_shift=0;
+				client=client->next;
+				}
+			}
         if (count>0) fprintf(stdout,"[GC] Removed %d users from the client list \n",count);
         END: pthread_mutex_unlock(&mutex);
         sleep(10);
