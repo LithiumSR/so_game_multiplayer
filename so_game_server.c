@@ -281,7 +281,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 }
 
 //Handle authentication and disconnection
-void* tcp_flow(void* args){
+void* TCPFlow(void* args){
     tcpArgs* tcp_args=(tcpArgs*)args;
     int sock_fd=tcp_args->client_desc;
     pthread_mutex_lock(&mutex);
@@ -637,7 +637,7 @@ void* tcp_auth(void* args){
         new_tcp_args.elevation_texture = tcp_args->elevation_texture;
         new_tcp_args.surface_texture = tcp_args->surface_texture;
         //Create a thread for each client
-        int ret = pthread_create(&threadTCP, NULL,tcp_flow, &new_tcp_args);
+        int ret = pthread_create(&threadTCP, NULL,TCPFlow, &new_tcp_args);
         PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
         ret = pthread_detach(threadTCP);
     }
