@@ -39,7 +39,7 @@ typedef struct {
 } tcpArgs;
 
 
-void handle_signal(int signal){
+void handleSignal(int signal){
     // Find out which signal we're handling
     switch (signal) {
         case SIGHUP:
@@ -106,7 +106,7 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
     }
 }
 
-int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevation_map,int id,int* isActive){
+int TCPHandler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevation_map,int id,int* isActive){
     PacketHeader* header=(PacketHeader*)buf_rcv;
     if(header->type==GetId){
         char buf_send[BUFFERSIZE];
@@ -297,7 +297,7 @@ void* tcp_flow(void* args){
             else if(ret<=0) goto EXIT;
             msg_len+=ret;
         }
-        int ret=TCP_Handler(sock_fd,buf_rcv,tcp_args->surface_texture,tcp_args->elevation_texture,tcp_args->client_desc,&isActive);
+        int ret=TCPHandler(sock_fd,buf_rcv,tcp_args->surface_texture,tcp_args->elevation_texture,tcp_args->client_desc,&isActive);
         if (ret==-1) ClientList_print(users);
     }
     EXIT: printf("Freeing resources...");
@@ -317,7 +317,7 @@ void* tcp_flow(void* args){
 }
 
 //Receive and apply VehicleUpdatePacket from clients
-void* udp_receiver(void* args){
+void* UDPReceiver(void* args){
     int socket_udp=*(int*)args;
     while(connectivity && exchange_update){
         if(!has_users){
@@ -345,7 +345,7 @@ void* udp_receiver(void* args){
 
 //Send WorldUpdatePacket to every client that sent al least one VehicleUpdatePacket
 #ifdef _USE_SERVER_SIDE_FOG_
-void* udp_sender(void* args){
+void* UDPSender(void* args){
     int socket_udp=*(int*)args;
     while(connectivity && exchange_update){
         if(!has_users){
@@ -432,7 +432,7 @@ void* udp_sender(void* args){
 #endif
 
 #ifndef _USE_SERVER_SIDE_FOG_
-void* udp_sender(void* args){
+void* UDPSender(void* args){
     int socket_udp=*(int*)args;
     while(connectivity && exchange_update){
         if(!has_users){
@@ -506,7 +506,7 @@ void* udp_sender(void* args){
 #endif
 
 //Remove client that are not sending updates and the one that are AFK in the same place for an extended period of time
-void* garbage_collector(void* args){
+void* garbageCollector(void* args){
     debug_print("[GC] Garbage collector initialized \n");
     int socket_udp=*(int*)args;
     while(clean_garbage){
@@ -649,7 +649,7 @@ int main(int argc, char **argv) {
 
     //seting signal handlers
     struct sigaction sa;
-    sa.sa_handler = handle_signal;
+    sa.sa_handler = handleSignal;
     sa.sa_flags = SA_RESTART;
 
     // Block every signal during the handler
@@ -681,11 +681,11 @@ int main(int argc, char **argv) {
 
     debug_print("[Main] UDP socket created \n");
     pthread_t UDP_receiver,UDP_sender,GC_thread;
-    ret = pthread_create(&UDP_receiver, NULL,udp_receiver, &server_udp);
+    ret = pthread_create(&UDP_receiver, NULL,UDPReceiver, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on thread tcp failed");
-    ret = pthread_create(&UDP_sender, NULL,udp_sender, &server_udp);
+    ret = pthread_create(&UDP_sender, NULL,UDPSender, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on thread tcp failed");
-    ret = pthread_create(&GC_thread, NULL,garbage_collector, &server_udp);
+    ret = pthread_create(&GC_thread, NULL,garbageCollector, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
 
     while (connectivity) {
