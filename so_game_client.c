@@ -49,7 +49,7 @@ typedef struct listenArgs{
     int socket_tcp;
 }udpArgs;
 
-void handle_signal(int signal){
+void handleSignal(int signal){
     // Find out which signal we're handling
     switch (signal) {
         case SIGHUP:
@@ -66,7 +66,7 @@ void handle_signal(int signal){
     }
 }
 
-int add_user_id(int ids[] , int size , int id2, int* position,int* users_online){
+int addUser(int ids[] , int size , int id2, int* position,int* users_online){
     if(*users_online==WORLDSIZE){
         *position=-1;
         return -1;
@@ -124,7 +124,7 @@ int sendUpdates(int socket_udp,struct sockaddr_in server_addr,int serverlen){
 }
 
 //Send vehicleUpdatePacket to server
-void* udp_sender(void* args){
+void* UDPSender(void* args){
     udpArgs udp_args =*(udpArgs*)args;
     struct sockaddr_in server_addr=udp_args.server_addr;
     int socket_udp =udp_args.socket_udp;
@@ -138,7 +138,7 @@ void* udp_sender(void* args){
 }
 
 //Receive and apply WorldUpdatePacket from server
-void* udp_receiver(void* args){
+void* UDPReceiver(void* args){
     udpArgs udp_args =*(udpArgs*)args;
     struct sockaddr_in server_addr=udp_args.server_addr;
     int socket_udp =udp_args.socket_udp;
@@ -198,7 +198,7 @@ void* udp_receiver(void* args){
         for(int i=0; i < wup -> num_vehicles ; i++){
 
             int new_position=-1;
-            int id_struct=add_user_id(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position,&(lw->users_online));
+            int id_struct=addUser(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position,&(lw->users_online));
             if(wup->updates[i].id==id) Vehicle_setXYTheta(lw->vehicles[0],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
             else if(id_struct==-1){
                 if(new_position==-1) continue;
@@ -302,7 +302,7 @@ int main(int argc, char **argv) {
 
     //seting signal handlers
     struct sigaction sa;
-    sa.sa_handler = handle_signal;
+    sa.sa_handler = handleSignal;
     // Restart the system call, if at all possible
     sa.sa_flags = SA_RESTART;
     // Block every signal during the handler
@@ -344,7 +344,6 @@ int main(int argc, char **argv) {
     World_addVehicle(&world, vehicle);
     local_world->vehicles[0]=vehicle;
     local_world->has_vehicle[0]=1;
-    if(SINGLEPLAYER) goto SKIP;
 
     //UDP Init
     uint16_t port_number_udp = htons((uint16_t)UDPPORT); // we use network byte order
@@ -363,28 +362,24 @@ int main(int argc, char **argv) {
     udp_args.server_addr=udp_server;
     udp_args.socket_udp=socket_udp;
     udp_args.lw=local_world;
-    ret = pthread_create(&UDP_sender, NULL, udp_sender, &udp_args);
+    ret = pthread_create(&UDP_sender, NULL, UDPSender, &udp_args);
     PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_sender");
-    ret = pthread_create(&UDP_receiver, NULL, udp_receiver, &udp_args);
+    ret = pthread_create(&UDP_receiver, NULL, UDPReceiver, &udp_args);
     PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_receiver");
 
     //Disconnect from server if required by macro
-    SKIP: if(SINGLEPLAYER) sendGoodbye(socket_desc,id);
-
     WorldViewer_runGlobal(&world, vehicle, &argc, argv);
 
     // Waiting threads to end and cleaning resources
     debug_print("[Main] Disabling and joining on UDP and TCP threads \n");
     connectivity=0;
     exchange_update=0;
-    if(!SINGLEPLAYER){
-        ret=pthread_join(UDP_sender,NULL);
-        PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_sender failed");
-        ret=pthread_join(UDP_receiver,NULL);
-        PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_receiver failed");
-        ret= close(socket_udp);
-        ERROR_HELPER(ret,"Failed to close UDP socket");
-        }
+    ret=pthread_join(UDP_sender,NULL);
+    PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_sender failed");
+    ret=pthread_join(UDP_receiver,NULL);
+    PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_receiver failed");
+    ret= close(socket_udp);
+    ERROR_HELPER(ret,"Failed to close UDP socket");
 
     fprintf(stdout,"[Main] Cleaning up... \n");
     sendGoodbye(socket_desc,id);
@@ -407,7 +402,7 @@ int main(int argc, char **argv) {
     free(local_world);
     ret=close(socket_desc);
     ERROR_HELPER(ret,"Failed to close TCP socket");
-    if (!SINGLEPLAYER) ret=close(socket_udp);
+    ret=close(socket_udp);
     ERROR_HELPER(ret,"Failed to close UDP socket");
     // world cleanup
     World_destroy(&world);

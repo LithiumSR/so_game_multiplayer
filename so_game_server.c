@@ -18,7 +18,7 @@
 #include "so_game_protocol.h"
 #include "client_list.h"
 #define RECEIVER_SLEEP 20*1000
-#define WORLD_LOOP_SLEEP 70000
+#define WORLD_LOOP_SLEEP 100*1000
 
 pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 int connectivity=1;
@@ -37,7 +37,7 @@ typedef struct {
     Image* surface_texture;
 } tcpArgs;
 
-void handle_signal(int signal){
+void handleSignal(int signal){
     // Find out which signal we're handling
     switch (signal) {
         case SIGHUP:
@@ -70,7 +70,7 @@ void sendDisconnect(int socket_udp, struct sockaddr_in client_addr){
 }
 
 
-int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
+int UDPHandler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
     PacketHeader* ph=(PacketHeader*)buf_rcv;
     switch(ph->type){
         case(VehicleUpdate):{
@@ -91,7 +91,14 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
                 return 0;
             }
             if(!(client->last_update_time.tv_sec==-1 || timercmp(&vup->time,&client->last_update_time,>))) goto END;
+            Vehicle_setXYTheta(client->vehicle,client->x,client->y,client->theta);
             Vehicle_setForcesUpdate(client->vehicle,vup->translational_force,vup->rotational_force);
+            if(client->prev_x!=-1 && client->prev_y!=-1){
+				client->x_shift+=abs(client->x-client->prev_x);
+				client->y_shift+=abs(client->y-client->prev_y);
+			}
+			client->prev_x=client->x;
+			client->prev_y=client->y;
             client->user_addr=client_addr;
             client->is_addr_ready=1;
             client->last_update_time=vup->time;
@@ -105,7 +112,7 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
     }
 }
 
-int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevation_map,int id,int* isActive){
+int TCPHandler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevation_map,int id,int* isActive){
     PacketHeader* header=(PacketHeader*)buf_rcv;
     if(header->type==GetId){
         char buf_send[BUFFERSIZE];
@@ -269,7 +276,7 @@ int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevatio
 }
 
 //Handle authentication and disconnection
-void* tcp_flow(void* args){
+void* TCPFlow(void* args){
     tcpArgs* tcp_args=(tcpArgs*)args;
     int sock_fd=tcp_args->client_desc;
     pthread_mutex_lock(&mutex);
@@ -311,7 +318,7 @@ void* tcp_flow(void* args){
             else if(ret<=0) goto EXIT;
             msg_len+=ret;
         }
-        int ret=TCP_Handler(sock_fd,buf_rcv,tcp_args->surface_texture,tcp_args->elevation_texture,tcp_args->client_desc,&isActive);
+        int ret=TCPHandler(sock_fd,buf_rcv,tcp_args->surface_texture,tcp_args->elevation_texture,tcp_args->client_desc,&isActive);
         if (ret==-1) ClientList_print(users);
     }
     EXIT: printf("Freeing resources...");
@@ -335,7 +342,7 @@ void* tcp_flow(void* args){
 }
 
 //Receive and apply VehicleUpdatePacket from clients
-void* udp_receiver(void* args){
+void* UDPReceiver(void* args){
     int socket_udp=*(int*)args;
     while(connectivity && exchange_update){
         if(!has_users){
@@ -353,7 +360,7 @@ void* udp_receiver(void* args){
             debug_print("[WARNING] Skipping partial UDP packet \n");
             goto END;
         }
-		int ret = UDP_Handler(socket_udp,buf_recv,client_addr);
+		int ret = UDPHandler(socket_udp,buf_recv,client_addr);
         if (ret==-1) debug_print("[UDP_Receiver] UDP Handler couldn't manage to apply the VehicleUpdate \n");
         END: usleep(RECEIVER_SLEEP);
     }
@@ -361,7 +368,7 @@ void* udp_receiver(void* args){
 }
 
 //Send WorldUpdatePacket to every client that sent al least one VehicleUpdatePacket
-void* udp_sender(void* args){
+void* UDPSender(void* args){
     int socket_udp=*(int*)args;
     while(connectivity && exchange_update){
         if(!has_users){
@@ -451,7 +458,7 @@ void* udp_sender(void* args){
 }
 
 //Remove client that are not sending updates and the one that are AFK in the same place for an extended period of time
-void* garbage_collector(void* args){
+void* garbageCollector(void* args){
     debug_print("[GC] Garbage collector initialized \n");
     int socket_udp=*(int*)args;
     while(clean_garbage){
@@ -463,7 +470,7 @@ void* garbage_collector(void* args){
         while(client!=NULL){
             long creation_time=(long)client->creation_time.tv_sec;
             long last_update_time=(long)client->last_update_time.tv_sec;
-            if((client->is_addr_ready==1 && (current_time-last_update_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE) && (client->is_addr_ready!=1 && (current_time-creation_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE)){
+            if((client->is_addr_ready==1 && (current_time-last_update_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE) || (client->is_addr_ready!=1 && (current_time-creation_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE)){
                 ClientListItem* tmp=client;
                 client=client->next;
                 sendDisconnect(socket_udp,tmp->user_addr);
@@ -480,48 +487,39 @@ void* garbage_collector(void* args){
                 SKIP: close(del->id);
                 free(del);
             }
-            else if (client->is_addr_ready==1) {
-                int x,prev_x,y,prev_y;
-                x=(int)client->x;
-                y=(int)client->y;
-                prev_x=(int)client->prev_x;
-                prev_y=(int)client->prev_y;
-                if(prev_x==-1 || prev_y==-1) {
-                    client->prev_x=client->x;
-                    client->prev_y=client->y;
-                    client->afk_counter=0;
-                    client=client->next;
+            else if (client->is_addr_ready==1 && client->x_shift<AFK_RANGE && client->y_shift<AFK_RANGE) {
+				 client->afk_counter++;
+                 if(client->afk_counter>=MAX_AFK_COUNTER){
+					 ClientListItem* tmp=client;
+					 client=client->next;
+                     sendDisconnect(socket_udp,tmp->user_addr);
+                     ClientListItem* del=ClientList_detach(users,tmp);
+                     if (del==NULL) continue;
+                     if(!del->inside_world) goto SKIP2;
+                     World_detachVehicle(&server_world,del->vehicle);
+                     Vehicle_destroy(del->vehicle);
+                     free(del->vehicle);
+                     Image* user_texture=del->v_texture;
+                     if (user_texture!=NULL) Image_free(user_texture);
+                     count++;
+                     if(users->size==0) has_users=0;
+                     SKIP2: close(del->id);
+                     free(del);
                 }
-                else if(abs(x-prev_x)<AFK_RANGE && abs(y-prev_y)<AFK_RANGE) {
-                    client->afk_counter++;
-                    if(client->afk_counter>=MAX_AFK_COUNTER){
-                        ClientListItem* tmp=client;
-                        client=client->next;
-                        sendDisconnect(socket_udp,tmp->user_addr);
-                        ClientListItem* del=ClientList_detach(users,tmp);
-                        if (del==NULL) continue;
-                        if(!del->inside_world) goto SKIP2;
-                        World_detachVehicle(&server_world,del->vehicle);
-                        Vehicle_destroy(del->vehicle);
-                        free(del->vehicle);
-                        Image* user_texture=del->v_texture;
-                        if (user_texture!=NULL) Image_free(user_texture);
-                        count++;
-                        if(users->size==0) has_users=0;
-                        SKIP2: close(del->id);
-                        free(del);
-                    }
-                    else client=client->next;
-                }
-                else {
-                    client->afk_counter=0;
-                    client->prev_x=client->x;
-                    client->prev_y=client->y;
-                    client=client->next;
-                }
+				        else {
+					          client->x_shift=0;
+					          client->y_shift=0;
+					          client=client->next;
+					          continue;
+				        }
             }
-            else client=client->next;
-        }
+            else {
+				        client->afk_counter=0;
+				        client->x_shift=0;
+				        client->y_shift=0;
+				        client=client->next;
+				}
+			}
         if (count>0) fprintf(stdout,"[GC] Removed %d users from the client list \n",count);
         END: pthread_mutex_unlock(&mutex);
         sleep(10);
@@ -529,7 +527,7 @@ void* garbage_collector(void* args){
     pthread_exit(NULL);
 }
 
-void* tcp_auth(void* args){
+void* TCPAuth(void* args){
     tcpArgs* tcp_args=(tcpArgs*)args;
     int sockaddr_len = sizeof(struct sockaddr_in);
     while (connectivity) {
@@ -547,13 +545,13 @@ void* tcp_auth(void* args){
         new_tcp_args.elevation_texture = tcp_args->elevation_texture;
         new_tcp_args.surface_texture = tcp_args->surface_texture;
         //Create a thread for each client
-        int ret = pthread_create(&threadTCP, NULL,tcp_flow, &new_tcp_args);
+        int ret = pthread_create(&threadTCP, NULL,TCPFlow, &new_tcp_args);
         PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
         ret = pthread_detach(threadTCP);
     }
     pthread_exit(NULL);
 }
-void* world_loop(void* args){
+void* worldLoop(void* args){
 	debug_print("[WorldLoop] World Update loop initialized \n");
 	while (connectivity){
 		World_update(&server_world);
@@ -638,7 +636,7 @@ int main(int argc, char **argv) {
 
     //seting signal handlers
     struct sigaction sa;
-    sa.sa_handler = handle_signal;
+    sa.sa_handler = handleSignal;
     sa.sa_flags = SA_RESTART;
 
     // Block every signal during the handler
@@ -675,15 +673,15 @@ int main(int argc, char **argv) {
     World_init(&server_world, surface_elevation, surface_texture,  0.5, 0.5, 0.5);
 
     pthread_t UDP_receiver,UDP_sender,GC_thread,tcp_thread, world_thread;
-    ret = pthread_create(&UDP_receiver, NULL,udp_receiver, &server_udp);
+    ret = pthread_create(&UDP_receiver, NULL,UDPReceiver, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on thread tcp failed");
-    ret = pthread_create(&UDP_sender, NULL,udp_sender, &server_udp);
+    ret = pthread_create(&UDP_sender, NULL,UDPSender, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on thread tcp failed");
-    ret = pthread_create(&GC_thread, NULL,garbage_collector, &server_udp);
+    ret = pthread_create(&GC_thread, NULL,garbageCollector, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
-    ret = pthread_create(&tcp_thread, NULL,tcp_auth, &tcp_args);
+    ret = pthread_create(&tcp_thread, NULL,TCPAuth, &tcp_args);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
-    ret = pthread_create(&world_thread, NULL,world_loop, NULL);
+    ret = pthread_create(&world_thread, NULL,worldLoop, NULL);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on world_loop thread failed");
     fprintf(stdout,"[Main] World created. Now waiting for clients to connect... \n");
     fflush(stdout);
