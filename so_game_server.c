@@ -118,7 +118,7 @@ int UDPHandler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
     }
 }
 
-int TCP_Handler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevation_map,int id,int* isActive){
+int TCPHandler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevation_map,int id,int* isActive){
     PacketHeader* header=(PacketHeader*)buf_rcv;
     if(header->type==GetId){
         char buf_send[BUFFERSIZE];
@@ -325,7 +325,7 @@ void* TCPFlow(void* args){
             else if(ret<=0) goto EXIT;
             msg_len+=ret;
 		}
-        int ret=TCP_Handler(sock_fd,buf_rcv,tcp_args->surface_texture,tcp_args->elevation_texture,tcp_args->client_desc,&isActive);
+        int ret=TCPHandler(sock_fd,buf_rcv,tcp_args->surface_texture,tcp_args->elevation_texture,tcp_args->client_desc,&isActive);
         if (ret==-1) ClientList_print(users);
     }
     EXIT: printf("Freeing resources...");
@@ -619,7 +619,7 @@ void* garbageCollector(void* args){
     pthread_exit(NULL);
 }
 
-void* tcp_auth(void* args){
+void* TCPAuth(void* args){
     tcpArgs* tcp_args=(tcpArgs*)args;
     int sockaddr_len = sizeof(struct sockaddr_in);
     while (connectivity) {
@@ -644,7 +644,7 @@ void* tcp_auth(void* args){
     pthread_exit(NULL);
 }
 
-void* world_loop(void* args){
+void* worldLoop(void* args){
 	debug_print("[WorldLoop] World Update loop initialized \n");
 	while (connectivity){
 		World_update(&server_world);
@@ -769,9 +769,9 @@ int main(int argc, char **argv) {
     PTHREAD_ERROR_HELPER(ret, "pthread_create on thread tcp failed");
     ret = pthread_create(&GC_thread, NULL,garbageCollector, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
-    ret = pthread_create(&TCP_thread, NULL,tcp_auth, &tcp_args);
+    ret = pthread_create(&TCP_thread, NULL,TCPAuth, &tcp_args);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
-    ret = pthread_create(&world_thread, NULL,world_loop, NULL);
+    ret = pthread_create(&world_thread, NULL,worldLoop, NULL);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on world_loop thread failed");
     fprintf(stdout,"[Main] World created. Now waiting for clients to connect... \n");
     fflush(stdout);
