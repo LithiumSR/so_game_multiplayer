@@ -12,6 +12,7 @@ typedef struct ClientListItem {
   float y;
   float prev_y;
   float theta;
+  float x_shift,y_shift;
   Image * v_texture;
   int id;
   struct sockaddr_in user_addr;

@@ -73,7 +73,7 @@ void sendDisconnect(int socket_udp, struct sockaddr_in client_addr){
 }
 
 
-int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
+int UDPHandler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
     PacketHeader* ph=(PacketHeader*)buf_rcv;
     switch(ph->type){
         case(VehicleUpdate):{
@@ -88,6 +88,8 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
                 return -1;
             }
             if(!(client->last_update_time.tv_sec==-1 || timercmp(&vup->time,&client->last_update_time,>))) goto END;
+            client->prev_x=client->x;
+			client->prev_y=client->y;
             client->x=vup->x;
             client->y=vup->y;
             client->theta=vup->theta;
@@ -95,6 +97,10 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
             client->translational_force=vup->translational_force;
             client->user_addr=client_addr;
             client->is_addr_ready=1;
+            if(client->prev_x!=-1 && client->prev_y!=-1){
+				client->x_shift+=abs(client->x-client->prev_x);
+				client->y_shift+=abs(client->y-client->prev_y);
+			}
             client->last_update_time=vup->time;
             fprintf(stdout,"[UDP_Receiver] Applied VehicleUpdatePacket of %d bytes from id %d... \n",ph->size,vup->id);
             END: pthread_mutex_unlock(&mutex);
@@ -258,7 +264,7 @@ int TCPHandler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevation
 }
 
 //Handle authentication and disconnection
-void* tcp_flow(void* args){
+void* TCPFlow(void* args){
     tcpArgs* tcp_args=(tcpArgs*)args;
     int sock_fd=tcp_args->client_desc;
     pthread_mutex_lock(&mutex);
@@ -268,10 +274,13 @@ void* tcp_flow(void* args){
     user->id=sock_fd;
     user->prev_x=-1;
     user->prev_y=-1;
+    user->x_shift=-1;
+    user->y_shift=-1;
     user->is_addr_ready=0;
     user->force_refresh=1;
     user->v_texture=NULL;
     user->last_update_time.tv_sec=-1;
+    user->afk_counter=0;
     printf("[New user] Adding client with id %d \n",sock_fd);
     ClientList_insert(users,user);
     ClientList_print(users);
@@ -336,7 +345,7 @@ void* UDPReceiver(void* args){
             debug_print("[WARNING] Skipping partial UDP packet \n");
             goto END;
         }
-		int ret = UDP_Handler(socket_udp,buf_recv,client_addr);
+		int ret = UDPHandler(socket_udp,buf_recv,client_addr);
         if (ret==-1) debug_print("[UDP_Receiver] UDP Handler couldn't manage to apply the VehicleUpdate \n");
         END: usleep(RECEIVER_SLEEP);
     }
@@ -354,7 +363,6 @@ void* UDPSender(void* args){
         }
         pthread_mutex_lock(&mutex);
         ClientListItem* client= users->first;
-        debug_print("I'm going to create a WorldUpdatePacket \n");
         client= users->first;
         struct timeval time;
         gettimeofday(&time,NULL);
@@ -531,44 +539,35 @@ void* garbageCollector(void* args){
                 close(del->id);
                 free(del);
             }
-            else if (client->is_addr_ready==1) {
-                int x,prev_x,y,prev_y;
-                x=(int)client->x;
-                y=(int)client->y;
-                prev_x=(int)client->prev_x;
-                prev_y=(int)client->prev_y;
-                if(prev_x==-1 || prev_y==-1) {
-                    client->prev_x=client->x;
-                    client->prev_y=client->y;
-                    client->afk_counter=0;
-                    client=client->next;
+            else if (client->is_addr_ready==1 && client->x_shift<AFK_RANGE && client->y_shift<AFK_RANGE) {
+				 client->afk_counter++;
+                 if(client->afk_counter>=MAX_AFK_COUNTER){
+					 ClientListItem* tmp=client;
+					 client=client->next;
+                     sendDisconnect(socket_udp,tmp->user_addr);
+                     ClientListItem* del=ClientList_detach(users,tmp);
+                     if (del==NULL) continue;
+                     Image* user_texture=del->v_texture;
+                     if (user_texture!=NULL) Image_free(user_texture);
+                     count++;
+                     if(users->size==0) has_users=0;
+                     close(del->id);
+                     free(del);
                 }
-                else if(abs(x-prev_x)<AFK_RANGE && abs(y-prev_y)<AFK_RANGE) {
-                    client->afk_counter++;
-                    if(client->afk_counter>=MAX_AFK_COUNTER){
-                        ClientListItem* tmp=client;
-                        client=client->next;
-                        sendDisconnect(socket_udp,tmp->user_addr);
-                        ClientListItem* del=ClientList_detach(users,tmp);
-                        if (del==NULL) continue;
-                        Image* user_texture=del->v_texture;
-                        if (user_texture!=NULL) Image_free(user_texture);
-                        count++;
-                        if(users->size==0) has_users=0;
-                        close(del->id);
-                        free(del);
-                    }
-                    else client=client->next;
-                }
-                else {
-                    client->afk_counter=0;
-                    client->prev_x=client->x;
-                    client->prev_y=client->y;
-                    client=client->next;
-                }
+			    else {
+					client->x_shift=0;
+					client->y_shift=0;
+					client=client->next;
+					continue;
+				    }
             }
-            else client=client->next;
-        }
+            else {
+				        client->afk_counter=0;
+				        client->x_shift=0;
+				        client->y_shift=0;
+				        client=client->next;
+				}
+			}
         if (count>0) fprintf(stdout,"[GC] Removed %d users from the client list \n",count);
         END: pthread_mutex_unlock(&mutex);
         sleep(10);
@@ -703,7 +702,7 @@ int main(int argc, char **argv) {
         tcp_args.elevation_texture = surface_elevation;
         tcp_args.surface_texture = surface_texture;
         //Create a thread for each client
-        ret = pthread_create(&threadTCP, NULL,tcp_flow, &tcp_args);
+        ret = pthread_create(&threadTCP, NULL,TCPFlow, &tcp_args);
         PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
         ret = pthread_detach(threadTCP);
     }
