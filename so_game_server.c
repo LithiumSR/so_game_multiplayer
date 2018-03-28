@@ -73,7 +73,7 @@ void sendDisconnect(int socket_udp, struct sockaddr_in client_addr){
 }
 
 
-int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
+int UDPHandler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
     PacketHeader* ph=(PacketHeader*)buf_rcv;
     switch(ph->type){
         case(VehicleUpdate):{
@@ -81,7 +81,7 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
             pthread_mutex_lock(&mutex);
             ClientListItem* client = ClientList_find_by_id(users, vup->id);
             if(client == NULL) {
-                debug_print("[UDP_Handler] Can't find the user with id %d to apply the update \n",vup->id);
+                debug_print("[UDPHandler] Can't find the user with id %d to apply the update \n",vup->id);
                 Packet_free(&vup->header);
                 sendDisconnect(socket_udp,client_addr);
                 pthread_mutex_unlock(&mutex);
@@ -109,7 +109,7 @@ int UDP_Handler(int socket_udp,char* buf_rcv,struct sockaddr_in client_addr){
             client->is_addr_ready=1;
             client->last_update_time=vup->time;
             END: pthread_mutex_unlock(&mutex);
-            //fprintf(stdout,"[UDP_Receiver] Applied VehicleUpdatePacket with force_translational_update: %f force_rotation_update: %f.. \n",vup->translational_force,vup->rotational_force);
+            fprintf(stdout,"[UDP_Receiver] Applied VehicleUpdatePacket with force_translational_update: %f force_rotation_update: %f.. \n",vup->translational_force,vup->rotational_force);
             Packet_free(&vup->header);
             return 0;
         }
@@ -349,7 +349,7 @@ void* tcp_flow(void* args){
 }
 
 //Receive and apply VehicleUpdatePacket from clients
-void* udp_receiver(void* args){
+void* UDPReceiver(void* args){
     int socket_udp=*(int*)args;
     while(connectivity && exchange_update){
         if(!has_users){
@@ -368,7 +368,7 @@ void* udp_receiver(void* args){
             debug_print("[WARNING] Skipping partial UDP packet \n");
             continue;
         }
-		int ret = UDP_Handler(socket_udp,buf_recv,client_addr);
+		int ret = UDPHandler(socket_udp,buf_recv,client_addr);
         if (ret==-1) debug_print("[UDP_Receiver] UDP Handler couldn't manage to apply the VehicleUpdate \n");
         END: usleep(RECEIVER_SLEEP);
     }
@@ -377,7 +377,7 @@ void* udp_receiver(void* args){
 
 //Send WorldUpdatePacket to every client that sent al least one VehicleUpdatePacket
 #ifdef _USE_SERVER_SIDE_FOG_
-void* udp_sender(void* args){
+void* UDPSender(void* args){
     int socket_udp=*(int*)args;
     while(connectivity && exchange_update){
         if(!has_users){
@@ -462,8 +462,8 @@ void* udp_sender(void* args){
             debug_print("Difference lenght check - wup: %d client found:%d \n" ,wup->num_vehicles,n);
             END: Packet_free(&(wup->header));
             client=client->next;
-            }
-        fprintf(stdout,"[UDP_Send] WorldUpdatePacket sent to each client \n");
+        }
+        fprintf(stdout,"[UDP_Sender] WorldUpdatePacket sent to each client \n");
         pthread_mutex_unlock(&mutex);
         sleep(1);
     }
@@ -472,7 +472,7 @@ void* udp_sender(void* args){
 #endif
 
 #ifndef _USE_SERVER_SIDE_FOG_
-void* udp_sender(void* args){
+void* UDPSender(void* args){
     int socket_udp=*(int*)args;
     while(connectivity && exchange_update){
         if(!has_users){
@@ -492,7 +492,7 @@ void* udp_sender(void* args){
             if(client->is_addr_ready && client->inside_world) n++;
         }
         wup->num_vehicles=n;
-        fprintf(stdout,"[UDP_Sender] Creating WorldUpdatePacket containing info about %d users \n",n);
+        fprintf(stdout,"[UDPSender] Creating WorldUpdatePacket containing info about %d users \n",n);
         if(n==0){
             pthread_mutex_unlock(&mutex);
             sleep(1);
@@ -582,8 +582,8 @@ void* garbage_collector(void* args){
             else if (client->is_addr_ready==1 && client->x_shift<AFK_RANGE && client->y_shift<AFK_RANGE) {
 				 client->afk_counter++;
                  if(client->afk_counter>=MAX_AFK_COUNTER){
-					           ClientListItem* tmp=client;
-					           client=client->next;
+					 ClientListItem* tmp=client;
+					 client=client->next;
                      sendDisconnect(socket_udp,tmp->user_addr);
                      ClientListItem* del=ClientList_detach(users,tmp);
                      if (del==NULL) continue;
@@ -763,9 +763,9 @@ int main(int argc, char **argv) {
 
 
     pthread_t UDP_receiver,UDP_sender,GC_thread,TCP_thread, world_thread;
-    ret = pthread_create(&UDP_receiver, NULL,udp_receiver, &server_udp);
+    ret = pthread_create(&UDP_receiver, NULL,UDPReceiver, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on thread tcp failed");
-    ret = pthread_create(&UDP_sender, NULL,udp_sender, &server_udp);
+    ret = pthread_create(&UDP_sender, NULL,UDPSender, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on thread tcp failed");
     ret = pthread_create(&GC_thread, NULL,garbage_collector, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
