@@ -283,6 +283,18 @@ void* UDPReceiver(void* args){
                  printf("[INFO] Temporary disabling a vehicle  \n");
                 lw->is_disabled[id_struct]=1;
                 World_detachVehicle(&world,lw->vehicles[id_struct]);
+                if(wup->updates[i].force_refresh && lw->has_vehicle[id_struct]){
+					Image* im=lw->vehicles[id_struct]->texture;
+					Vehicle_destroy(lw->vehicles[id_struct]);
+					if (im!=NULL) {
+						Image_free(im);
+						free(lw->vehicles[id_struct]);
+						}
+					im = getVehicleTexture(socket_tcp,wup->updates[i].id);
+					Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
+                    Vehicle_init(new_vehicle,&world,wup->updates[i].id,im);
+                    lw->vehicles[id_struct]=new_vehicle;
+				}	
             }
         }
 
