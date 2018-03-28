@@ -344,7 +344,7 @@ int main(int argc, char **argv) {
     World_addVehicle(&world, vehicle);
     local_world->vehicles[0]=vehicle;
     local_world->has_vehicle[0]=1;
-
+	if(SINGLEPLAYER) goto SKIP;
     //UDP Init
     uint16_t port_number_udp = htons((uint16_t)UDPPORT); // we use network byte order
 	int socket_udp = socket(AF_INET, SOCK_DGRAM, 0);
@@ -368,18 +368,21 @@ int main(int argc, char **argv) {
     PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_receiver");
 
     //Disconnect from server if required by macro
+    SKIP: if(SINGLEPLAYER) sendGoodbye(socket_desc,id);
     WorldViewer_runGlobal(&world, vehicle, &argc, argv);
-
+    
     // Waiting threads to end and cleaning resources
     debug_print("[Main] Disabling and joining on UDP and TCP threads \n");
     connectivity=0;
     exchange_update=0;
-    ret=pthread_join(UDP_sender,NULL);
-    PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_sender failed");
-    ret=pthread_join(UDP_receiver,NULL);
-    PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_receiver failed");
-    ret= close(socket_udp);
-    ERROR_HELPER(ret,"Failed to close UDP socket");
+    if(!SINGLEPLAYER){
+		ret=pthread_join(UDP_sender,NULL);
+		PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_sender failed");
+		ret=pthread_join(UDP_receiver,NULL);
+		PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_receiver failed");
+		ret= close(socket_udp);
+		ERROR_HELPER(ret,"Failed to close UDP socket");
+	}
 
     fprintf(stdout,"[Main] Cleaning up... \n");
     sendGoodbye(socket_desc,id);
@@ -402,8 +405,10 @@ int main(int argc, char **argv) {
     free(local_world);
     ret=close(socket_desc);
     ERROR_HELPER(ret,"Failed to close TCP socket");
-    ret=close(socket_udp);
-    ERROR_HELPER(ret,"Failed to close UDP socket");
+    if (!SINGLEPLAYER) {
+		ret=close(socket_udp);
+		ERROR_HELPER(ret,"Failed to close UDP socket");
+	}
     // world cleanup
     World_destroy(&world);
     Image_free(surface_elevation);

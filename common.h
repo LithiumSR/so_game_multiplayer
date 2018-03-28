@@ -26,6 +26,7 @@
 #define SERVER_ADDRESS  "127.0.0.1"
 #define WORLDSIZE 512
 #define DEBUG 1
+#define SINGLEPLAYER 0
 #define BUFFERSIZE 1000000
 #define UDPPORT 8888
 #define HIDE_RANGE 6
