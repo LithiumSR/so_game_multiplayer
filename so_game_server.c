@@ -291,6 +291,9 @@ void* TCPFlow(void* args){
     user->vehicle=NULL;
     user->prev_x=-1;
     user->prev_y=-1;
+    user->x_shift=-1;
+    user->y_shift=-1;
+    user->afk_counter=0;
     user->last_update_time.tv_sec=-1;
     printf("[New user] Adding client with id %d \n",sock_fd);
     ClientList_insert(users,user);
