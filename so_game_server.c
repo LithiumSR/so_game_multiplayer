@@ -40,7 +40,7 @@ typedef struct {
     Image* surface_texture;
 } tcpArgs;
 
-void handle_signal(int signal){
+void handleSignal(int signal){
     // Find out which signal we're handling
     switch (signal) {
         case SIGHUP:
@@ -550,7 +550,7 @@ void* UDPSender(void* args){
 #endif
 
 //Remove client that are not sending updates and the one that are AFK in the same place for an extended period of time
-void* garbage_collector(void* args){
+void* garbageCollector(void* args){
     debug_print("[GC] Garbage collector initialized \n");
     int socket_udp=*(int*)args;
     while(clean_garbage){
@@ -725,7 +725,7 @@ int main(int argc, char **argv) {
 
     //seting signal handlers
     struct sigaction sa;
-    sa.sa_handler = handle_signal;
+    sa.sa_handler = handleSignal;
     sa.sa_flags = SA_RESTART;
 
     // Block every signal during the handler
@@ -767,7 +767,7 @@ int main(int argc, char **argv) {
     PTHREAD_ERROR_HELPER(ret, "pthread_create on thread tcp failed");
     ret = pthread_create(&UDP_sender, NULL,UDPSender, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on thread tcp failed");
-    ret = pthread_create(&GC_thread, NULL,garbage_collector, &server_udp);
+    ret = pthread_create(&GC_thread, NULL,garbageCollector, &server_udp);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
     ret = pthread_create(&TCP_thread, NULL,tcp_auth, &tcp_args);
     PTHREAD_ERROR_HELPER(ret, "pthread_create on garbace collector thread failed");
