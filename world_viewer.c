@@ -44,6 +44,7 @@ void keyPressed(unsigned char key, int x, int y)
   switch(key){
   case 27:
     WorldViewer_exit(0);
+    break;
   case ' ':
     viewer.self->translational_force_update = 0;
     viewer.self->rotational_force_update = 0;
