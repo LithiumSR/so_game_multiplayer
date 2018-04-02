@@ -562,7 +562,7 @@ void* garbageCollector(void* args){
         while(client!=NULL){
             long creation_time=(long)client->creation_time.tv_sec;
             long last_update_time=(long)client->last_update_time.tv_sec;
-            if((client->is_addr_ready==1 && (current_time-last_update_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE) || (client->is_addr_ready!=1 && (current_time-creation_time)>MAX_TIME_WITHOUT_VEHICLEUPDATE)){
+            if((client->is_addr_ready==1 && (current_time-last_update_time)>=MAX_TIME_WITHOUT_VEHICLEUPDATE) || (client->is_addr_ready!=1 && (current_time-creation_time)>=MAX_TIME_WITHOUT_VEHICLEUPDATE)){
                 ClientListItem* tmp=client;
                 client=client->next;
                 sendDisconnect(socket_udp,tmp->user_addr);
@@ -579,7 +579,7 @@ void* garbageCollector(void* args){
                 SKIP: close(del->id);
                 free(del);
             }
-            else if (client->is_addr_ready==1 && client->x_shift<AFK_RANGE && client->y_shift<AFK_RANGE) {
+            else if (client->is_addr_ready==1 && client->x_shift<AFK_RANGE && client->y_shift<AFK_RANGE && current_time-creation_time>=MAX_TIME_WITHOUT_VEHICLEUPDATE ) {
 				 client->afk_counter++;
                  if(client->afk_counter>=MAX_AFK_COUNTER){
 					 ClientListItem* tmp=client;
@@ -597,13 +597,13 @@ void* garbageCollector(void* args){
                      if(users->size==0) has_users=0;
                      SKIP2: close(del->id);
                      free(del);
-                }
-				        else {
-					          client->x_shift=0;
-					          client->y_shift=0;
-					          client=client->next;
-					          continue;
-				        }
+				 }
+				 else {
+					 client->x_shift=0;
+					 client->y_shift=0;
+					 client=client->next;
+					 continue;
+				}
             }
             else {
 				        client->afk_counter=0;
