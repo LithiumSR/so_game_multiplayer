@@ -1,5 +1,5 @@
 #include <GL/gl.h>
-#include <GL/glut.h>
+#include <GL/freeglut.h> //needed for glutLeaveMainLoop()
 #include <stdio.h>
 #include <math.h>
 #include <assert.h>
@@ -9,6 +9,8 @@
 #include "surface.h"
 
 int window;
+int ret;
+int destroy;
 
 typedef enum ViewType {Inside, Outside, Global} ViewType;
 
@@ -19,9 +21,13 @@ typedef struct WorldViewer{
   int window_width, window_height;
   Vehicle* self;
   ViewType view_type;
+  int destroy;
 } WorldViewer;
 
 WorldViewer viewer;
+void WorldViewer_exit(int ret);
+
+void _WorldViewer_exit(void);
 
 void WorldViewer_run(WorldViewer* viewer,
 		     World* world,
@@ -30,8 +36,6 @@ void WorldViewer_run(WorldViewer* viewer,
 
 void WorldViewer_draw(WorldViewer* viewer);
 
-void WorldViewer_destroy(WorldViewer* viewer);
-
 void WorldViewer_reshapeViewport(WorldViewer* viewer, int width, int height);
 
 
@@ -39,8 +43,7 @@ void keyPressed(unsigned char key, int x, int y)
 {
   switch(key){
   case 27:
-    glutDestroyWindow(window);
-    exit(0);
+    WorldViewer_exit(0);
   case ' ':
     viewer.self->translational_force_update = 0;
     viewer.self->rotational_force_update = 0;
@@ -87,11 +90,9 @@ void specialInput(int key, int x, int y) {
   }
 }
 
-
 void display(void) {
   WorldViewer_draw(&viewer);
 }
-
 
 void reshape(int width, int height) {
   WorldViewer_reshapeViewport(&viewer, width, height);
@@ -100,8 +101,9 @@ void reshape(int width, int height) {
 void idle(void) {
   World_update(viewer.world);
   usleep(30000);
+  if(destroy) _WorldViewer_exit();
   glutPostRedisplay();
-
+  
   // decay the commands
   viewer.self->translational_force_update *= 0.999;
   viewer.self->rotational_force_update *= 0.7;
@@ -381,23 +383,22 @@ void WorldViewer_draw(WorldViewer* viewer){
   glutSwapBuffers();
 }
 
-void WorldViewer_destroy(WorldViewer* viewer){
+void WorldViewer_exit(int exit){
+	destroy=1;
+	ret=exit;
+}
+
+void _WorldViewer_exit(void){
+	glutLeaveMainLoop();
+	int id=glutGetWindow();
+	if (id!=0) glutDestroyWindow(id);
+	exit(ret);
 }
 
 void WorldViewer_reshapeViewport(WorldViewer* viewer, int width, int height){
   viewer->window_width  = width;
   viewer->window_height = height;
   glViewport(0, 0, width, height);
-}
-
-
-void WorldViewer_run(WorldViewer* viewer,
-		     World* world,
-		     Vehicle* self,
-		     int* argc_ptr, char** argv){
-
-
-
 }
 
 void WorldViewer_runGlobal(World* world,
