@@ -8,3 +8,5 @@ void WorldViewer_runGlobal(World* world,
 			   Vehicle* self,
 			   int* argc, char** argv);
 
+//Use this if you want to correctly kill the client's path of execution, glut loop and the viewer window
+void WorldViewer_exit(int ret);
