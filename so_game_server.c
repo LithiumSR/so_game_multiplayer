@@ -490,7 +490,7 @@ void* garbageCollector(void* args){
                 SKIP: close(del->id);
                 free(del);
             }
-            else if (client->is_addr_ready==1 && client->x_shift<AFK_RANGE && client->y_shift<AFK_RANGE) {
+            else if (client->is_addr_ready==1 && client->x_shift<AFK_RANGE && client->y_shift<AFK_RANGE && current_time-creation_time>MAX_TIME_WITHOUT_VEHICLEUPDATE) {
 				 client->afk_counter++;
                  if(client->afk_counter>=MAX_AFK_COUNTER){
 					 ClientListItem* tmp=client;
