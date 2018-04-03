@@ -7,10 +7,11 @@
 #include <unistd.h>
 #include "image.h"
 #include "surface.h"
-
+#include <pthread.h>
 int window;
 int ret;
 int destroy;
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef enum ViewType {Inside, Outside, Global} ViewType;
 
@@ -385,8 +386,12 @@ void WorldViewer_draw(WorldViewer* viewer){
 }
 
 void WorldViewer_exit(int exit){
+	pthread_mutex_lock(&lock);
+	if(destroy) goto END;
 	destroy=1;
 	ret=exit;
+	END: pthread_mutex_unlock(&lock);
+	return;
 }
 
 void _WorldViewer_exit(void){
