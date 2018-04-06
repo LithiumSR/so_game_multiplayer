@@ -10,7 +10,8 @@ typedef struct ClientListItem {
   
   struct sockaddr_in user_addr;
   struct timeval last_update_time;
-  struct timeval  creation_time;
+  struct timeval creation_time;
+  struct timeval world_update_time;
   char is_addr_ready;
   int afk_counter;
   char force_refresh;
