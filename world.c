@@ -67,6 +67,7 @@ void World_update(World* w) {
     if (! Vehicle_update(v, delta*w->time_scale)){
       Vehicle_reset(v);
     }
+    Vehicle_setTime(v,current_time);
     pthread_mutex_unlock(&v->mutex);
     item=item->next;
   }
@@ -75,7 +76,6 @@ void World_update(World* w) {
 }
 
 void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time){
-
 	struct timeval current_time;
 	gettimeofday(&current_time, 0);
 	struct timeval dt;
@@ -84,6 +84,7 @@ void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time){
 	if (! Vehicle_update(v, delta*w->time_scale)){
       		Vehicle_reset(v);
     	}
+    Vehicle_setTime(v,current_time);
   }
 	
 Vehicle* World_getVehicle(World* w, int vehicle_id){
