@@ -235,9 +235,7 @@ void* UDPReceiver(void* args){
 						lw->vehicle_login_time[id_struct]=wup->updates[i].client_creation_time;
 						continue;
 					}
-					printf("[INFO] Updating vehicle with crt_time:%ld login_time:%ld \n",lw->vehicle_login_time[id_struct].tv_sec,wup->updates[i].client_creation_time.tv_sec);
 					fprintf(stdout,"Updating Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
-					fflush(stdout);
 					Vehicle_setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
 				}
 			}
