@@ -413,6 +413,7 @@ void* UDPSender(void* args){
                 cup->id=tmp->id;
                 cup->rotational_force=tmp->rotational_force;
                 cup->translational_force=tmp->translational_force;
+                cup->client_update_time=tmp->last_update_time;
                 printf("--- Vehicle with id: %d x: %f y:%f z:%f rf:%f tf:%f --- \n",cup->id,cup->x,cup->y,cup->theta,cup->rotational_force,cup->translational_force);
                 tmp = tmp->next;
                 k++;
@@ -486,6 +487,7 @@ void* UDPSender(void* args){
             cup->id=client->id;
             cup->rotational_force=client->rotational_force;
             cup->translational_force=client->translational_force;
+            cup->client_update_time=client->last_update_time;
             printf("--- Vehicle with id: %d x: %f y:%f z:%f rf:%f tf:%f --- \n",cup->id,cup->x,cup->y,cup->theta,cup->rotational_force,cup->translational_force);
             client = client->next;
         }
