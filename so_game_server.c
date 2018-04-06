@@ -277,7 +277,6 @@ void* TCPFlow(void* args){
     user->x_shift=-1;
     user->y_shift=-1;
     user->is_addr_ready=0;
-    user->force_refresh=1;
     user->v_texture=NULL;
     user->last_update_time.tv_sec=-1;
     user->afk_counter=0;
@@ -400,13 +399,7 @@ void* UDPSender(void* args){
                     tmp=tmp->next;
                     continue;
                 }
-
                 ClientUpdate* cup= &(wup->updates[k]);
-                if(tmp->force_refresh==1) {
-                    cup->force_refresh=1;
-                    tmp->force_refresh=0;
-                }
-                else cup->force_refresh=0;
                 cup->y=tmp->y;
                 cup->x=tmp->x;
                 cup->theta=tmp->theta;
@@ -414,6 +407,7 @@ void* UDPSender(void* args){
                 cup->rotational_force=tmp->rotational_force;
                 cup->translational_force=tmp->translational_force;
                 cup->client_update_time=tmp->last_update_time;
+                cup->client_creation_time=tmp->creation_time;
                 printf("--- Vehicle with id: %d x: %f y:%f z:%f rf:%f tf:%f --- \n",cup->id,cup->x,cup->y,cup->theta,cup->rotational_force,cup->translational_force);
                 tmp = tmp->next;
                 k++;
@@ -476,11 +470,6 @@ void* UDPSender(void* args){
                 continue;
             }
             ClientUpdate* cup= &(wup->updates[i]);
-            if(client->force_refresh==1) {
-                cup->force_refresh=1;
-                client->force_refresh=0;
-            }
-            else cup->force_refresh=0;
             cup->y=client->y;
             cup->x=client->x;
             cup->theta=client->theta;
@@ -488,6 +477,7 @@ void* UDPSender(void* args){
             cup->rotational_force=client->rotational_force;
             cup->translational_force=client->translational_force;
             cup->client_update_time=client->last_update_time;
+            cup->client_creation_time=client->creation_time;
             printf("--- Vehicle with id: %d x: %f y:%f z:%f rf:%f tf:%f --- \n",cup->id,cup->x,cup->y,cup->theta,cup->rotational_force,cup->translational_force);
             client = client->next;
         }
