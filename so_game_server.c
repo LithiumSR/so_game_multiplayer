@@ -291,7 +291,6 @@ void* TCPFlow(void* args){
     gettimeofday(&user->creation_time, NULL);
     user->id=sock_fd;
     user->is_addr_ready=0;
-    user->force_refresh=1;
     user->inside_world=0;
     user->v_texture=NULL;
     user->vehicle=NULL;
@@ -513,11 +512,6 @@ void* UDPSender(void* args){
                 continue;
             }
             ClientUpdate* cup= &(wup->updates[i]);
-            if(client->force_refresh==1) {
-                cup->force_refresh=1;
-                client->force_refresh=0;
-            }
-            else cup->force_refresh=0;
             pthread_mutex_lock(&client->vehicle->mutex);
             Vehicle_getXYTheta(client->vehicle,&(client->x),&(client->y),&(cup->theta));
             Vehicle_getForcesUpdate(client->vehicle,&(client->translational_force),&(client->rotational_force));

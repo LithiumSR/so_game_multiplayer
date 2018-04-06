@@ -14,7 +14,6 @@ typedef struct ClientListItem {
   struct timeval world_update_time;
   char is_addr_ready;
   int afk_counter;
-  char force_refresh;
   char inside_world;
   Vehicle* vehicle;
   Image * v_texture;
