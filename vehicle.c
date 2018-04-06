@@ -5,6 +5,7 @@
 #include "common.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 int Vehicle_update(Vehicle* v, float dt){
     int ret= sem_wait(&(v->vsem));
     if (ret==-1) debug_print("Wait on vsem didn't worked as expected");
@@ -79,6 +80,8 @@ int Vehicle_update(Vehicle* v, float dt){
 void Vehicle_init(Vehicle* v, World* w, int id, Image* texture){
     int ret = sem_init(&(v->vsem), 0, 1);
     if (ret==-1) debug_print("Sem init for vehicle was not successfuf");
+    ret= pthread_mutex_init(&(v->mutex), NULL);
+    if (ret==-1) debug_print("Mutex init for vehicle was not successfuf");
     ret= sem_wait(&(v->vsem));
     if (ret==-1)debug_print("Wait on vsem didn't worked as expected");
 
@@ -173,12 +176,11 @@ void Vehicle_setForcesUpdate(Vehicle* v, float translational_update, float rotat
     if (ret==-1)debug_print("Post on vsem didn't worked as expected");
 }
 
-
-
-
 void Vehicle_destroy(Vehicle* v){
     int ret= sem_destroy(&(v->vsem));
     if (ret==-1)debug_print("Vehicle semaphore wasn't successfully destroyed");
+    ret=pthread_mutex_destroy(&(v->mutex));
+    if (ret==-1)debug_print("Vehicle's mutex wasn't successfully destroyed");
   if (v->_destructor)
     (*v->_destructor)(v);
 }
