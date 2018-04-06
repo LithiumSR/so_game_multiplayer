@@ -58,12 +58,12 @@ typedef struct {
 // id is the id of the vehicle
 typedef struct {
   int id;
-  char force_refresh;
   float x;
   float y;
   float theta;
   float rotational_force;
   float translational_force;
+  struct timeval client_creation_time;
 } ClientUpdate;
 
 // server world update, send by server (UDP)
