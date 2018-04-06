@@ -49,6 +49,7 @@ typedef struct localWorld{
     #ifdef _USE_CACHED_TEXTURE_
     char is_disabled[WORLDSIZE];
     #endif
+    struct timeval vehicle_login_time[WORLDSIZE];
     Vehicle** vehicles;
 }localWorld;
 
@@ -236,10 +237,11 @@ void* UDPReceiver(void* args){
 						pthread_mutex_unlock(&lw->vehicles[new_position]->mutex);
 						lw->is_disabled[new_position]=0; //Just to play safe
 						lw->has_vehicle[new_position]=1;
+						lw->vehicle_login_time[new_position]=wup->updates[i].client_creation_time;
 					}
 					else {
 						mask[id_struct]=1;
-						if(wup->updates[i].force_refresh==1){
+						if(timercmp(&wup->updates[i].client_creation_time,&lw->vehicle_login_time[id_struct],!=)){
 							debug_print("[WARNING] Forcing refresh for client with id %d",wup->updates[i].id);
 							fprintf(stdout,"Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
 							if(lw->has_vehicle[id_struct]){
@@ -260,6 +262,7 @@ void* UDPReceiver(void* args){
 							World_addVehicle(&world, new_vehicle);
 							World_manualUpdate(&world,lw->vehicles[id_struct],wup->updates[i].client_update_time);
 							pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
+							lw->vehicle_login_time[id_struct]=wup->updates[i].client_creation_time;
 							lw->has_vehicle[id_struct]=1;
 							lw->is_disabled[id_struct]=0;
 							continue;
@@ -279,7 +282,7 @@ void* UDPReceiver(void* args){
 								//lw->has_vehicle[id_struct]=1;
 							}
 							else {
-								printf("[INFO] Updating vehicles  \n");
+								printf("[INFO] Updating vehicle with crt_time:%ld login_time:%ld \n",lw->vehicle_login_time[id_struct].tv_sec,wup->updates[i].client_creation_time.tv_sec);
 								fprintf(stdout,"Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
 								pthread_mutex_lock(&lw->vehicles[id_struct]->mutex);
 								Vehicle_setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
@@ -301,18 +304,6 @@ void* UDPReceiver(void* args){
 					printf("[INFO] Temporary disabling a vehicle %d \n",lw->ids[id_struct]);
 					lw->is_disabled[id_struct]=1;
 					World_detachVehicle(&world,lw->vehicles[id_struct]);
-					if(wup->updates[i].force_refresh && lw->has_vehicle[id_struct]){
-						Image* im=lw->vehicles[id_struct]->texture;
-						Vehicle_destroy(lw->vehicles[id_struct]);
-						if (im!=NULL) {
-							Image_free(im);
-							free(lw->vehicles[id_struct]);
-							}
-						im = getVehicleTexture(socket_tcp,wup->updates[i].id);
-						Vehicle* new_vehicle=(Vehicle*) malloc(sizeof(Vehicle));
-						Vehicle_init(new_vehicle,&world,wup->updates[i].id,im);
-						lw->vehicles[id_struct]=new_vehicle;
-					}	
 				}
 			}
 
@@ -369,10 +360,11 @@ void* UDPReceiver(void* args){
 					World_manualUpdate(&world,lw->vehicles[new_position],wup->updates[i].client_update_time);
 					pthread_mutex_unlock(&lw->vehicles[new_position]->mutex);
 					lw->has_vehicle[new_position]=1;
+					lw->vehicle_login_time[new_position]=wup->updates[i].client_creation_time;
 				}
 				else {
 					mask[id_struct]=1;
-					if(wup->updates[i].force_refresh==1){
+					if(timercmp(&wup->updates[i].client_creation_time,&lw->vehicle_login_time[id_struct],!=)){
 						debug_print("[WARNING] Forcing refresh for client with id %d",wup->updates[i].id);
 						if(lw->has_vehicle[id_struct]){
 							Image* im=lw->vehicles[id_struct]->texture;
@@ -394,6 +386,7 @@ void* UDPReceiver(void* args){
 						World_manualUpdate(&world,lw->vehicles[id_struct],wup->updates[i].client_update_time);
 						pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
 						lw->has_vehicle[id_struct]=1;
+						lw->vehicle_login_time[id_struct]=wup->updates[i].client_creation_time;
 						continue;
 					}
 					fprintf(stdout,"Updating Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
