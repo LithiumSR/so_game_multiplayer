@@ -203,7 +203,6 @@ void* UDPReceiver(void* args){
 				usleep(RECEIVER_SLEEP);
 				continue;
 			}
-			
 			last_update_time=wup->time;	
 			char mask[WORLDSIZE];
 			for(int k=0;k<WORLDSIZE;k++) mask[k]=NO_ACCESS;
@@ -233,7 +232,7 @@ void* UDPReceiver(void* args){
 						Vehicle_setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
 						Vehicle_setForcesUpdate(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
 						World_addVehicle(&world, new_vehicle);
-						World_manualUpdate(&world,lw->vehicles[new_position],wup->time);
+						World_manualUpdate(&world,lw->vehicles[new_position],wup->updates[i].client_update_time);
 						pthread_mutex_unlock(&lw->vehicles[new_position]->mutex);
 						lw->is_disabled[new_position]=0; //Just to play safe
 						lw->has_vehicle[new_position]=1;
@@ -259,7 +258,7 @@ void* UDPReceiver(void* args){
 							Vehicle_setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
 							Vehicle_setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
 							World_addVehicle(&world, new_vehicle);
-							World_manualUpdate(&world,lw->vehicles[id_struct],wup->time);
+							World_manualUpdate(&world,lw->vehicles[id_struct],wup->updates[i].client_update_time);
 							pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
 							lw->has_vehicle[id_struct]=1;
 							lw->is_disabled[id_struct]=0;
@@ -274,7 +273,7 @@ void* UDPReceiver(void* args){
 								Vehicle_setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
 								Vehicle_setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
 								World_addVehicle(&world, old_vehicle);
-								World_manualUpdate(&world,lw->vehicles[id_struct],wup->time);
+								World_manualUpdate(&world,lw->vehicles[id_struct],wup->updates[i].client_update_time);
 								pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
 								lw->is_disabled[id_struct]=0;
 								//lw->has_vehicle[id_struct]=1;
@@ -285,7 +284,7 @@ void* UDPReceiver(void* args){
 								pthread_mutex_lock(&lw->vehicles[id_struct]->mutex);
 								Vehicle_setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
 								Vehicle_setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
-								World_manualUpdate(&world,lw->vehicles[id_struct],wup->time);
+								World_manualUpdate(&world,lw->vehicles[id_struct],wup->updates[i].client_update_time);
 								pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
 								//lw->is_disabled[id_struct]=0;
 								//lw->has_vehicle[id_struct]=1;
@@ -367,7 +366,7 @@ void* UDPReceiver(void* args){
 					Vehicle_setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
 					Vehicle_setForcesUpdate(lw->vehicles[new_position],wup->updates[i].translational_force,wup->updates[i].rotational_force);
 					World_addVehicle(&world, new_vehicle);
-					World_manualUpdate(&world,lw->vehicles[new_position],wup->time);
+					World_manualUpdate(&world,lw->vehicles[new_position],wup->updates[i].client_update_time);
 					pthread_mutex_unlock(&lw->vehicles[new_position]->mutex);
 					lw->has_vehicle[new_position]=1;
 				}
@@ -392,7 +391,7 @@ void* UDPReceiver(void* args){
 						Vehicle_setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
 						Vehicle_setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
 						World_addVehicle(&world, new_vehicle);
-						World_manualUpdate(&world,lw->vehicles[id_struct],wup->time);
+						World_manualUpdate(&world,lw->vehicles[id_struct],wup->updates[i].client_update_time);
 						pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
 						lw->has_vehicle[id_struct]=1;
 						continue;
@@ -401,7 +400,7 @@ void* UDPReceiver(void* args){
 					pthread_mutex_lock(&lw->vehicles[id_struct]->mutex);
 					Vehicle_setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
 					Vehicle_setForcesUpdate(lw->vehicles[id_struct],wup->updates[i].translational_force,wup->updates[i].rotational_force);
-					World_manualUpdate(&world,lw->vehicles[id_struct],wup->time);
+					World_manualUpdate(&world,lw->vehicles[id_struct],wup->updates[i].client_update_time);
 					pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
 				}
 			}
