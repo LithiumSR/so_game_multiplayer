@@ -9,6 +9,7 @@
 #include <sys/time.h>
 #include <assert.h>
 #include <semaphore.h>
+#include <pthread.h>
 
 void World_destroy(World* w) {
   Surface_destroy(&w->ground);
@@ -62,13 +63,26 @@ void World_update(World* w) {
   ListItem* item=w->vehicles.first;
   while(item){
     Vehicle* v=(Vehicle*)item;
+    pthread_mutex_lock(&v->mutex);
     if (! Vehicle_update(v, delta*w->time_scale)){
       Vehicle_reset(v);
     }
+    pthread_mutex_unlock(&v->mutex);
     item=item->next;
   }
   sem_post(&sem);
   w->last_update = current_time;
+}
+
+void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time){
+	struct timeval current_time;
+	gettimeofday(&current_time, 0);
+	struct timeval dt;
+	timersub(&current_time, &update_time, &dt);
+	float delta = dt.tv_sec+1e-6*dt.tv_usec;
+	if (! Vehicle_update(v, delta*w->time_scale)){
+    Vehicle_reset(v);
+  }
 }
 
 Vehicle* World_getVehicle(World* w, int vehicle_id){
