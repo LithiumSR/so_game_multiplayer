@@ -204,7 +204,9 @@ void* UDPReceiver(void* args){
 			char mask[WORLDSIZE];
 			for(int k=0;k<WORLDSIZE;k++) mask[k]=NO_ACCESS;
 			float x,y,theta;
+			pthread_mutex_lock(&vehicle->mutex);
 			Vehicle_getXYTheta(vehicle,&x,&y,&theta);
+			pthread_mutex_unlock(&vehicle->mutex);
 			#ifdef _USE_CACHED_TEXTURE_
 			int ignored=0;
 			for(int i=0; i < wup -> num_vehicles ; i++){
