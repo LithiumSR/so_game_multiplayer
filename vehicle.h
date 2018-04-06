@@ -4,6 +4,10 @@
 #include "linked_list.h"
 #include <semaphore.h>
 
+#if USE_VEHICLE_SEMAPHORE == 1
+    #define _USE_VEHICLE_SEM_
+#endif
+
 struct World;
 struct Vehicle;
 typedef void (*VehicleDtor)(struct Vehicle* v);
@@ -13,7 +17,9 @@ typedef struct Vehicle {
   int id;
   struct World* world;
   Image* texture;
+  #ifdef _USE_VEHICLE_SEM_
   sem_t vsem;
+  #endif
   pthread_mutex_t mutex;
   // these are the forces that will be applied after the update and the critical section
   float translational_force_update;

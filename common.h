@@ -24,6 +24,7 @@
 
 /* Configuration parameters */
 #define SERVER_ADDRESS  "127.0.0.1"
+#define USE_VEHICLE_SEMAPHORE 0 //Don't tinker with that
 #define WORLDSIZE 512
 #define DEBUG 1
 #define SINGLEPLAYER 0
@@ -31,7 +32,7 @@
 #define UDPPORT 8888
 #define HIDE_RANGE 3
 #define AFK_RANGE 1
-#define MAX_AFK_COUNTER 6
+#define MAX_AFK_COUNTER 5
 #define CACHE_TEXTURE 1
 #define SERVER_SIDE_POSITION_CHECK 0
 #define MAX_TIME_WITHOUT_VEHICLEUPDATE 10
