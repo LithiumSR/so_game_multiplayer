@@ -38,6 +38,7 @@ typedef struct localWorld{
     int  ids[WORLDSIZE];
     int users_online;
     char has_vehicle[WORLDSIZE];
+    struct timeval vehicle_login_time[WORLDSIZE];
     Vehicle** vehicles;
 }localWorld;
 
@@ -194,10 +195,7 @@ void* UDPReceiver(void* args){
 			last_update_time=wup->time;
 			char mask[WORLDSIZE];
 			for(int k=0;k<WORLDSIZE;k++) mask[k]=NO_ACCESS;
-			float x,y,theta;
-			Vehicle_getXYTheta(vehicle,&x,&y,&theta);
 			for(int i=0; i < wup -> num_vehicles ; i++){
-
 				int new_position=-1;
 				int id_struct=addUser(lw->ids,WORLDSIZE,wup->updates[i].id,&new_position,&(lw->users_online));
 				if(wup->updates[i].id==id) Vehicle_setXYTheta(lw->vehicles[0],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
@@ -213,10 +211,11 @@ void* UDPReceiver(void* args){
 					Vehicle_setXYTheta(lw->vehicles[new_position],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
 					World_addVehicle(&world, new_vehicle);
 					lw->has_vehicle[new_position]=1;
+					lw->vehicle_login_time[new_position]=wup->updates[i].client_creation_time;
 				}
 				else {
 					mask[id_struct]=1;
-					if(wup->updates[i].force_refresh==1){
+					if(timercmp(&wup->updates[i].client_creation_time,&lw->vehicle_login_time[id_struct],!=)){
 						debug_print("[WARNING] Forcing refresh for client with id %d",wup->updates[i].id);
 						if(lw->has_vehicle[id_struct]){
 							Image* im=lw->vehicles[id_struct]->texture;
@@ -233,9 +232,12 @@ void* UDPReceiver(void* args){
 						Vehicle_setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
 						World_addVehicle(&world, new_vehicle);
 						lw->has_vehicle[id_struct]=1;
+						lw->vehicle_login_time[id_struct]=wup->updates[i].client_creation_time;
 						continue;
 					}
+					printf("[INFO] Updating vehicle with crt_time:%ld login_time:%ld \n",lw->vehicle_login_time[id_struct].tv_sec,wup->updates[i].client_creation_time.tv_sec);
 					fprintf(stdout,"Updating Vehicle with id %d and x: %f y: %f z: %f \n",wup->updates[i].id,wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
+					fflush(stdout);
 					Vehicle_setXYTheta(lw->vehicles[id_struct],wup->updates[i].x,wup->updates[i].y,wup->updates[i].theta);
 				}
 			}

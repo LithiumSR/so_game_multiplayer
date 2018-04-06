@@ -285,7 +285,6 @@ void* TCPFlow(void* args){
     gettimeofday(&user->creation_time, NULL);
     user->id=sock_fd;
     user->is_addr_ready=0;
-    user->force_refresh=1;
     user->inside_world=0;
     user->v_texture=NULL;
     user->vehicle=NULL;
@@ -432,15 +431,11 @@ void* UDPSender(void* args){
                     continue;
                 }
                 ClientUpdate* cup= &(wup->updates[k]);
-                if(tmp->force_refresh==1) {
-                    cup->force_refresh=1;
-                    tmp->force_refresh=0;
-                }
-                else cup->force_refresh=0;
                 cup->y=tmp->y;
                 cup->x=tmp->x;
                 cup->theta=tmp->theta;
                 cup->id=tmp->id;
+                cup->client_creation_time=tmp->creation_time;
                 printf("--- Vehicle with id: %d x: %f y:%f z:%f --- \n",cup->id,cup->x,cup->y,cup->theta);
                 tmp = tmp->next;
                 k++;
