@@ -47,16 +47,16 @@ libso_game.a: $(OBJS)
 	$(AR) -rcs $@ $^
 	$(RM) $(OBJS)
 
-so_game_client: so_game_client.c libso_game.a
+so_game_client: client/so_game_client.c libso_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
 
-so_game_server: so_game_server.c libso_game.a
+so_game_server: server/so_game_server.c libso_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
 
-test_packets_serialization: test_packets_serialization.c libso_game.a
+test_packets_serialization: tests/test_packets_serialization.c libso_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^  $(LIBS)
 
-test_client_list: test_client_list.c libso_game.a
+test_client_list: tests/test_client_list.c libso_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^  $(LIBS)
 
 

@@ -2,8 +2,8 @@
 #include <sys/time.h>
 #include "image.h"
 #include "surface.h"
-#include "vehicle.h"
-#include "linked_list.h"
+#include "../game_framework/vehicle.h"
+#include "../game_framework/linked_list.h"
 
 typedef struct World {
   ListHead vehicles; // list of vehicles

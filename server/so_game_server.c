@@ -8,15 +8,15 @@
 #include <sys/socket.h>
 #include <signal.h>
 #include <pthread.h>
-#include "common.h"
-#include "image.h"
-#include "surface.h"
-#include "world.h"
-#include "vehicle.h"
-#include "world_viewer.h"
-#include "client_op.h"
-#include "so_game_protocol.h"
-#include "client_list.h"
+#include "../common/common.h"
+#include "../av_framework/image.h"
+#include "../av_framework/surface.h"
+#include "../av_framework/world.h"
+#include "../game_framework/vehicle.h"
+#include "../av_framework/world_viewer.h"
+#include "../client/client_op.h"
+#include "../game_framework/so_game_protocol.h"
+#include "../game_framework/client_list.h"
 #define RECEIVER_SLEEP 50*1000
 #define WORLD_LOOP_SLEEP 70*1000
 #if SERVER_SIDE_POSITION_CHECK == 1

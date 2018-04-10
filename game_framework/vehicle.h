@@ -1,6 +1,6 @@
 #pragma once
-#include "surface.h"
-#include "image.h"
+#include "../av_framework/surface.h"
+#include "../av_framework/image.h"
 #include "linked_list.h"
 #include <semaphore.h>
 

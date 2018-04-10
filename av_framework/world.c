@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "surface.h"
-#include "vehicle.h"
+#include "../game_framework/vehicle.h"
 #include "image.h"
 #include <sys/time.h>
 #include <assert.h>

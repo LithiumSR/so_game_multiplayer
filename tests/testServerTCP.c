@@ -7,9 +7,9 @@
 #include <netinet/in.h> // struct sockaddr_in
 #include <sys/socket.h>
 #include <errno.h>
-#include "../common.h"
+#include "../common/common.h"
 #include <pthread.h>
-#include "../so_game_protocol.h"
+#include "../game_framework/so_game_protocol.h"
 #define BUFFERSIZE 1000000
 int id;
 

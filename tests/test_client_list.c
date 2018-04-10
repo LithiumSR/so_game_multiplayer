@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "so_game_protocol.h"
-#include "client_list.h"
-#include "common.h"
+#include "../game_framework/so_game_protocol.h"
+#include "../game_framework/client_list.h"
+#include "../common/common.h"
 int main(int argc, char const *argv[]) {
     debug_print("Starting client list tests...");
     ClientListHead* test=(ClientListHead*)malloc(sizeof(ClientListHead));
