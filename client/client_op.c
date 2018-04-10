@@ -1,12 +1,12 @@
 
-#include "audio_context.h"
-#include "common.h"
-#include "image.h"
-#include "so_game_protocol.h"
-#include "surface.h"
-#include "vehicle.h"
-#include "world.h"
-#include "world_viewer.h"
+#include "../av_framework/audio_context.h"
+#include "../common/common.h"
+#include "../av_framework/image.h"
+#include "../game_framework/so_game_protocol.h"
+#include "../av_framework/surface.h"
+#include "../game_framework/vehicle.h"
+#include "../av_framework/world.h"
+#include "../av_framework/world_viewer.h"
 #include <arpa/inet.h> // htons() and inet_addr()
 #include <math.h>
 #include <netinet/in.h> // struct sockaddr_in

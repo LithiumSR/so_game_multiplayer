@@ -4,8 +4,8 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "common.h"
-#include "world.h"
+#include "../common/common.h"
+#include "../av_framework/world.h"
 
 int Vehicle_update(Vehicle *v, float dt) {
   int ret;

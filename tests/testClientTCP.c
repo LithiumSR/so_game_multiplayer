@@ -7,8 +7,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include "../common.h"
-#include "../so_game_protocol.h"
+#include "../common/common.h"
+#include "../game_framework/so_game_protocol.h"
 #define BUFFERSIZE 1000000
 
 int getID(int socket_desc) {

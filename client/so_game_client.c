@@ -10,15 +10,15 @@
 #include <sys/socket.h>
 #include <time.h>
 #include <unistd.h>
-#include "audio_context.h"
+#include "../av_framework/audio_context.h"
 #include "client_op.h"
-#include "common.h"
-#include "image.h"
-#include "so_game_protocol.h"
-#include "surface.h"
-#include "vehicle.h"
-#include "world.h"
-#include "world_viewer.h"
+#include "../common/common.h"
+#include "../av_framework/image.h"
+#include "../game_framework/so_game_protocol.h"
+#include "../av_framework/surface.h"
+#include "../game_framework/vehicle.h"
+#include "../av_framework/world.h"
+#include "../av_framework/world_viewer.h"
 #define NO_ACCESS -2
 #define SENDER_SLEEP 400 * 1000
 #define RECEIVER_SLEEP 500 * 1000

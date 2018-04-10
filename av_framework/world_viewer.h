@@ -1,6 +1,6 @@
 #pragma once
 #include "audio_context.h"
-#include "vehicle.h"
+#include "../game_framework/vehicle.h"
 #include "world.h"
 // call this to start the visualization of the stuff.
 // This will block the program, and terminate when pressing esc on the viewport

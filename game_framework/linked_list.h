@@ -2,7 +2,7 @@
 #include <netinet/in.h>
 #include <semaphore.h>
 #include <time.h>
-#include "image.h"
+#include "../av_framework/image.h"
 typedef struct ListItem {
   struct ListItem *prev;
   struct ListItem *next;

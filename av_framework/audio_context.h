@@ -2,7 +2,7 @@
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <AL/alut.h>
-#include "so_game_protocol.h"
+#include "../game_framework/so_game_protocol.h"
 
 typedef struct AudioContext {
   ALuint buffer;

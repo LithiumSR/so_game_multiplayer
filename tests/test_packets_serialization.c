@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "so_game_protocol.h"
+#include "../game_framework/so_game_protocol.h"
 
 int main(int argc, char const *argv[]) {
   // id packet

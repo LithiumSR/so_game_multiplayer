@@ -1,9 +1,9 @@
 #pragma once
 #include <sys/time.h>
 #include "image.h"
-#include "linked_list.h"
+#include "../game_framework/linked_list.h"
 #include "surface.h"
-#include "vehicle.h"
+#include "../game_framework/vehicle.h"
 
 typedef struct World {
   ListHead vehicles;  // list of vehicles

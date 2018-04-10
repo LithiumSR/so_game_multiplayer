@@ -1,8 +1,8 @@
 #pragma once
 #include <semaphore.h>
-#include "image.h"
+#include "../av_framework/image.h"
 #include "linked_list.h"
-#include "surface.h"
+#include "../av_framework/surface.h"
 
 #if USE_VEHICLE_SEMAPHORE == 1
 #define _USE_VEHICLE_SEM_

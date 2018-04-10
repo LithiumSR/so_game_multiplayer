@@ -7,8 +7,8 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include "../common.h"
-#include "../so_game_protocol.h"
+#include "../common/common.h"
+#include "../game_framework/so_game_protocol.h"
 #define BUFFSIZE 1000000
 
 int main(int argc, char **argv) {

@@ -9,7 +9,7 @@
 #include <sys/time.h>
 #include "image.h"
 #include "surface.h"
-#include "vehicle.h"
+#include "../game_framework/vehicle.h"
 
 void World_destroy(World *w) {
   Surface_destroy(&w->ground);
