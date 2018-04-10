@@ -1,3 +1,15 @@
+#include <GL/glut.h>
+#include <arpa/inet.h>  // htons() and inet_addr()
+#include <fcntl.h>
+#include <math.h>
+#include <netinet/in.h>  // struct sockaddr_in
+#include <pthread.h>
+#include <signal.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <time.h>
+#include <unistd.h>
 #include "audio_context.h"
 #include "client_op.h"
 #include "common.h"
@@ -7,18 +19,6 @@
 #include "vehicle.h"
 #include "world.h"
 #include "world_viewer.h"
-#include <GL/glut.h>
-#include <arpa/inet.h> // htons() and inet_addr()
-#include <fcntl.h>
-#include <math.h>
-#include <netinet/in.h> // struct sockaddr_in
-#include <pthread.h>
-#include <signal.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <time.h>
-#include <unistd.h>
 #define NO_ACCESS -2
 #define SENDER_SLEEP 400 * 1000
 #define RECEIVER_SLEEP 500 * 1000
@@ -33,12 +33,12 @@
 
 int window;
 World world;
-Vehicle *vehicle; // The vehicle
+Vehicle *vehicle;  // The vehicle
 int id;
 uint16_t port_number_no;
 int connectivity = 1;
 int exchange_update = 1;
-int socket_desc; // socket tcp
+int socket_desc;  // socket tcp
 struct timeval last_update_time;
 int offline_server_counter = 0;
 AudioContext *backgroud_track = NULL;
@@ -55,8 +55,7 @@ typedef struct localWorld {
 } localWorld;
 
 void cleanupAudioDevice(void) {
-  if (backgroud_track == NULL)
-    return;
+  if (backgroud_track == NULL) return;
   AudioContext_free(backgroud_track);
   AudioContext_closeDevice();
 }
@@ -71,19 +70,18 @@ typedef struct listenArgs {
 void handleSignal(int signal) {
   // Find out which signal we're handling
   switch (signal) {
-  case SIGHUP:
-    break;
-  case SIGINT:
-    connectivity = 0;
-    exchange_update = 0;
-    cleanupAudioDevice();
-    if (last_update_time.tv_sec != 1)
-      sendGoodbye(socket_desc, id);
-    WorldViewer_exit(0);
-    break;
-  default:
-    fprintf(stderr, "Caught wrong signal: %d\n", signal);
-    return;
+    case SIGHUP:
+      break;
+    case SIGINT:
+      connectivity = 0;
+      exchange_update = 0;
+      cleanupAudioDevice();
+      if (last_update_time.tv_sec != 1) sendGoodbye(socket_desc, id);
+      WorldViewer_exit(0);
+      break;
+    default:
+      fprintf(stderr, "Caught wrong signal: %d\n", signal);
+      return;
   }
 }
 
@@ -124,15 +122,15 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
   int bytes_sent =
       sendto(socket_udp, buf_send, size, 0,
              (const struct sockaddr *)&server_addr, (socklen_t)serverlen);
-  debug_print("[UDP_Sender] Sent a VehicleUpdatePacket of %d bytes with x: %f "
-              "y: %f z: %f rf:%f tf:%f \n",
-              bytes_sent, vup->x, vup->y, vup->theta, vup->rotational_force,
-              vup->translational_force);
+  debug_print(
+      "[UDP_Sender] Sent a VehicleUpdatePacket of %d bytes with x: %f "
+      "y: %f z: %f rf:%f tf:%f \n",
+      bytes_sent, vup->x, vup->y, vup->theta, vup->rotational_force,
+      vup->translational_force);
   Packet_free(&(vup->header));
   struct timeval current_time;
   gettimeofday(&current_time, NULL);
-  if (last_update_time.tv_sec == -1)
-    offline_server_counter++;
+  if (last_update_time.tv_sec == -1) offline_server_counter++;
   if (offline_server_counter >= MAX_FAILED_ATTEMPTS) {
     connectivity = 0;
     exchange_update = 0;
@@ -154,8 +152,7 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
   } else if (last_update_time.tv_sec != -1)
     offline_server_counter = 0;
 
-  if (bytes_sent < 0)
-    return -1;
+  if (bytes_sent < 0) return -1;
   return 0;
 }
 
@@ -203,8 +200,9 @@ void *UDPReceiver(void *args) {
       sleep(1);
       continue;
     } else if (ph->type == PostDisconnect) {
-      fprintf(stdout, "[WARNING] You were kicked out of the server for "
-                      "inactivity... Closing the client now \n");
+      fprintf(stdout,
+              "[WARNING] You were kicked out of the server for "
+              "inactivity... Closing the client now \n");
       connectivity = 0;
       exchange_update = 0;
       cleanupAudioDevice();
@@ -212,8 +210,9 @@ void *UDPReceiver(void *args) {
     }
 
     else if (ph->type != PostDisconnect && ph->type != WorldUpdate) {
-      fprintf(stdout, "[UDP_Receiver] Found an unknown udp packet. Terminating "
-                      "the client now... \n");
+      fprintf(stdout,
+              "[UDP_Receiver] Found an unknown udp packet. Terminating "
+              "the client now... \n");
       sendGoodbye(socket_desc, id);
       connectivity = 0;
       exchange_update = 0;
@@ -233,8 +232,7 @@ void *UDPReceiver(void *args) {
                   wup->num_vehicles - 1);
       last_update_time = wup->time;
       char mask[WORLDSIZE];
-      for (int k = 0; k < WORLDSIZE; k++)
-        mask[k] = NO_ACCESS;
+      for (int k = 0; k < WORLDSIZE; k++) mask[k] = NO_ACCESS;
       float x, y, theta;
       pthread_mutex_lock(&vehicle->mutex);
       Vehicle_getXYTheta(vehicle, &x, &y, &theta);
@@ -242,16 +240,14 @@ void *UDPReceiver(void *args) {
 #ifdef _USE_CACHED_TEXTURE_
       int ignored = 0;
       for (int i = 0; i < wup->num_vehicles; i++) {
-        if (wup->updates[i].id == id)
-          continue;
+        if (wup->updates[i].id == id) continue;
         if (!(abs((int)x - (int)wup->updates[i].x) > HIDE_RANGE ||
               abs((int)y - (int)wup->updates[i].y) > HIDE_RANGE)) {
           int new_position = -1;
           int id_struct = addUser(lw->ids, WORLDSIZE, wup->updates[i].id,
                                   &new_position, &(lw->users_online));
           if (id_struct == -1) {
-            if (new_position == -1)
-              continue;
+            if (new_position == -1) continue;
             printf("[INFO] Found new vehicle \n");
             mask[new_position] = 1;
             fprintf(stdout,
@@ -259,8 +255,7 @@ void *UDPReceiver(void *args) {
                     wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
                     wup->updates[i].theta);
             Image *img = getVehicleTexture(socket_tcp, wup->updates[i].id);
-            if (img == NULL)
-              continue;
+            if (img == NULL) continue;
             Vehicle *new_vehicle = (Vehicle *)malloc(sizeof(Vehicle));
             Vehicle_init(new_vehicle, &world, wup->updates[i].id, img);
             lw->vehicles[new_position] = new_vehicle;
@@ -276,7 +271,7 @@ void *UDPReceiver(void *args) {
             pthread_mutex_unlock(&lw->vehicles[new_position]->mutex);
             lw->vehicle_login_time[new_position] =
                 wup->updates[i].client_creation_time;
-            lw->is_disabled[new_position] = 0; // Just to play safe
+            lw->is_disabled[new_position] = 0;  // Just to play safe
             lw->has_vehicle[new_position] = 1;
           } else {
             mask[id_struct] = 1;
@@ -293,12 +288,10 @@ void *UDPReceiver(void *args) {
                 Image *im = lw->vehicles[id_struct]->texture;
                 Vehicle_destroy(lw->vehicles[id_struct]);
                 free(lw->vehicles[id_struct]);
-                if (im != NULL)
-                  Image_free(im);
+                if (im != NULL) Image_free(im);
               }
               Image *img = getVehicleTexture(socket_tcp, wup->updates[i].id);
-              if (img == NULL)
-                continue;
+              if (img == NULL) continue;
               Vehicle *new_vehicle = (Vehicle *)malloc(sizeof(Vehicle));
               Vehicle_init(new_vehicle, &world, wup->updates[i].id, img);
               lw->vehicles[id_struct] = new_vehicle;
@@ -360,8 +353,7 @@ void *UDPReceiver(void *args) {
           ignored++;
           int id_struct = addUser(lw->ids, WORLDSIZE, wup->updates[i].id,
                                   &new_position, &(lw->users_online));
-          if (id_struct == -1)
-            continue;
+          if (id_struct == -1) continue;
           mask[id_struct] = 1;
           printf("[INFO] Temporary disabling a vehicle  \n");
           lw->is_disabled[id_struct] = 1;
@@ -373,23 +365,18 @@ void *UDPReceiver(void *args) {
       if (ignored > 0)
         debug_print("[INFO] Ignored %d vehicles based on position \n", ignored);
       for (int i = 0; i < WORLDSIZE; i++) {
-        if (mask[i] == 1)
-          continue;
-        if (i == 0)
-          continue;
+        if (mask[i] == 1) continue;
+        if (i == 0) continue;
         if (mask[i] == NO_ACCESS && lw->ids[i] != -1) {
           fprintf(stdout, "[WorldUpdate] Removing Vehicles with ID %d \n",
                   lw->ids[i]);
           lw->users_online = lw->users_online - 1;
-          if (!lw->has_vehicle[i])
-            goto END;
+          if (!lw->has_vehicle[i]) goto END;
           Image *im = lw->vehicles[i]->texture;
-          if (!lw->is_disabled[i])
-            World_detachVehicle(&world, lw->vehicles[i]);
+          if (!lw->is_disabled[i]) World_detachVehicle(&world, lw->vehicles[i]);
           Vehicle_destroy(lw->vehicles[i]);
           free(lw->vehicles[i]);
-          if (im != NULL)
-            Image_free(im);
+          if (im != NULL) Image_free(im);
         END:
           lw->ids[i] = -1;
           lw->has_vehicle[i] = 0;
@@ -405,8 +392,7 @@ void *UDPReceiver(void *args) {
 #endif
 
       for (int i = 0; i < wup->num_vehicles; i++) {
-        if (wup->updates[i].id == id)
-          continue;
+        if (wup->updates[i].id == id) continue;
 
 #ifndef _USE_SERVER_SIDE_FOG_
         if (abs((int)x - (int)wup->updates[i].x) > HIDE_RANGE ||
@@ -420,15 +406,13 @@ void *UDPReceiver(void *args) {
         int id_struct = addUser(lw->ids, WORLDSIZE, wup->updates[i].id,
                                 &new_position, &(lw->users_online));
         if (id_struct == -1) {
-          if (new_position == -1)
-            continue;
+          if (new_position == -1) continue;
           mask[new_position] = 1;
           fprintf(stdout, "New Vehicle with id %d and x: %f y: %f z: %f \n",
                   wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
                   wup->updates[i].theta);
           Image *img = getVehicleTexture(socket_tcp, wup->updates[i].id);
-          if (img == NULL)
-            continue;
+          if (img == NULL) continue;
           Vehicle *new_vehicle = (Vehicle *)malloc(sizeof(Vehicle));
           Vehicle_init(new_vehicle, &world, wup->updates[i].id, img);
           lw->vehicles[new_position] = new_vehicle;
@@ -455,14 +439,12 @@ void *UDPReceiver(void *args) {
             if (lw->has_vehicle[id_struct]) {
               World_detachVehicle(&world, lw->vehicles[id_struct]);
               Image *im = lw->vehicles[id_struct]->texture;
-              if (im != NULL)
-                Image_free(im);
+              if (im != NULL) Image_free(im);
               Vehicle_destroy(lw->vehicles[id_struct]);
               free(lw->vehicles[id_struct]);
             }
             Image *img = getVehicleTexture(socket_tcp, wup->updates[i].id);
-            if (img == NULL)
-              continue;
+            if (img == NULL) continue;
             Vehicle *new_vehicle = (Vehicle *)malloc(sizeof(Vehicle));
             Vehicle_init(new_vehicle, &world, wup->updates[i].id, img);
             lw->vehicles[id_struct] = new_vehicle;
@@ -503,22 +485,17 @@ void *UDPReceiver(void *args) {
 #endif
 
       for (int i = 0; i < WORLDSIZE; i++) {
-        if (mask[i] == 1)
-          continue;
-        if (i == 0)
-          continue;
+        if (mask[i] == 1) continue;
+        if (i == 0) continue;
         if (mask[i] == NO_ACCESS && lw->ids[i] != -1) {
           fprintf(stdout, "[WorldUpdate] Removing Vehicles with ID %d \n",
                   lw->ids[i]);
           lw->users_online = lw->users_online - 1;
-          if (!lw->has_vehicle[i])
-            goto END;
+          if (!lw->has_vehicle[i]) goto END;
           Image *im = lw->vehicles[i]->texture;
           Vehicle *del = World_detachVehicle(&world, lw->vehicles[i]);
-          if (del != NULL)
-            Vehicle_destroy(del);
-          if (im != NULL)
-            Image_free(im);
+          if (del != NULL) Vehicle_destroy(del);
+          if (im != NULL) Image_free(im);
           free(del);
         END:
           lw->ids[i] = -1;
@@ -559,17 +536,17 @@ int main(int argc, char **argv) {
   debug_print("[INFO] CACHE_TEXTURE option is disabled \n");
 #endif
   last_update_time.tv_sec = -1;
-  port_number_no = htons((uint16_t)tmp); // we use network byte order
+  port_number_no = htons((uint16_t)tmp);  // we use network byte order
   socket_desc = socket(AF_INET, SOCK_STREAM, 0);
   in_addr_t ip_addr = inet_addr(SERVER_ADDRESS);
   ERROR_HELPER(socket_desc, "Cannot create socket \n");
   struct sockaddr_in server_addr = {
-      0}; // some fields are required to be filled with 0
+      0};  // some fields are required to be filled with 0
   server_addr.sin_addr.s_addr = ip_addr;
   server_addr.sin_family = AF_INET;
   server_addr.sin_port = port_number_no;
 
-  int reuseaddr_opt = 1; // recover server if a crash occurs
+  int reuseaddr_opt = 1;  // recover server if a crash occurs
   int ret = setsockopt(socket_desc, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_opt,
                        sizeof(reuseaddr_opt));
   ERROR_HELPER(ret, "Can't set SO_REUSEADDR flag");
@@ -614,8 +591,7 @@ int main(int argc, char **argv) {
   debug_print("[Main] Sending vehicle texture");
   sendVehicleTexture(socket_desc, my_texture, id);
   fprintf(stdout, "[Main] Client Vehicle texture sent \n");
-  if (CLIENT_AUDIO)
-    backgroud_track = getAudioContext(socket_desc);
+  if (CLIENT_AUDIO) backgroud_track = getAudioContext(socket_desc);
   fprintf(stdout, "[Main] Received track number \n");
 
   // create Vehicle
@@ -625,16 +601,15 @@ int main(int argc, char **argv) {
   local_world->vehicles[0] = vehicle;
   local_world->has_vehicle[0] = 1;
   World_addVehicle(&world, vehicle);
-  if (SINGLEPLAYER)
-    goto SKIP;
+  if (SINGLEPLAYER) goto SKIP;
 
   // UDP Init
   uint16_t port_number_udp =
-      htons((uint16_t)UDPPORT); // we use network byte order
+      htons((uint16_t)UDPPORT);  // we use network byte order
   int socket_udp = socket(AF_INET, SOCK_DGRAM, 0);
   ERROR_HELPER(socket_desc, "Can't create an UDP socket");
   struct sockaddr_in udp_server = {
-      0}; // some fields are required to be filled with 0
+      0};  // some fields are required to be filled with 0
   udp_server.sin_addr.s_addr = ip_addr;
   udp_server.sin_family = AF_INET;
   udp_server.sin_port = port_number_udp;
@@ -654,8 +629,7 @@ int main(int argc, char **argv) {
 
 // Disconnect from server if required by macro
 SKIP:
-  if (SINGLEPLAYER)
-    sendGoodbye(socket_desc, id);
+  if (SINGLEPLAYER) sendGoodbye(socket_desc, id);
 
   WorldViewer_runGlobal(&world, vehicle, backgroud_track, &argc, argv);
 
@@ -677,15 +651,12 @@ SKIP:
   // Clean resources
   cleanupAudioDevice();
   for (int i = 0; i < WORLDSIZE; i++) {
-    if (local_world->ids[i] == -1 || i == 0)
-      continue;
+    if (local_world->ids[i] == -1 || i == 0) continue;
     local_world->users_online--;
-    if (!local_world->has_vehicle[i])
-      continue;
+    if (!local_world->has_vehicle[i]) continue;
     Image *im = local_world->vehicles[i]->texture;
     World_detachVehicle(&world, local_world->vehicles[i]);
-    if (im != NULL)
-      Image_free(im);
+    if (im != NULL) Image_free(im);
     Vehicle_destroy(local_world->vehicles[i]);
     free(local_world->vehicles[i]);
   }
@@ -694,8 +665,7 @@ SKIP:
   free(local_world);
   ret = close(socket_desc);
   ERROR_HELPER(ret, "Failed to close TCP socket");
-  if (!SINGLEPLAYER)
-    ret = close(socket_udp);
+  if (!SINGLEPLAYER) ret = close(socket_udp);
   ERROR_HELPER(ret, "Failed to close UDP socket");
   // world cleanup
   World_destroy(&world);
