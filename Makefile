@@ -1,5 +1,5 @@
 CCOPTS= -Wall -g -Wstrict-prototypes
-LIBS= -lglut -lGLU -lGL -lm -lpthread
+LIBS= -lglut -lGLU -lGL -lm -lpthread -lopenal -lalut
 CC=gcc -std=gnu99
 AR=ar
 
@@ -21,7 +21,8 @@ OBJS = vec3.o\
        client_op.o\
        so_game_protocol.o\
        client_list.o\
-
+       audio_context.o\
+       
 HEADERS=helpers.h\
 	image.h\
 	linked_list.h\
@@ -34,9 +35,10 @@ HEADERS=helpers.h\
 	common.h\
 	client_op.h\
 	client_list.h\
+	audio_context.h\
 
 %.o:	%.c $(HEADERS)
-	$(CC) $(CCOPTS) -c -o $@  $<
+	$(CC) $(CCOPTS) -c -o $@ $<
 
 .phony: clean all
 
