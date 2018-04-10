@@ -10,7 +10,9 @@ typedef enum {
   PostElevation=0x5,
   WorldUpdate=0x6,
   VehicleUpdate=0x7,
-  PostDisconnect=0x8
+  PostDisconnect=0x8,
+  GetAudioInfo=0x9,
+  PostAudioInfo=0x10
 } Type;
 
 typedef struct {
@@ -77,6 +79,10 @@ typedef struct {
   ClientUpdate* updates;
 } WorldUpdatePacket;
 
+typedef struct {
+  PacketHeader header;
+  int track_number;
+} AudioInfoPacket;
 
 // converts a well formed packet into a string in dest.
 // returns the written bytes
