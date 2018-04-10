@@ -17,6 +17,13 @@ int Packet_serialize(char* dest, const PacketHeader* h){
       dest_end+=sizeof(IdPacket);
       break;
     }
+    case GetAudioInfo:
+    case PostAudioInfo: {
+      const AudioInfoPacket* id_packet = (AudioInfoPacket*)h;
+      memcpy(dest, id_packet, sizeof(AudioInfoPacket));
+      dest_end += sizeof(AudioInfoPacket);
+      break;
+    }
     case PostTexture:
     case PostElevation:
     {
@@ -69,6 +76,13 @@ PacketHeader* Packet_deserialize(const char* buffer, int size){
       memcpy(id_packet, buffer, sizeof(IdPacket));
       return (PacketHeader*)id_packet;
     }
+    case GetAudioInfo:
+    case PostAudioInfo: {
+      AudioInfoPacket* audio_packet =
+          (AudioInfoPacket*)malloc(sizeof(AudioInfoPacket));
+      memcpy(audio_packet, buffer, sizeof(AudioInfoPacket));
+      return (PacketHeader*)audio_packet;
+    }
     case PostTexture:
     case PostDisconnect:
     case PostElevation:
@@ -112,10 +126,11 @@ void Packet_free(PacketHeader* h) {
   case GetTexture:
   case GetElevation:
   case VehicleUpdate:
-  {
-    free(h);
-    return;
-  }
+  case GetAudioInfo:
+  case PostAudioInfo: {
+      free(h);
+      return;
+    }
   case WorldUpdate:
   {
     WorldUpdatePacket* world_packet=(WorldUpdatePacket*) h;

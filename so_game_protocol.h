@@ -3,14 +3,16 @@
 #include <time.h>
 //ia brief desription required
 typedef enum {
-  GetId=0x1,
-  GetTexture=0x2,
-  GetElevation=0x3,
-  PostTexture=0x4,
-  PostElevation=0x5,
-  WorldUpdate=0x6,
-  VehicleUpdate=0x7,
-  PostDisconnect=0x8
+  GetId = 0x1,
+  GetTexture = 0x2,
+  GetElevation = 0x3,
+  PostTexture = 0x4,
+  PostElevation = 0x5,
+  WorldUpdate = 0x6,
+  VehicleUpdate = 0x7,
+  PostDisconnect = 0x8,
+  GetAudioInfo = 0x9,
+  PostAudioInfo = 0x10
 } Type;
 
 typedef struct {
@@ -74,6 +76,12 @@ typedef struct {
   ClientUpdate* updates;
 } WorldUpdatePacket;
 
+// Send info about a track that should be played by the client
+typedef struct {
+  PacketHeader header;
+  int track_number;
+  char loop;
+} AudioInfoPacket;
 
 // converts a well formed packet into a string in dest.
 // returns the written bytes
