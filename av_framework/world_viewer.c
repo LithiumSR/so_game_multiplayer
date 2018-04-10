@@ -43,10 +43,12 @@ void WorldViewer_reshapeViewport(WorldViewer *viewer, int width, int height);
 void keyPressed(unsigned char key, int x, int y) {
   switch (key) {
     case 27:
+      pthread_mutex_lock(&lock);
       if (ac != NULL) {
         AudioContext_free(ac);
         AudioContext_closeDevice();
       }
+      pthread_mutex_unlock(&lock);
       WorldViewer_exit(0);
       break;
     case ' ':
@@ -67,6 +69,7 @@ void keyPressed(unsigned char key, int x, int y) {
       break;
     case 'm':
       if (ac == NULL) break;
+      pthread_mutex_lock(&lock);
       if (!is_muted) {
         is_muted = 1;
         AudioContext_setVolume(ac, 0);
@@ -74,6 +77,7 @@ void keyPressed(unsigned char key, int x, int y) {
         AudioContext_setVolume(ac, 1);
         is_muted = 0;
       }
+      pthread_mutex_unlock(&lock);
       break;
   }
 }
