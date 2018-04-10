@@ -258,6 +258,7 @@ int TCPHandler(int socket_desc, char *buf_rcv, Image *texture_map,
     ph.type = PostAudioInfo;
     response->header = ph;
     response->track_number = BACKGROUND_TRACK;
+    response->loop=LOOP_BACKGROUND_TRACK;
     int msg_len = Packet_serialize(buf_send, &(response->header));
     debug_print("[Send ID] bytes written in the buffer: %d\n", msg_len);
     int ret = 0;

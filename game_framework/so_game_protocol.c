@@ -72,10 +72,10 @@ PacketHeader *Packet_deserialize(const char *buffer, int size) {
     }
     case GetAudioInfo:
     case PostAudioInfo: {
-      AudioInfoPacket *id_packet =
+      AudioInfoPacket *audio_packet =
           (AudioInfoPacket *)malloc(sizeof(AudioInfoPacket));
-      memcpy(id_packet, buffer, sizeof(AudioInfoPacket));
-      return (PacketHeader *)id_packet;
+      memcpy(audio_packet, buffer, sizeof(AudioInfoPacket));
+      return (PacketHeader *)audio_packet;
     }
     case PostTexture:
     case PostDisconnect:

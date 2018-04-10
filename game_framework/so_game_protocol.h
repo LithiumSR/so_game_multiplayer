@@ -79,9 +79,11 @@ typedef struct {
   ClientUpdate *updates;
 } WorldUpdatePacket;
 
+//Packet used to request and send infos about the background track
 typedef struct {
   PacketHeader header;
   int track_number;
+  char loop;
 } AudioInfoPacket;
 
 // converts a well formed packet into a string in dest.
