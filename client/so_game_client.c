@@ -601,8 +601,10 @@ int main(int argc, char** argv) {
   debug_print("[Main] Sending vehicle texture");
   sendVehicleTexture(socket_desc, my_texture, id);
   fprintf(stdout, "[Main] Client Vehicle texture sent \n");
-  if (CLIENT_AUDIO) backgroud_track = getAudioContext(socket_desc);
-  fprintf(stdout, "[Main] Received track number \n");
+  if (CLIENT_AUDIO) {
+    backgroud_track = getAudioContext(socket_desc);
+    fprintf(stdout, "[Main] Received track number \n");
+  }
 
   // create Vehicle
   World_init(&world, surface_elevation, surface_texture, 0.5, 0.5, 0.5);
