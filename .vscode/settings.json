@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        "audio_context.h": "c",
-        "surface.h": "c",
-        "image.h": "c"
-    }
-}
