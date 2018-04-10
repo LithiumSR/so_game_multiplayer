@@ -4,12 +4,12 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "../common/common.h"
 #include "../av_framework/world.h"
+#include "../common/common.h"
 
 int Vehicle_update(Vehicle *v, float dt) {
 #ifdef _USE_VEHICLE_SEM_
-	int ret;
+  int ret;
   ret = sem_wait(&(v->vsem));
   if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
 #endif
