@@ -13,6 +13,7 @@ int AudioContext_openDevice(void);
 void AudioContext_closeDevice(void);
 void AudioContext_init(AudioContext *ac, char *filename);
 void AudioContext_startTrackLoop(AudioContext *ac);
+void AudioContext_startTrack(AudioContext *ac);
 void AudioContext_stopTrack(AudioContext *ac);
 void AudioContext_free(AudioContext *ac);
 void AudioContext_setVolume(AudioContext *ac, float volume);

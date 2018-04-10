@@ -1,7 +1,7 @@
 #pragma once
-#include "vehicle.h"
 #include <time.h>
-//ia brief desription required
+#include "vehicle.h"
+// ia brief desription required
 typedef enum {
   GetId = 0x1,
   GetTexture = 0x2,
@@ -52,7 +52,7 @@ typedef struct {
   int id;
   float rotational_force;
   float translational_force;
-  float x,y,theta;
+  float x, y, theta;
   struct timeval time;
 } VehicleUpdatePacket;
 
@@ -77,7 +77,7 @@ typedef struct {
   ClientUpdate* updates;
 } WorldUpdatePacket;
 
-//Send info about a track that should be played by the client
+// Send info about a track that should be played by the client
 typedef struct {
   PacketHeader header;
   int track_number;

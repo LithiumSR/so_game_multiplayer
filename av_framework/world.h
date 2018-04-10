@@ -1,13 +1,13 @@
 #pragma once
 #include <sys/time.h>
+#include "../game_framework/linked_list.h"
+#include "../game_framework/vehicle.h"
 #include "image.h"
 #include "surface.h"
-#include "../game_framework/vehicle.h"
-#include "../game_framework/linked_list.h"
 
 typedef struct World {
-  ListHead vehicles; // list of vehicles
-  Surface ground;    // surface
+  ListHead vehicles;  // list of vehicles
+  Surface ground;     // surface
 
   // stuff
   float dt;
@@ -15,12 +15,8 @@ typedef struct World {
   float time_scale;
 } World;
 
-int World_init(World* w,
-	       Image* surface_elevation,
-	       Image* surface_texture,
-	       float x_step, 
-	       float y_step, 
-	       float z_step);
+int World_init(World* w, Image* surface_elevation, Image* surface_texture,
+               float x_step, float y_step, float z_step);
 
 void World_destroy(World* w);
 

@@ -1,13 +1,13 @@
 #pragma once
-#include "../av_framework/image.h"
 #include <netinet/in.h>
 #include <time.h>
+#include "../av_framework/image.h"
 #include "vehicle.h"
 typedef struct ClientListItem {
   struct ClientListItem* next;
   int id;
-  float x,y,theta,prev_x,prev_y,x_shift,y_shift;
-  
+  float x, y, theta, prev_x, prev_y, x_shift, y_shift;
+
   struct sockaddr_in user_addr;
   struct timeval last_update_time;
   struct timeval creation_time;
@@ -16,8 +16,8 @@ typedef struct ClientListItem {
   int afk_counter;
   char inside_world;
   Vehicle* vehicle;
-  Image * v_texture;
-  float rotational_force,translational_force;
+  Image* v_texture;
+  float rotational_force, translational_force;
 } ClientListItem;
 
 typedef struct ClientListHead {

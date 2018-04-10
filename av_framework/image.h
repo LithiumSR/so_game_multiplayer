@@ -2,18 +2,18 @@
 #define _IMAGE_H_
 
 typedef enum PixelType {
-  RGB8=0x0, 
-  MONO8=0x1, 
-  RGB16=0x2,
-  MONO16=0x3, 
-  FLOATMONO=0x4, 
-  FLOATRGB=0x5
+  RGB8 = 0x0,
+  MONO8 = 0x1,
+  RGB16 = 0x2,
+  MONO16 = 0x3,
+  FLOATMONO = 0x4,
+  FLOATRGB = 0x5
 } PixelType;
 
 typedef struct Image {
   int rows, cols, channels;
   unsigned char* data;
-  unsigned char ** row_data;
+  unsigned char** row_data;
   PixelType type;
 } Image;
 
@@ -30,8 +30,5 @@ Image* Image_deserialize(const char* buffer, int size);
 Image* Image_load(const char* filename);
 
 int Image_save(Image* img, const char* filename);
-  
-  
-
 
 #endif
