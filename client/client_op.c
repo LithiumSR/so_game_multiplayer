@@ -7,13 +7,13 @@
 #include <arpa/inet.h>  // htons() and inet_addr()
 #include <netinet/in.h> // struct sockaddr_in
 #include <sys/socket.h>
-#include "common.h"
-#include "image.h"
-#include "surface.h"
-#include "world.h"
-#include "vehicle.h"
-#include "world_viewer.h"
-#include "so_game_protocol.h"
+#include "../common/common.h"
+#include "../av_framework/image.h"
+#include "../av_framework/surface.h"
+#include "../av_framework/world.h"
+#include "../game_framework/vehicle.h"
+#include "../av_framework/world_viewer.h"
+#include "../game_framework/so_game_protocol.h"
 
 //Used to get ID from server
 int getID(int socket_desc){

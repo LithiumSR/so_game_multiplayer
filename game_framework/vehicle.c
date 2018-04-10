@@ -1,8 +1,8 @@
 #include "vehicle.h"
 #include <GL/gl.h>
 #include <math.h>
-#include "world.h"
-#include "common.h"
+#include "../av_framework/world.h"
+#include "../common/common.h"
 #include <stdio.h>
 #include <stdlib.h>
 int Vehicle_update(Vehicle* v, float dt){

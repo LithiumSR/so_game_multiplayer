@@ -9,16 +9,16 @@
 #include <pthread.h>
 #include <signal.h>
 #include <time.h>
-#include "common.h"
-#include "image.h"
-#include "surface.h"
-#include "world.h"
-#include "vehicle.h"
-#include "world_viewer.h"
+#include "../common/common.h"
+#include "../av_framework/image.h"
+#include "../av_framework/surface.h"
+#include "../av_framework/world.h"
+#include "../game_framework/vehicle.h"
+#include "../av_framework/world_viewer.h"
 #include "client_op.h"
-#include "so_game_protocol.h"
+#include "../game_framework/so_game_protocol.h"
 #include <fcntl.h>
-#include "audio_context.h"
+#include "../av_framework/audio_context.h"
 #define NO_ACCESS -2
 #define SENDER_SLEEP 200*1000
 #define RECEIVER_SLEEP 500*1000
