@@ -1,5 +1,5 @@
 CCOPTS= -Wall -g -Wstrict-prototypes
-LIBS= -lglut -lGLU -lGL -lm -lpthread
+LIBS= -lglut -lGLU -lGL -lm -lpthread -lopenal -lalut
 CC=gcc -std=gnu99
 AR=ar
 
@@ -19,6 +19,7 @@ OBJS = vec3.o\
        so_game_server.o\
        so_game_client.o\
        client_op.o\
+       audio_context.o\
        so_game_protocol.o\
        client_list.o\
 
@@ -32,6 +33,7 @@ HEADERS=helpers.h\
 	world.h\
 	world_viewer.h\
 	common.h\
+	audio_context.h\
 	client_op.h\
 	client_list.h\
 
