@@ -238,6 +238,29 @@ int TCPHandler(int socket_desc,char* buf_rcv,Image* texture_map,Image* elevation
         debug_print("[Send Map Elevation] Sent %d bytes \n",bytes_sent);
         return 0;
     }
+    else if (header->type == GetAudioInfo) {
+    char buf_send[BUFFERSIZE];
+    AudioInfoPacket *response = (AudioInfoPacket *)malloc(sizeof(IdPacket));
+    PacketHeader ph;
+    ph.type = PostAudioInfo;
+    response->header = ph;
+    response->track_number = BACKGROUND_TRACK;
+    response->loop=LOOP_BACKGROUND_TRACK;
+    int msg_len = Packet_serialize(buf_send, &(response->header));
+    debug_print("[Send ID] bytes written in the buffer: %d\n", msg_len);
+    int ret = 0;
+    int bytes_sent = 0;
+    while (bytes_sent < msg_len) {
+      ret = send(socket_desc, buf_send + bytes_sent, msg_len - bytes_sent, 0);
+      if (ret == -1 && errno == EINTR) continue;
+      ERROR_HELPER(ret, "Can't assign ID");
+      if (ret == 0) break;
+      bytes_sent += ret;
+    }
+    Packet_free(&(response->header));
+    debug_print("[Send ID] Sent %d bytes \n", bytes_sent);
+    return 0;
+	}
     else if(header->type==PostTexture){
         ImagePacket* deserialized_packet = (ImagePacket*)Packet_deserialize(buf_rcv, header->size);
         Image* user_texture=deserialized_packet->image;
@@ -722,7 +745,7 @@ int main(int argc, char **argv) {
     debug_print("[Main] TCP socket successfully created \n");
 
     //init List structure
-    users = malloc(sizeof(ListHead));
+    users = malloc(sizeof(ClientListHead));
 	ClientList_init(users);
     fprintf(stdout,"[Main] Initialized users list \n");
 
