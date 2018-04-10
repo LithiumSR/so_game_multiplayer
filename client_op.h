@@ -1,6 +1,6 @@
 #pragma once
 #include "so_game_protocol.h"
-
+#include "audio_context.h"
 // converts a well formed packet into a string in dest.
 // returns the written bytes
 // h is the packet to write
@@ -10,3 +10,4 @@ Image* getTextureMap(int socket);
 int sendVehicleTexture(int socket,Image* texture, int id);
 int sendGoodbye(int socket,int id);
 Image* getVehicleTexture(int socket,int id);
+AudioContext* getAudioContext(int socket);

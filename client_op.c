@@ -235,6 +235,66 @@ Image* getVehicleTexture(int socket,int id){
     return im;
 }
 
+AudioContext* getAudioContext(int socket_desc) {
+  char buf_send[BUFFERSIZE];
+  char buf_rcv[BUFFERSIZE];
+  AudioInfoPacket* request = (AudioInfoPacket*)malloc(sizeof(AudioInfoPacket));
+  PacketHeader ph;
+  ph.type = GetAudioInfo;
+  request->header = ph;
+  request->track_number = -1;
+  int size = Packet_serialize(buf_send, &(request->header));
+  if (size == -1) return NULL;
+  int bytes_sent = 0;
+  int ret = 0;
+  while (bytes_sent < size) {
+    ret = send(socket_desc, buf_send + bytes_sent, size - bytes_sent, 0);
+    if (ret == -1 && errno == EINTR) continue;
+    ERROR_HELPER(ret, "Can't send ID request");
+    if (ret == 0) break;
+    bytes_sent += ret;
+  }
+  Packet_free(&(request->header));
+  int ph_len = sizeof(PacketHeader);
+  int msg_len = 0;
+  while (msg_len < ph_len) {
+    ret = recv(socket_desc, buf_rcv + msg_len, ph_len - msg_len, 0);
+    if (ret == -1 && errno == EINTR) continue;
+    ERROR_HELPER(msg_len, "Cannot read from socket");
+    msg_len += ret;
+  }
+  PacketHeader* header = (PacketHeader*)buf_rcv;
+  size = header->size - ph_len;
+  msg_len = 0;
+  while (msg_len < size) {
+    ret = recv(socket_desc, buf_rcv + msg_len + ph_len, size - msg_len, 0);
+    if (ret == -1 && errno == EINTR) continue;
+    ERROR_HELPER(msg_len, "Cannot read from socket");
+    msg_len += ret;
+  }
+  AudioInfoPacket* deserialized_packet =
+      (AudioInfoPacket*)Packet_deserialize(buf_rcv, msg_len + ph_len);
+  printf("[Get Id] Received %dbytes \n", msg_len + ph_len);
+  int track_number = deserialized_packet->track_number;
+  char loop = deserialized_packet->loop;
+  Packet_free(&(deserialized_packet->header));
+  char number[12];
+  if (track_number > 1000) return NULL;
+  sprintf(number, "%d", track_number);
+  char filename[128];
+  strcpy(filename, "./resources/sounds/track");
+  strcat(filename, number);
+  strcat(filename, ".wav");
+  fprintf(stdout, "[GetAudioContext] Loading %s file...\n", filename);
+  AudioContext_openDevice();
+  AudioContext* ac = (AudioContext*)malloc(sizeof(AudioContext));
+  AudioContext_init(ac, filename);
+  if (loop)
+    AudioContext_startTrackLoop(ac);
+  else
+    AudioContext_startTrack(ac);
+  return ac;
+}
 
 int sendGoodbye(int socket,int id){
     char buf_send[BUFFERSIZE];
