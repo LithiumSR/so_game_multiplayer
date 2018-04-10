@@ -1,10 +1,13 @@
 #include "audio_context.h"
+#include "../common/common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 char setup;
 ALuint setupBuffer(char *filename) {
+	ALCenum error;
   ALuint buffer = alutCreateBufferFromFile(filename);
+  if((error = alutGetError()) != ALUT_ERROR_NO_ERROR) fprintf(stderr, "ALUT Error: %s\n",alutGetErrorString(error));
   return buffer;
 }
 
@@ -20,7 +23,9 @@ int AudioContext_openDevice(void) {
     setup = 1;
     alutInit(0, NULL);
     alGetError();
+    return 0;
   }
+  return -1;
 }
 
 void AudioContext_closeDevice(void) { alutExit(); }
