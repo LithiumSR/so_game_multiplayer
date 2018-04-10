@@ -11,14 +11,14 @@
 #include <time.h>
 #include <unistd.h>
 #include "../av_framework/audio_context.h"
-#include "client_op.h"
-#include "../common/common.h"
 #include "../av_framework/image.h"
-#include "../game_framework/so_game_protocol.h"
 #include "../av_framework/surface.h"
-#include "../game_framework/vehicle.h"
 #include "../av_framework/world.h"
 #include "../av_framework/world_viewer.h"
+#include "../common/common.h"
+#include "../game_framework/so_game_protocol.h"
+#include "../game_framework/vehicle.h"
+#include "client_op.h"
 #define NO_ACCESS -2
 #define SENDER_SLEEP 400 * 1000
 #define RECEIVER_SLEEP 500 * 1000
@@ -591,8 +591,10 @@ int main(int argc, char **argv) {
   debug_print("[Main] Sending vehicle texture");
   sendVehicleTexture(socket_desc, my_texture, id);
   fprintf(stdout, "[Main] Client Vehicle texture sent \n");
-  if (CLIENT_AUDIO) backgroud_track = getAudioContext(socket_desc);
-  fprintf(stdout, "[Main] Received track number \n");
+  if (CLIENT_AUDIO) {
+    backgroud_track = getAudioContext(socket_desc);
+    fprintf(stdout, "[Main] Received track number \n");
+  }
 
   // create Vehicle
   World_init(&world, surface_elevation, surface_texture, 0.5, 0.5, 0.5);
