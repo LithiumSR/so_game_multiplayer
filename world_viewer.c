@@ -8,9 +8,12 @@
 #include "image.h"
 #include "surface.h"
 #include <pthread.h>
+#include "audio_context.h"
 int window;
 int ret;
 int destroy;
+char is_muted;
+AudioContext* ac;
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef enum ViewType {Inside, Outside, Global} ViewType;
@@ -44,6 +47,8 @@ void keyPressed(unsigned char key, int x, int y)
 {
   switch(key){
   case 27:
+	AudioContext_free(ac);
+	AudioContext_closeDevice();
     WorldViewer_exit(0);
     break;
   case ' ':
@@ -62,8 +67,15 @@ void keyPressed(unsigned char key, int x, int y)
   case '2':
     viewer.view_type = Outside;
     break;
-  case '3':
-    viewer.view_type = Global;
+  case 'm':
+    if(!is_muted) {
+		is_muted=1;
+		AudioContext_setVolume(ac,0);
+	}
+    else {
+		AudioContext_setVolume(ac,1);
+		is_muted=0;
+	}
     break;
   }
 }
@@ -408,8 +420,9 @@ void WorldViewer_reshapeViewport(WorldViewer* viewer, int width, int height){
 }
 
 void WorldViewer_runGlobal(World* world,
-			   Vehicle* self,
+			   Vehicle* self, AudioContext* audio,
 			   int* argc_ptr, char** argv) {
+  ac=audio;
   // initialize GL
   glutInit(argc_ptr, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
