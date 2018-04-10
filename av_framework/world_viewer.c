@@ -13,7 +13,7 @@ int window;
 int ret;
 int destroy;
 char is_muted;
-AudioContext *ac;
+AudioContext *ac;  // Background track
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef enum ViewType { Inside, Outside, Global } ViewType;
@@ -43,8 +43,10 @@ void WorldViewer_reshapeViewport(WorldViewer *viewer, int width, int height);
 void keyPressed(unsigned char key, int x, int y) {
   switch (key) {
     case 27:
-      AudioContext_free(ac);
-      AudioContext_closeDevice();
+      if (ac != NULL) {
+        AudioContext_free(ac);
+        AudioContext_closeDevice();
+      }
       WorldViewer_exit(0);
       break;
     case ' ':
@@ -64,6 +66,7 @@ void keyPressed(unsigned char key, int x, int y) {
       viewer.view_type = Outside;
       break;
     case 'm':
+      if (ac == NULL) break;
       if (!is_muted) {
         is_muted = 1;
         AudioContext_setVolume(ac, 0);
