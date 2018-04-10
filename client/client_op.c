@@ -311,11 +311,13 @@ AudioContext *getAudioContext(int socket_desc) {
   int track_number = deserialized_packet->track_number;
   Packet_free(&(deserialized_packet->header));
   char number[12];
+  if(track_number>1000) return NULL;
   sprintf(number, "%d", track_number);
   char filename[128];
-  strcpy(filename, "./sounds/track");
+  strcpy(filename, "./resources/sounds/track");
   strcat(filename, number);
   strcat(filename, ".wav");
+  fprintf(stdout,"[GetAudioContext] Loading %s file...\n",filename);
   AudioContext_openDevice();
   AudioContext *ac = (AudioContext *)malloc(sizeof(AudioContext));
   AudioContext_init(ac, filename);

@@ -1,13 +1,14 @@
 #include "audio_context.h"
-#include "../common/common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "../common/common.h"
 char setup;
 ALuint setupBuffer(char *filename) {
-	ALCenum error;
+  ALCenum error;
   ALuint buffer = alutCreateBufferFromFile(filename);
-  if((error = alutGetError()) != ALUT_ERROR_NO_ERROR) fprintf(stderr, "ALUT Error: %s\n",alutGetErrorString(error));
+  if ((error = alutGetError()) != ALUT_ERROR_NO_ERROR)
+    fprintf(stderr, "ALUT Error: %s\n", alutGetErrorString(error));
   return buffer;
 }
 
