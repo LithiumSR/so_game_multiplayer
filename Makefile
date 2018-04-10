@@ -9,36 +9,35 @@ BINS=libso_game.a\
      so_game_client\
 	test_packets_serialization\
 	test_client_list
-OBJS = vec3.o\
-       linked_list.o\
-       surface.o\
-       image.o\
-       vehicle.o\
-       world.o\
-       world_viewer.o\
-       so_game_server.o\
-       so_game_client.o\
-       client_op.o\
-       audio_context.o\
-       so_game_protocol.o\
-       client_list.o\
-
-HEADERS=helpers.h\
-	image.h\
-	linked_list.h\
-	so_game_protocol.h\
-	surface.h\
-	vec3.h\
-	vehicle.h\
-	world.h\
-	world_viewer.h\
-	common.h\
-	audio_context.h\
-	client_op.h\
-	client_list.h\
+OBJS = av_framework/vec3.o\
+       game_framework/linked_list.o\
+       av_framework/surface.o\
+       av_framework/image.o\
+       game_framework/vehicle.o\
+       av_framework/world.o\
+       av_framework/world_viewer.o\
+       server/so_game_server.o\
+       client/so_game_client.o\
+       client/client_op.o\
+       game_framework/so_game_protocol.o\
+       game_framework/client_list.o\
+       av_framework/audio_context.o\
+       
+HEADERS=av_framework/image.h\
+	game_framework/linked_list.h\
+	game_framework/so_game_protocol.h\
+	av_framework/surface.h\
+	av_framework/vec3.h\
+	game_framework/vehicle.h\
+	av_framework/world.h\
+	av_framework/world_viewer.h\
+	common/common.h\
+	client/client_op.h\
+	game_framework/client_list.h\
+	av_framework/audio_context.h\
 
 %.o:	%.c $(HEADERS)
-	$(CC) $(CCOPTS) -c -o $@  $<
+	$(CC) $(CCOPTS) -c -o $@ $<
 
 .phony: clean all
 
