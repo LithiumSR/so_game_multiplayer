@@ -18,6 +18,7 @@
 #include "client_op.h"
 #include "so_game_protocol.h"
 #include <fcntl.h>
+#include "audio_context.h"
 #define NO_ACCESS -2
 #define SENDER_SLEEP 200*1000
 #define RECEIVER_SLEEP 500*1000
@@ -33,6 +34,7 @@ int exchange_update=1;
 int socket_desc; //socket tcp
 struct timeval last_update_time;
 int offline_server_counter=0;
+AudioContext* backgroud_track=NULL;
 
 typedef struct localWorld{
     int  ids[WORLDSIZE];
@@ -50,6 +52,12 @@ typedef struct listenArgs{
     int socket_tcp;
 }udpArgs;
 
+void cleanupAudioDevice(void) {
+  if (backgroud_track == NULL) return;
+  AudioContext_free(backgroud_track);
+  AudioContext_closeDevice();
+}
+
 void handleSignal(int signal){
     // Find out which signal we're handling
     switch (signal) {
@@ -58,6 +66,7 @@ void handleSignal(int signal){
         case SIGINT:
             connectivity=0;
             exchange_update=0;
+            cleanupAudioDevice();
             if(last_update_time.tv_sec!=1) sendGoodbye(socket_desc, id);
             WorldViewer_exit(0);
             break;
@@ -171,6 +180,7 @@ void* UDPReceiver(void* args){
             sendGoodbye(socket_desc, id);
             connectivity=0;
             exchange_update=0;
+            cleanupAudioDevice();
             WorldViewer_exit(0);
         }
 
@@ -179,6 +189,7 @@ void* UDPReceiver(void* args){
             sendGoodbye(socket_desc, id);
             connectivity=0;
             exchange_update=0;
+            cleanupAudioDevice();
             WorldViewer_exit(-1);
         }
         else {
@@ -337,8 +348,10 @@ int main(int argc, char **argv) {
     debug_print("[Main] Sending vehicle texture");
     sendVehicleTexture(socket_desc,my_texture,id);
     fprintf(stdout,"[Main] Client Vehicle texture sent \n");
-
-
+    if (CLIENT_AUDIO) {
+		backgroud_track = getAudioContext(socket_desc);
+		fprintf(stdout, "[Main] Received track number \n");
+	}
     //create Vehicle
     World_init(&world, surface_elevation, surface_texture,0.5, 0.5, 0.5);
     vehicle=(Vehicle*) malloc(sizeof(Vehicle));
@@ -371,7 +384,7 @@ int main(int argc, char **argv) {
 
     //Disconnect from server if required by macro
     SKIP: if(SINGLEPLAYER) sendGoodbye(socket_desc,id);
-    WorldViewer_runGlobal(&world, vehicle, &argc, argv);
+    WorldViewer_runGlobal(&world, vehicle, backgroud_track, &argc, argv);
     
     // Waiting threads to end and cleaning resources
     debug_print("[Main] Disabling and joining on UDP and TCP threads \n");
@@ -390,7 +403,7 @@ int main(int argc, char **argv) {
     sendGoodbye(socket_desc,id);
 
     //Clean resources
-
+	cleanupAudioDevice();
     for(int i=0;i<WORLDSIZE;i++){
         if(local_world->ids[i]==-1) continue;
         if(i==0) continue;
