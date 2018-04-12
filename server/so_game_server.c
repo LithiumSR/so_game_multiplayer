@@ -510,11 +510,6 @@ void* UDPSender(void* args) {
           continue;
         }
         ClientUpdate* cup = &(wup->updates[k]);
-        if (tmp->force_refresh == 1) {
-          cup->force_refresh = 1;
-          tmp->force_refresh = 0;
-        } else
-          cup->force_refresh = 0;
         cup->y = tmp->y;
         cup->x = tmp->x;
         cup->theta = tmp->theta;
@@ -532,6 +527,21 @@ void* UDPSender(void* args) {
         tmp = tmp->next;
         k++;
       }
+      wup->status_updates = (ClientStatusUpdate*)malloc(
+          sizeof(ClientStatusUpdate) * users->size);
+      tmp = users->first;
+      k=0;
+      while (tmp != NULL) {
+        ClientStatusUpdate* csu = &wup->status_updates[k];
+        csu->id = tmp->id;
+        if (tmp->is_addr_ready)
+          csu->status = Online;
+        else
+          csu->status = Connecting;
+        tmp = tmp->next;
+        k++;
+      }
+      wup->num_status_vehicles = users->size;
       int size = Packet_serialize(buf_send, &wup->header);
       if (size == 0 || size == -1) goto END;
       int ret = sendto(socket_udp, buf_send, size, 0,
