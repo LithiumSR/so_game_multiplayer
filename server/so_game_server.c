@@ -8,15 +8,15 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include "../game_framework/client_list.h"
-#include "../client/client_op.h"
-#include "../common/common.h"
 #include "../av_framework/image.h"
-#include "../game_framework/so_game_protocol.h"
 #include "../av_framework/surface.h"
-#include "../game_framework/vehicle.h"
 #include "../av_framework/world.h"
 #include "../av_framework/world_viewer.h"
+#include "../client/client_op.h"
+#include "../common/common.h"
+#include "../game_framework/client_list.h"
+#include "../game_framework/so_game_protocol.h"
+#include "../game_framework/vehicle.h"
 #define RECEIVER_SLEEP 50 * 1000
 #if SERVER_SIDE_POSITION_CHECK == 1
 #define _USE_SERVER_SIDE_FOG_
@@ -258,7 +258,7 @@ int TCPHandler(int socket_desc, char *buf_rcv, Image *texture_map,
     ph.type = PostAudioInfo;
     response->header = ph;
     response->track_number = BACKGROUND_TRACK;
-    response->loop=LOOP_BACKGROUND_TRACK;
+    response->loop = LOOP_BACKGROUND_TRACK;
     int msg_len = Packet_serialize(buf_send, &(response->header));
     debug_print("[Send ID] bytes written in the buffer: %d\n", msg_len);
     int ret = 0;
@@ -452,7 +452,7 @@ void *UDPSender(void *args) {
         client = client->next;
         continue;
       }
-      wup->num_vehicles = n;
+      wup->num_update_vehicles = n;
       wup->updates = (ClientUpdate *)malloc(sizeof(ClientUpdate) * n);
       wup->time = time;
       tmp = users->first;
@@ -479,7 +479,21 @@ void *UDPSender(void *args) {
         tmp = tmp->next;
         k++;
       }
-
+      wup->status_updates = (ClientStatusUpdate *)malloc(
+          sizeof(ClientStatusUpdate) * users->size);
+      tmp = users->first;
+      k = 0;
+      while (tmp != NULL) {
+        ClientStatusUpdate *csu = &wup->status_updates[k];
+        csu->id = tmp->id;
+        if (tmp->is_addr_ready)
+          csu->status = Online;
+        else
+          csu->status = Connecting;
+        tmp = tmp->next;
+        k++;
+      }
+      wup->num_status_vehicles = users->size;
       int size = Packet_serialize(buf_send, &wup->header);
 
       if (size == 0 || size == -1) {
@@ -493,8 +507,9 @@ void *UDPSender(void *args) {
       debug_print(
           "[UDP_Send] Sent WorldUpdate of %d bytes to client with id %d \n",
           ret, client->id);
-      debug_print("Difference lenght check - wup: %d client found:%d \n",
-                  wup->num_vehicles, n);
+      debug_print(
+          "Difference lenght check - wup: %d wsu: %d, client found:%d \n",
+          wup->num_update_vehicles, users->size, n);
       Packet_free(&(wup->header));
       client = client->next;
     }
@@ -527,7 +542,7 @@ void *UDPSender(void *args) {
     for (n = 0; client != NULL; client = client->next) {
       if (client->is_addr_ready) n++;
     }
-    wup->num_vehicles = n;
+    wup->num_update_vehicles = n;
     fprintf(stdout,
             "[UDP_Sender] Creating WorldUpdatePacket containing info "
             "about %d users \n",

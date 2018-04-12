@@ -52,7 +52,7 @@ int main(int argc, char const *argv[]) {
 
   printf("loading an image\n");
   Image* im;
-  im = Image_load("./images/test.pgm");
+  im = Image_load("./resources/images/test.pgm");
   printf("loaded\n");
 
   image_packet->header = im_head;
@@ -97,13 +97,13 @@ int main(int argc, char const *argv[]) {
   w_head.type = WorldUpdate;
 
   world_packet->header = w_head;
-  world_packet->num_vehicles = 1;
+  world_packet->num_update_vehicles = 1;
   world_packet->updates = update_block;
   
   printf("world_packet with:\ntype\t%d\nsize\t%d\nnum_v\t%d\n",
       world_packet->header.type,
       world_packet->header.size,
-      world_packet->num_vehicles);
+      world_packet->num_update_vehicles);
   printf("update_block:\nid\t\t%d\n(x,y,theta)\t(%f,%f,%f)\n", 
     world_packet->updates->id,
     world_packet->updates->x,
@@ -122,7 +122,7 @@ int main(int argc, char const *argv[]) {
   printf("deserialized packet with:\ntype\t%d\nsize\t%d\nnum_v\t%d\n",
       deserialized_wu_packet->header.type,
       deserialized_wu_packet->header.size,
-      deserialized_wu_packet->num_vehicles);
+      deserialized_wu_packet->num_update_vehicles);
   printf("update_block:\nid\t\t%d\n(x,y,theta)\t(%f,%f,%f)\n", 
       deserialized_wu_packet->updates->id,
       deserialized_wu_packet->updates->x,
