@@ -1,6 +1,10 @@
 #pragma once
 #include <time.h>
+#include "../common/common.h"
 #include "vehicle.h"
+#if SERVER_SIDE_POSITION_CHECK == 1
+#define _USE_SERVER_SIDE_FOG_
+#endif
 // ia brief desription required
 typedef enum {
   GetId = 0x1,
@@ -14,6 +18,15 @@ typedef enum {
   GetAudioInfo = 0x9,
   PostAudioInfo = 0x10
 } Type;
+
+#ifdef _USE_SERVER_SIDE_FOG_
+typedef enum {
+  Online = 0x1,
+  Offline = 0x2,
+  Connecting = 0x3,
+  Dropped = 0x4
+} Status;
+#endif
 
 typedef struct {
   Type type;
@@ -69,12 +82,25 @@ typedef struct {
   struct timeval client_update_time, client_creation_time;
 } ClientUpdate;
 
+#ifdef _USE_SERVER_SIDE_FOG_
+typedef struct {
+  int id;
+  Status status;
+} ClientStatusUpdate;
+#endif
+
 // server world update, send by server (UDP)
 typedef struct {
   PacketHeader header;
   int num_vehicles;
+#ifdef _USE_SERVER_SIDE_FOG_
+  int num_status_vehicles;
+#endif
   struct timeval time;
   ClientUpdate* updates;
+#ifdef _USE_SERVER_SIDE_FOG_
+  ClientStatusUpdate* status_updates;
+#endif
 } WorldUpdatePacket;
 
 // Send info about a track that should be played by the client

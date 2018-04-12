@@ -45,6 +45,12 @@ int Packet_serialize(char* dest, const PacketHeader* h) {
       memcpy(dest_end, world_packet->updates,
              world_packet->num_vehicles * sizeof(ClientUpdate));
       dest_end += world_packet->num_vehicles * sizeof(ClientUpdate);
+#ifdef _USE_SERVER_SIDE_FOG_
+      memcpy(dest_end, world_packet->status_updates,
+             world_packet->num_status_vehicles * sizeof(ClientStatusUpdate));
+      dest_end +=
+          world_packet->num_status_vehicles * sizeof(ClientStatusUpdate);
+#endif
       break;
     }
     case VehicleUpdate: {
@@ -66,6 +72,7 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
   switch (h->type) {
     case GetId:
     case GetTexture:
+    case PostDisconnect:
     case GetElevation: {
       IdPacket* id_packet = (IdPacket*)malloc(sizeof(IdPacket));
       memcpy(id_packet, buffer, sizeof(IdPacket));
@@ -80,7 +87,6 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
     }
 
     case PostTexture:
-    case PostDisconnect:
     case PostElevation: {
       ImagePacket* img_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
       memcpy(img_packet, buffer, sizeof(ImagePacket));
@@ -101,9 +107,19 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
       // we get the number of clients
       world_packet->updates = (ClientUpdate*)malloc(world_packet->num_vehicles *
                                                     sizeof(ClientUpdate));
+#ifdef _USE_SERVER_SIDE_FOG_
+      world_packet->status_updates = (ClientStatusUpdate*)malloc(
+          world_packet->num_status_vehicles * sizeof(ClientStatusUpdate));
+#endif
+
       buffer += sizeof(WorldUpdatePacket);
       memcpy(world_packet->updates, buffer,
              world_packet->num_vehicles * sizeof(ClientUpdate));
+      buffer += world_packet->num_vehicles * sizeof(ClientUpdate);
+#ifdef _USE_SERVER_SIDE_FOG_
+      memcpy(world_packet->status_updates, buffer,
+             world_packet->num_status_vehicles * sizeof(ClientStatusUpdate));
+#endif
       return (PacketHeader*)world_packet;
     }
     case VehicleUpdate: {
@@ -131,6 +147,9 @@ void Packet_free(PacketHeader* h) {
     case WorldUpdate: {
       WorldUpdatePacket* world_packet = (WorldUpdatePacket*)h;
       if (world_packet->num_vehicles) free(world_packet->updates);
+#ifdef _USE_SERVER_SIDE_FOG_
+      if (world_packet->num_status_vehicles) free(world_packet->status_updates);
+#endif
       free(world_packet);
       return;
     }
