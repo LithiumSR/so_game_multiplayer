@@ -1,6 +1,10 @@
 #pragma once
 #include <time.h>
+#include "../common/common.h"
 #include "vehicle.h"
+#if SERVER_SIDE_POSITION_CHECK == 1
+#define _USE_SERVER_SIDE_FOG_
+#endif
 // ia brief desription required
 typedef enum {
   GetId = 0x1,
@@ -14,6 +18,15 @@ typedef enum {
   GetAudioInfo = 0x9,
   PostAudioInfo = 0x10
 } Type;
+
+#ifdef _USE_SERVER_SIDE_FOG_
+typedef enum {
+  Online = 0x1,
+  Offline = 0x2,
+  Connecting = 0x3,
+  Dropped = 0x4
+} Status;
+#endif
 
 typedef struct {
   Type type;
@@ -43,7 +56,7 @@ typedef struct {
 typedef struct {
   PacketHeader header;
   int id;
-  Image *image;
+  Image* image;
 } ImagePacket;
 
 // sent from client to server, in udp to notify the updates
@@ -52,9 +65,7 @@ typedef struct {
   int id;
   float rotational_force;
   float translational_force;
-  float x;
-  float y;
-  float theta;
+  float x, y, theta;
   struct timeval time;
 } VehicleUpdatePacket;
 
@@ -71,15 +82,28 @@ typedef struct {
   struct timeval client_update_time, client_creation_time;
 } ClientUpdate;
 
+#ifdef _USE_SERVER_SIDE_FOG_
+typedef struct {
+  int id;
+  Status status;
+} ClientStatusUpdate;
+#endif
+
 // server world update, send by server (UDP)
 typedef struct {
   PacketHeader header;
-  int num_vehicles;
+  int num_update_vehicles;
+#ifdef _USE_SERVER_SIDE_FOG_
+  int num_status_vehicles;
+#endif
   struct timeval time;
-  ClientUpdate *updates;
+  ClientUpdate* updates;
+#ifdef _USE_SERVER_SIDE_FOG_
+  ClientStatusUpdate* status_updates;
+#endif
 } WorldUpdatePacket;
 
-//Packet used to request and send infos about the background track
+// Send info about a track that should be played by the client
 typedef struct {
   PacketHeader header;
   int track_number;
@@ -89,10 +113,10 @@ typedef struct {
 // converts a well formed packet into a string in dest.
 // returns the written bytes
 // h is the packet to write
-int Packet_serialize(char *dest, const PacketHeader *h);
+int Packet_serialize(char* dest, const PacketHeader* h);
 
 // returns a newly allocated packet read from the buffer
-PacketHeader *Packet_deserialize(const char *buffer, int size);
+PacketHeader* Packet_deserialize(const char* buffer, int size);
 
 // deletes a packet, freeing memory
-void Packet_free(PacketHeader *h);
+void Packet_free(PacketHeader* h);
