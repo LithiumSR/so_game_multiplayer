@@ -86,9 +86,8 @@ void handleSignal(int signal) {
       exchange_update = 0;
       cleanupAudioDevice();
       pthread_mutex_lock(&time_lock);
-      struct timeval last_update_time_copy = last_update_time;
+      if (last_update_time.tv_sec != 1) sendGoodbye(socket_desc, id);
       pthread_mutex_unlock(&time_lock);
-      if (last_update_time_copy.tv_sec != 1) sendGoodbye(socket_desc, id);
       WorldViewer_exit(0);
       break;
     default:
