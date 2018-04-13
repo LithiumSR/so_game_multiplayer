@@ -36,12 +36,13 @@ World world;
 Vehicle *vehicle;  // The vehicle
 int id;
 uint16_t port_number_no;
-int connectivity = 1;
-int exchange_update = 1;
+char connectivity = 1;
+char exchange_update = 1;
 int socket_desc;  // socket tcp
 struct timeval last_update_time;
 int offline_server_counter = 0;
 AudioContext *backgroud_track = NULL;
+pthread_mutex_t time_lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct localWorld {
   int ids[WORLDSIZE];
@@ -85,7 +86,9 @@ void handleSignal(int signal) {
       connectivity = 0;
       exchange_update = 0;
       cleanupAudioDevice();
+      pthread_mutex_lock(&time_lock);
       if (last_update_time.tv_sec != 1) sendGoodbye(socket_desc, id);
+      pthread_mutex_unlock(&time_lock);
       WorldViewer_exit(0);
       break;
     default:
@@ -136,6 +139,7 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
   Packet_free(&(vup->header));
   struct timeval current_time;
   gettimeofday(&current_time, NULL);
+  pthread_mutex_lock(&time_lock);
   if (last_update_time.tv_sec == -1) offline_server_counter++;
   if (offline_server_counter >= MAX_FAILED_ATTEMPTS) {
     connectivity = 0;
@@ -145,8 +149,7 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
     cleanupAudioDevice();
     WorldViewer_exit(0);
   }
-
-  if (last_update_time.tv_sec != -1 &&
+  else if (last_update_time.tv_sec != -1 &&
       current_time.tv_sec - last_update_time.tv_sec >
           MAX_TIME_WITHOUT_WORLDUPDATE) {
     connectivity = 0;
@@ -157,7 +160,7 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
     WorldViewer_exit(0);
   } else if (last_update_time.tv_sec != -1)
     offline_server_counter = 0;
-
+  pthread_mutex_unlock(&time_lock);
   if (bytes_sent < 0) return -1;
   return 0;
 }
@@ -227,13 +230,16 @@ void *UDPReceiver(void *args) {
     } else {
       WorldUpdatePacket *wup =
           (WorldUpdatePacket *)Packet_deserialize(buf_rcv, bytes_read);
+      pthread_mutex_lock(&time_lock);
       if (last_update_time.tv_sec != -1 &&
           timercmp(&last_update_time, &wup->time, >=)) {
         fprintf(stdout, "[INFO] Ignoring a WorldUpdatePacket... \n");
+        pthread_mutex_unlock(&time_lock);
         Packet_free(&wup->header);
         usleep(RECEIVER_SLEEP);
         continue;
       }
+      pthread_mutex_unlock(&time_lock);
       debug_print("WorldUpdatePacket contains %d vehicles \n",
                   wup->num_update_vehicles - 1);
       last_update_time = wup->time;
