@@ -444,6 +444,7 @@ SKIP:
 
   // Clean resources
   cleanupAudioDevice();
+  pthread_mutex_destroy(&time_lock);
   for (int i = 0; i < WORLDSIZE; i++) {
     if (local_world->ids[i] == -1) continue;
     if (i == 0) continue;
