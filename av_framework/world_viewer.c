@@ -45,12 +45,6 @@ void WorldViewer_reshapeViewport(WorldViewer *viewer, int width, int height);
 void keyPressed(unsigned char key, int x, int y) {
   switch (key) {
     case 27:
-      pthread_mutex_lock(&lock);
-      pthread_mutex_lock(&audio_list_mutex);
-      AudioList_destroy(audio_list);
-      pthread_mutex_unlock(&audio_list_mutex);
-      pthread_mutex_unlock(&lock);
-      AudioContext_closeDevice();
       WorldViewer_exit(0);
       break;
     case ' ':
@@ -379,6 +373,13 @@ void WorldViewer_draw(WorldViewer *viewer) {
 }
 
 void WorldViewer_exit(int exit) {
+  //Stop audio
+  pthread_mutex_lock(&audio_list_mutex);
+  AudioList_destroy(audio_list);
+  AudioContext_closeDevice();
+  pthread_mutex_unlock(&audio_list_mutex);
+
+  //Set destroy flag
   pthread_mutex_lock(&lock);
   if (destroy) goto END;
   destroy = 1;
@@ -415,7 +416,7 @@ void WorldViewer_runGlobal(World *world, Vehicle *self, AudioContext *audio,
   glutKeyboardFunc(keyPressed);
   glutReshapeFunc(reshape);
 
-  //initialize audio
+  // initialize audio
   WorldViewer_createAudio();
   WorldViewer_addAudioTrack(audio);
 
