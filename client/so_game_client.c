@@ -71,12 +71,6 @@ int hasUser(int ids[], int size, int id) {
   return -1;
 }
 
-void cleanupAudioDevice(void) {
-  if (backgroud_track == NULL) return;
-  AudioContext_free(backgroud_track);
-  AudioContext_closeDevice();
-}
-
 void handleSignal(int signal) {
   // Find out which signal we're handling
   switch (signal) {
@@ -85,7 +79,6 @@ void handleSignal(int signal) {
     case SIGINT:
       connectivity = 0;
       exchange_update = 0;
-      cleanupAudioDevice();
       pthread_mutex_lock(&time_lock);
       if (last_update_time.tv_sec != 1) sendGoodbye(socket_desc, id);
       pthread_mutex_unlock(&time_lock);
@@ -146,17 +139,14 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
     exchange_update = 0;
     fprintf(stdout,
             "[WARNING] Server is not avaiable. Terminating the client now...");
-    cleanupAudioDevice();
     WorldViewer_exit(0);
-  }
-  else if (last_update_time.tv_sec != -1 &&
-      current_time.tv_sec - last_update_time.tv_sec >
-          MAX_TIME_WITHOUT_WORLDUPDATE) {
+  } else if (last_update_time.tv_sec != -1 &&
+             current_time.tv_sec - last_update_time.tv_sec >
+                 MAX_TIME_WITHOUT_WORLDUPDATE) {
     connectivity = 0;
     exchange_update = 0;
     fprintf(stdout,
             "[WARNING] Server is not avaiable. Terminating the client now...");
-    cleanupAudioDevice();
     WorldViewer_exit(0);
   } else if (last_update_time.tv_sec != -1)
     offline_server_counter = 0;
@@ -214,7 +204,6 @@ void *UDPReceiver(void *args) {
               "inactivity... Closing the client now \n");
       connectivity = 0;
       exchange_update = 0;
-      cleanupAudioDevice();
       WorldViewer_exit(0);
     }
 
@@ -225,7 +214,6 @@ void *UDPReceiver(void *args) {
       sendGoodbye(socket_desc, id);
       connectivity = 0;
       exchange_update = 0;
-      cleanupAudioDevice();
       WorldViewer_exit(-1);
     } else {
       WorldUpdatePacket *wup =
@@ -681,7 +669,6 @@ SKIP:
   fprintf(stdout, "[Main] Cleaning up... \n");
   sendGoodbye(socket_desc, id);
   // Clean resources
-  cleanupAudioDevice();
   pthread_mutex_destroy(&time_lock);
   for (int i = 0; i < WORLDSIZE; i++) {
     if (local_world->ids[i] == -1 || i == 0) continue;
