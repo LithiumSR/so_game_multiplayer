@@ -7,13 +7,15 @@
 #include <stdio.h>
 #include <unistd.h>
 #include "audio_context.h"
+#include "audio_list.h"
 #include "image.h"
 #include "surface.h"
 int window;
 int ret;
 int destroy;
 char is_muted;
-AudioContext *ac;  // Background track
+AudioListHead *audio_list;
+pthread_mutex_t audio_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef enum ViewType { Inside, Outside, Global } ViewType;
@@ -43,12 +45,6 @@ void WorldViewer_reshapeViewport(WorldViewer *viewer, int width, int height);
 void keyPressed(unsigned char key, int x, int y) {
   switch (key) {
     case 27:
-      pthread_mutex_lock(&lock);
-      if (ac != NULL) {
-        AudioContext_free(ac);
-        AudioContext_closeDevice();
-      }
-      pthread_mutex_unlock(&lock);
       WorldViewer_exit(0);
       break;
     case ' ':
@@ -68,15 +64,16 @@ void keyPressed(unsigned char key, int x, int y) {
       viewer.view_type = Outside;
       break;
     case 'm':
-      if (ac == NULL) break;
       pthread_mutex_lock(&lock);
+      pthread_mutex_lock(&audio_list_mutex);
       if (!is_muted) {
         is_muted = 1;
-        AudioContext_setVolume(ac, 0);
+        AudioList_setVolume(audio_list, 0);
       } else {
-        AudioContext_setVolume(ac, 1);
+        AudioList_setVolume(audio_list, 1);
         is_muted = 0;
       }
+      pthread_mutex_unlock(&audio_list_mutex);
       pthread_mutex_unlock(&lock);
       break;
   }
@@ -376,6 +373,13 @@ void WorldViewer_draw(WorldViewer *viewer) {
 }
 
 void WorldViewer_exit(int exit) {
+  //Stop audio
+  pthread_mutex_lock(&audio_list_mutex);
+  AudioList_destroy(audio_list);
+  AudioContext_closeDevice();
+  pthread_mutex_unlock(&audio_list_mutex);
+
+  //Set destroy flag
   pthread_mutex_lock(&lock);
   if (destroy) goto END;
   destroy = 1;
@@ -400,7 +404,6 @@ void WorldViewer_reshapeViewport(WorldViewer *viewer, int width, int height) {
 
 void WorldViewer_runGlobal(World *world, Vehicle *self, AudioContext *audio,
                            int *argc_ptr, char **argv) {
-  ac = audio;
   // initialize GL
   glutInit(argc_ptr, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
@@ -412,8 +415,37 @@ void WorldViewer_runGlobal(World *world, Vehicle *self, AudioContext *audio,
   glutSpecialFunc(specialInput);
   glutKeyboardFunc(keyPressed);
   glutReshapeFunc(reshape);
+
+  // initialize audio
+  WorldViewer_createAudio();
+  WorldViewer_addAudioTrack(audio);
+
   WorldViewer_init(&viewer, world, self);
 
   // run the main GL loop
   glutMainLoop();
+}
+
+void WorldViewer_destroyAudio() {
+  pthread_mutex_lock(&audio_list_mutex);
+  AudioList_destroy(audio_list);
+  audio_list = NULL;
+  pthread_mutex_unlock(&audio_list_mutex);
+}
+
+void WorldViewer_createAudio() {
+  pthread_mutex_lock(&audio_list_mutex);
+  AudioListHead *alh = (AudioListHead *)malloc(sizeof(AudioListHead));
+  audio_list = alh;
+  AudioList_init(alh);
+  pthread_mutex_unlock(&audio_list_mutex);
+}
+
+void WorldViewer_addAudioTrack(AudioContext *ac) {
+  pthread_mutex_lock(&audio_list_mutex);
+  AudioListItem *item = (AudioListItem *)malloc(sizeof(AudioListItem));
+  item->audio_context = ac;
+  AudioList_insert(audio_list, item);
+  AudioContext_startTrack(ac);
+  pthread_mutex_unlock(&audio_list_mutex);
 }
