@@ -10,3 +10,12 @@ void WorldViewer_runGlobal(World *world, Vehicle *self, AudioContext *ac,
 // Use this if you want to correctly kill the client's path of execution, glut
 // loop and the viewer window
 void WorldViewer_exit(int ret);
+
+//Add a sound/track to the GUI
+void WorldViewer_addAudioTrack(AudioContext *ac);
+
+//Create GUI's AudioList
+void WorldViewer_createAudio(void);
+
+//Destroy GUI's AudioList
+void WorldViewer_destroyAudio(void);

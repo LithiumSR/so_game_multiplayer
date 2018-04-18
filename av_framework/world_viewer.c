@@ -7,14 +7,14 @@
 #include <stdio.h>
 #include <unistd.h>
 #include "audio_context.h"
+#include "audio_list.h"
 #include "image.h"
 #include "surface.h"
-#include "audio_list.h"
 int window;
 int ret;
 int destroy;
 char is_muted;
-AudioListHead* audio_list;
+AudioListHead *audio_list;
 pthread_mutex_t audio_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -403,15 +403,6 @@ void WorldViewer_reshapeViewport(WorldViewer *viewer, int width, int height) {
 
 void WorldViewer_runGlobal(World *world, Vehicle *self, AudioContext *audio,
                            int *argc_ptr, char **argv) {
-                             pthread_mutex_lock(&audio_list_mutex);
-  AudioListHead* alh= (AudioListHead*)malloc(sizeof(AudioListHead));
-  AudioListItem* item= (AudioListItem*)malloc(sizeof(AudioListItem));
-  item->audio_context=audio;
-  audio_list=alh;
-  AudioList_init(alh);
-  AudioList_insert(alh,item);
-  AudioContext_startTrack(audio);
-  pthread_mutex_unlock(&audio_list_mutex);
   // initialize GL
   glutInit(argc_ptr, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
@@ -423,8 +414,37 @@ void WorldViewer_runGlobal(World *world, Vehicle *self, AudioContext *audio,
   glutSpecialFunc(specialInput);
   glutKeyboardFunc(keyPressed);
   glutReshapeFunc(reshape);
+
+  //initialize audio
+  WorldViewer_createAudio();
+  WorldViewer_addAudioTrack(audio);
+
   WorldViewer_init(&viewer, world, self);
 
   // run the main GL loop
   glutMainLoop();
+}
+
+void WorldViewer_destroyAudio() {
+  pthread_mutex_lock(&audio_list_mutex);
+  AudioList_destroy(audio_list);
+  audio_list = NULL;
+  pthread_mutex_unlock(&audio_list_mutex);
+}
+
+void WorldViewer_createAudio() {
+  pthread_mutex_lock(&audio_list_mutex);
+  AudioListHead *alh = (AudioListHead *)malloc(sizeof(AudioListHead));
+  audio_list = alh;
+  AudioList_init(alh);
+  pthread_mutex_unlock(&audio_list_mutex);
+}
+
+void WorldViewer_addAudioTrack(AudioContext *ac) {
+  pthread_mutex_lock(&audio_list_mutex);
+  AudioListItem *item = (AudioListItem *)malloc(sizeof(AudioListItem));
+  item->audio_context = ac;
+  AudioList_insert(audio_list, item);
+  AudioContext_startTrack(ac);
+  pthread_mutex_unlock(&audio_list_mutex);
 }
