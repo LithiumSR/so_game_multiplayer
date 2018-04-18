@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "../common/common.h"
+#define DEFAULT_VOLUME 1;
 char setup;
 ALuint setupBuffer(char *filename) {
   ALCenum error;
@@ -31,9 +32,11 @@ int AudioContext_openDevice(void) {
 
 void AudioContext_closeDevice(void) { alutExit(); }
 
-void AudioContext_init(AudioContext *ac, char *filename) {
+void AudioContext_init(AudioContext *ac, char *filename, char loop) {
   ac->buffer = setupBuffer(filename);
   ac->source = setupSource(ac->buffer);
+  ac->volume = DEFAULT_VOLUME;
+  ac->loop = loop;
 }
 
 void AudioContext_startTrackLoop(AudioContext *ac) {
@@ -41,7 +44,16 @@ void AudioContext_startTrackLoop(AudioContext *ac) {
   alSourcePlay(ac->source);
 }
 
-void AudioContext_startTrack(AudioContext *ac) { alSourcePlay(ac->source); }
+void AudioContext_startTrackNoLoop(AudioContext *ac) {
+  alSourcePlay(ac->source);
+}
+
+void AudioContext_startTrack(AudioContext *ac) {
+  if (ac->loop)
+    AudioContext_startTrackLoop(ac);
+  else
+    AudioContext_startTrack(ac);
+}
 
 void AudioContext_pauseTrack(AudioContext *ac) { alSourcePause(ac->source); }
 
@@ -49,6 +61,7 @@ void AudioContext_stopTrack(AudioContext *ac) { alSourceStop(ac->source); }
 
 void AudioContext_setVolume(AudioContext *ac, float volume) {
   alSourcef(ac->source, AL_GAIN, volume);
+  ac->volume = volume;
 }
 
 void AudioContext_free(AudioContext *ac) {
