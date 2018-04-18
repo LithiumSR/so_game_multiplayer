@@ -172,8 +172,8 @@ void Vehicle_setForcesUpdate(Vehicle* v, float translational_update,
                              float rotational_update) {
   int ret = sem_wait(&(v->vsem));
   if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
-  v->translational_force_update = translational_update;
-  v->rotational_force_update = rotational_update;
+  v->translational_force_update += translational_update;
+  v->rotational_force_update += rotational_update;
   ret = sem_post(&(v->vsem));
   if (ret == -1) debug_print("Post on vsem didn't worked as expected");
 }
@@ -182,4 +182,76 @@ void Vehicle_destroy(Vehicle* v) {
   int ret = sem_destroy(&(v->vsem));
   if (ret == -1) debug_print("Vehicle semaphore wasn't successfully destroyed");
   if (v->_destructor) (*v->_destructor)(v);
+}
+
+void Vehicle_getForcesIntention(Vehicle* v,
+                                float* translational_force_update_intention,
+                                float* rotational_force_update_intention) {
+  int ret = sem_wait(&(v->vsem));
+  if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
+  *translational_force_update_intention =
+      v->translational_force_update_intention;
+  *rotational_force_update_intention = v->rotational_force_update_intention;
+  ret = sem_post(&(v->vsem));
+  if (ret == -1) debug_print("Post on vsem didn't worked as expected");
+}
+
+void Vehicle_increaseTranslationForceIntention(
+    Vehicle* v, float translational_force_update_intention) {
+  int ret = sem_wait(&(v->vsem));
+  if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
+  v->translational_force_update_intention +=
+      translational_force_update_intention;
+  ret = sem_post(&(v->vsem));
+  if (ret == -1) debug_print("Post on vsem didn't worked as expected");
+}
+
+void Vehicle_increaseRotationalForceIntention(
+    Vehicle* v, float rotational_force_update_intention) {
+  int ret = sem_wait(&(v->vsem));
+  if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
+  v->rotational_force_update_intention += rotational_force_update_intention;
+  ret = sem_post(&(v->vsem));
+  if (ret == -1) debug_print("Post on vsem didn't worked as expected");
+}
+
+void Vehicle_decreaseRotationalForceIntention(
+    Vehicle* v, float rotational_force_update_intention) {
+  int ret = sem_wait(&(v->vsem));
+  if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
+  v->rotational_force_update_intention -= rotational_force_update_intention;
+  ret = sem_post(&(v->vsem));
+  if (ret == -1) debug_print("Post on vsem didn't worked as expected");
+}
+
+void Vehicle_decreaseTranslationForceIntention(
+    Vehicle* v, float translational_force_update_intention) {
+  int ret = sem_wait(&(v->vsem));
+  if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
+  v->translational_force_update_intention -=
+      translational_force_update_intention;
+  ret = sem_post(&(v->vsem));
+  if (ret == -1) debug_print("Post on vsem didn't worked as expected");
+}
+
+void Vehicle_setForcesIntention(Vehicle* v,
+                                float translational_force_update_intention,
+                                float rotational_force_update_intention) {
+  int ret = sem_wait(&(v->vsem));
+  if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
+  v->translational_force_update_intention =
+      translational_force_update_intention;
+  v->rotational_force_update_intention = rotational_force_update_intention;
+  ret = sem_post(&(v->vsem));
+  if (ret == -1) debug_print("Post on vsem didn't worked as expected");
+}
+
+void Vehicle_decayForcesUpdate(Vehicle* v, float translational_update_decay,
+                               float rotational_update_decay) {
+  int ret = sem_wait(&(v->vsem));
+  if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
+  v->translational_force_update *= translational_update_decay;
+  v->rotational_force_update *= rotational_update_decay;
+  ret = sem_post(&(v->vsem));
+  if (ret == -1) debug_print("Post on vsem didn't worked as expected");
 }

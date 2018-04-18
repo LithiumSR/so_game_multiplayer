@@ -19,6 +19,8 @@ typedef struct Vehicle {
   // section
   float translational_force_update;
   float rotational_force_update;
+  float translational_force_update_intention;
+  float rotational_force_update_intention;
   float x, y, z,
       theta;  // position and orientation of the vehicle, on the surface
 
@@ -57,3 +59,26 @@ void Vehicle_setForcesUpdate(Vehicle* v, float translational_update,
                              float rotational_update);
 
 void Vehicle_destroy(Vehicle* v);
+
+void Vehicle_getForcesIntention(Vehicle* v,
+                                float* translational_force_update_intention,
+                                float* rotational_force_update_intention);
+
+void Vehicle_setForcesIntention(Vehicle* v,
+                                float translational_force_update_intention,
+                                float rotational_force_update_intention);
+
+void Vehicle_increaseTranslationForceIntention(
+    Vehicle* v, float translational_update_intention);
+
+void Vehicle_increaseRotationalForceIntention(
+    Vehicle* v, float rotational_update_intention);
+
+void Vehicle_decreaseRotationalForceIntention(
+    Vehicle* v, float rotational_update_intention);
+
+void Vehicle_decreaseTranslationForceIntention(
+    Vehicle* v, float translational_update_intention);
+
+void Vehicle_decayForcesUpdate(Vehicle* v, float translational_update_decay,
+                               float rotational_update_decay);
