@@ -37,6 +37,7 @@ typedef struct {
   int client_desc;
   Image *elevation_texture;
   Image *surface_texture;
+  struct sockaddr_in client_addr;
 } tcpArgs;
 
 void handleSignal(int signal) {
@@ -98,6 +99,24 @@ int UDPHandler(int socket_udp, char *buf_rcv, struct sockaddr_in client_addr) {
       if (!(client->last_update_time.tv_sec == -1 ||
             timercmp(&vup->time, &client->last_update_time, >)))
         goto END;
+
+      if (!client->is_udp_addr_ready) {
+        int sockaddr_len = sizeof(struct sockaddr_in);
+        char addr_udp[sockaddr_len];
+        char addr_tcp[sockaddr_len];
+        const char *pt_addr_udp =
+            inet_ntop(client_addr.sin_family, &(client_addr.sin_addr), addr_udp,
+                      sockaddr_len);
+        const char *pt_addr_tcp =
+            inet_ntop(client_addr.sin_family, &(client->user_addr_tcp.sin_addr),
+                      addr_tcp, sockaddr_len);
+        if (pt_addr_udp != NULL && pt_addr_tcp != NULL &&
+            strcmp(addr_udp, addr_tcp) != 0)
+          goto END;
+        client->user_addr_udp = client_addr;
+        client->is_udp_addr_ready = 1;
+      }
+
       client->prev_x = client->x;
       client->prev_y = client->y;
       client->x = vup->x;
@@ -105,8 +124,6 @@ int UDPHandler(int socket_udp, char *buf_rcv, struct sockaddr_in client_addr) {
       client->theta = vup->theta;
       client->rotational_force = vup->rotational_force;
       client->translational_force = vup->translational_force;
-      client->user_addr = client_addr;
-      client->is_addr_ready = 1;
       if (client->prev_x != -1 && client->prev_y != -1) {
         client->x_shift += abs(client->x - client->prev_x);
         client->y_shift += abs(client->y - client->prev_y);
@@ -323,7 +340,8 @@ void *TCPFlow(void *args) {
   user->prev_y = -1;
   user->x_shift = -1;
   user->y_shift = -1;
-  user->is_addr_ready = 0;
+  user->user_addr_tcp = tcp_args->client_addr;
+  user->is_udp_addr_ready = 0;
   user->v_texture = NULL;
   user->last_update_time.tv_sec = -1;
   user->afk_counter = 0;
@@ -429,7 +447,7 @@ void *UDPSender(void *args) {
     gettimeofday(&time, NULL);
     while (client != NULL) {
       char buf_send[BUFFERSIZE];
-      if (client->is_addr_ready != 1) {
+      if (client->is_udp_addr_ready != 1) {
         client = client->next;
         continue;
       }
@@ -441,8 +459,8 @@ void *UDPSender(void *args) {
       int n = 0;
       ClientListItem *tmp = users->first;
       while (tmp != NULL) {
-        if (tmp->is_addr_ready && (abs(tmp->x - client->x) <= HIDE_RANGE &&
-                                   abs(tmp->y - client->y) <= HIDE_RANGE)) {
+        if (tmp->is_udp_addr_ready && (abs(tmp->x - client->x) <= HIDE_RANGE &&
+                                       abs(tmp->y - client->y) <= HIDE_RANGE)) {
           n++;
         }
         tmp = tmp->next;
@@ -459,8 +477,9 @@ void *UDPSender(void *args) {
       ClientList_print(users);
       int k = 0;
       for (int i = 0; tmp != NULL; i++) {
-        if (!(tmp->is_addr_ready && (abs(tmp->x - client->x) <= HIDE_RANGE &&
-                                     abs(tmp->y - client->y) <= HIDE_RANGE))) {
+        if (!(tmp->is_udp_addr_ready &&
+              (abs(tmp->x - client->x) <= HIDE_RANGE &&
+               abs(tmp->y - client->y) <= HIDE_RANGE))) {
           tmp = tmp->next;
           continue;
         }
@@ -486,7 +505,7 @@ void *UDPSender(void *args) {
       while (tmp != NULL) {
         ClientStatusUpdate *csu = &wup->status_updates[k];
         csu->id = tmp->id;
-        if (tmp->is_addr_ready)
+        if (tmp->is_udp_addr_ready)
           csu->status = Online;
         else
           csu->status = Connecting;
@@ -502,8 +521,8 @@ void *UDPSender(void *args) {
       }
 
       int ret = sendto(socket_udp, buf_send, size, 0,
-                       (struct sockaddr *)&client->user_addr,
-                       (socklen_t)sizeof(client->user_addr));
+                       (struct sockaddr *)&client->user_addr_udp,
+                       (socklen_t)sizeof(client->user_addr_udp));
       debug_print(
           "[UDP_Send] Sent WorldUpdate of %d bytes to client with id %d \n",
           ret, client->id);
@@ -540,7 +559,7 @@ void *UDPSender(void *args) {
     int n;
     ClientListItem *client = users->first;
     for (n = 0; client != NULL; client = client->next) {
-      if (client->is_addr_ready) n++;
+      if (client->is_udp_addr_ready) n++;
     }
     wup->num_update_vehicles = n;
     fprintf(stdout,
@@ -556,7 +575,7 @@ void *UDPSender(void *args) {
     client = users->first;
     gettimeofday(&wup->time, NULL);
     for (int i = 0; client != NULL; i++) {
-      if (!(client->is_addr_ready)) {
+      if (!(client->is_udp_addr_ready)) {
         client = client->next;
         continue;
       }
@@ -583,10 +602,10 @@ void *UDPSender(void *args) {
     }
     client = users->first;
     while (client != NULL) {
-      if (client->is_addr_ready == 1) {
+      if (client->is_udp_addr_ready == 1) {
         int ret = sendto(socket_udp, buf_send, size, 0,
-                         (struct sockaddr *)&client->user_addr,
-                         (socklen_t)sizeof(client->user_addr));
+                         (struct sockaddr *)&client->user_addr_udp,
+                         (socklen_t)sizeof(client->user_addr_udp));
         debug_print(
             "[UDP_Send] Sent WorldUpdate of %d bytes to client with id %d \n",
             ret, client->id);
@@ -616,13 +635,14 @@ void *garbageCollector(void *args) {
     while (client != NULL) {
       long creation_time = (long)client->creation_time.tv_sec;
       long last_update_time = (long)client->last_update_time.tv_sec;
-      if ((client->is_addr_ready == 1 && (current_time - last_update_time) >=
-                                             MAX_TIME_WITHOUT_VEHICLEUPDATE) ||
-          (client->is_addr_ready != 1 &&
+      if ((client->is_udp_addr_ready == 1 &&
+           (current_time - last_update_time) >=
+               MAX_TIME_WITHOUT_VEHICLEUPDATE) ||
+          (client->is_udp_addr_ready != 1 &&
            (current_time - creation_time) >= MAX_TIME_WITHOUT_VEHICLEUPDATE)) {
         ClientListItem *tmp = client;
         client = client->next;
-        sendDisconnect(socket_udp, tmp->user_addr);
+        sendDisconnect(socket_udp, tmp->user_addr_udp);
         ClientListItem *del = ClientList_detach(users, tmp);
         if (del == NULL) continue;
         Image *user_texture = del->v_texture;
@@ -631,15 +651,15 @@ void *garbageCollector(void *args) {
         if (users->size == 0) has_users = 0;
         close(del->id);
         free(del);
-      } else if (client->is_addr_ready == 1 && client->x_shift < AFK_RANGE &&
-                 client->y_shift < AFK_RANGE &&
+      } else if (client->is_udp_addr_ready == 1 &&
+                 client->x_shift < AFK_RANGE && client->y_shift < AFK_RANGE &&
                  current_time - creation_time >=
                      MAX_TIME_WITHOUT_VEHICLEUPDATE) {
         client->afk_counter++;
         if (client->afk_counter >= MAX_AFK_COUNTER) {
           ClientListItem *tmp = client;
           client = client->next;
-          sendDisconnect(socket_udp, tmp->user_addr);
+          sendDisconnect(socket_udp, tmp->user_addr_udp);
           ClientListItem *del = ClientList_detach(users, tmp);
           if (del == NULL) continue;
           Image *user_texture = del->v_texture;
@@ -803,6 +823,7 @@ int main(int argc, char **argv) {
     tcp_args.client_desc = client_desc;
     tcp_args.elevation_texture = surface_elevation;
     tcp_args.surface_texture = surface_texture;
+    tcp_args.client_addr = client_addr;
     // Create a thread for each client
     ret = pthread_create(&threadTCP, NULL, TCPFlow, &tcp_args);
     PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread tcp failed");
