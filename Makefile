@@ -13,6 +13,7 @@ OBJS = av_framework/vec3.o\
        game_framework/linked_list.o\
        av_framework/surface.o\
        av_framework/image.o\
+	   av_framework/audio_list.o\
        game_framework/vehicle.o\
        av_framework/world.o\
        av_framework/world_viewer.o\
@@ -28,6 +29,7 @@ HEADERS=av_framework/image.h\
 	game_framework/so_game_protocol.h\
 	av_framework/surface.h\
 	av_framework/vec3.h\
+	av_framework/audio_list.h\
 	game_framework/vehicle.h\
 	av_framework/world.h\
 	av_framework/world_viewer.h\
