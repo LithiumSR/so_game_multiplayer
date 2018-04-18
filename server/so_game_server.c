@@ -658,6 +658,7 @@ void* worldLoop(void* args) {
   while (connectivity) {
     World_update(&server_world);
     usleep(WORLD_LOOP_SLEEP);
+    World_decayUpdate(&server_world);
   }
   pthread_exit(NULL);
 }

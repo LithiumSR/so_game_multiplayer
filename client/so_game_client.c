@@ -100,8 +100,9 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
       (VehicleUpdatePacket*)malloc(sizeof(VehicleUpdatePacket));
   vup->header = ph;
   gettimeofday(&vup->time, NULL);
-  Vehicle_getForcesUpdate(vehicle, &(vup->translational_force),
-                          &(vup->rotational_force));
+  Vehicle_getForcesIntention(vehicle, &(vup->translational_force),
+                             &(vup->rotational_force));
+  Vehicle_setForcesIntention(vehicle, 0, 0);
   vup->id = id;
   int size = Packet_serialize(buf_send, &vup->header);
   int bytes_sent =
