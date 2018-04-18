@@ -22,6 +22,8 @@ void World_destroy(World* w);
 
 void World_update(World* w);
 
+void World_decayUpdate(World* w);
+
 Vehicle* World_getVehicle(World* w, int vehicle_id);
 
 Vehicle* World_addVehicle(World* w, Vehicle* v);

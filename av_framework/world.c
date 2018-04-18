@@ -63,6 +63,26 @@ void World_update(World* w) {
   w->last_update = current_time;
 }
 
+void World_decayUpdate(World* w) {
+  /**
+  struct timeval current_time;
+  gettimeofday(&current_time, 0);
+  struct timeval dt;
+  timersub(&current_time, &w->last_update, &dt);
+  float delta = dt.tv_sec + 1e-6 * dt.tv_usec;
+  **/
+  sem_t sem = w->vehicles.sem;
+  sem_wait(&sem);
+  ListItem* item = w->vehicles.first;
+  while (item) {
+    Vehicle* v = (Vehicle*)item;
+    Vehicle_decayForcesUpdate(v, 0.999, 0.7);
+    item = item->next;
+  }
+  sem_post(&sem);
+  // w->last_update = current_time;
+}
+
 Vehicle* World_getVehicle(World* w, int vehicle_id) {
   sem_t sem = w->vehicles.sem;
   sem_wait(&sem);
