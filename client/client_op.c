@@ -292,11 +292,7 @@ AudioContext *getAudioContext(int socket_desc) {
   fprintf(stdout, "[GetAudioContext] Loading %s file...\n", filename);
   AudioContext_openDevice();
   AudioContext *ac = (AudioContext *)malloc(sizeof(AudioContext));
-  AudioContext_init(ac, filename);
-  if (loop)
-    AudioContext_startTrackLoop(ac);
-  else
-    AudioContext_startTrack(ac);
+  AudioContext_init(ac, filename, loop);
   return ac;
 }
 
