@@ -36,7 +36,7 @@ void AudioContext_init(AudioContext *ac, char *filename, char loop) {
   ac->buffer = setupBuffer(filename);
   ac->source = setupSource(ac->buffer);
   ac->volume = DEFAULT_VOLUME;
-  ac->loop=loop;
+  ac->loop = loop;
 }
 
 void AudioContext_startTrackLoop(AudioContext *ac) {
@@ -44,11 +44,15 @@ void AudioContext_startTrackLoop(AudioContext *ac) {
   alSourcePlay(ac->source);
 }
 
-void AudioContext_startTrackNoLoop(AudioContext *ac) { alSourcePlay(ac->source); }
+void AudioContext_startTrackNoLoop(AudioContext *ac) {
+  alSourcePlay(ac->source);
+}
 
-void AudioContext_startTrack(AudioContext* ac) {
-  if (ac->loop) AudioContext_startTrackLoop(ac);
-  else AudioContext_startTrack(ac);
+void AudioContext_startTrack(AudioContext *ac) {
+  if (ac->loop)
+    AudioContext_startTrackLoop(ac);
+  else
+    AudioContext_startTrack(ac);
 }
 
 void AudioContext_pauseTrack(AudioContext *ac) { alSourcePause(ac->source); }

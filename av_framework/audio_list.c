@@ -68,8 +68,7 @@ void AudioList_setVolume(AudioListHead* head, float volume) {
   if (head == NULL) return;
   AudioListItem* track = head->first;
   while (track != NULL) {
-    AudioContext_setVolume(track->audio_context,volume);
+    AudioContext_setVolume(track->audio_context, volume);
     track = track->next;
   }
 }
-

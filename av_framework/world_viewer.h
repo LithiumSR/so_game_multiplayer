@@ -11,11 +11,11 @@ void WorldViewer_runGlobal(World *world, Vehicle *self, AudioContext *ac,
 // loop and the viewer window
 void WorldViewer_exit(int ret);
 
-//Add a sound/track to the GUI
+// Add a sound/track to the GUI
 void WorldViewer_addAudioTrack(AudioContext *ac);
 
-//Create GUI's AudioList
+// Create GUI's AudioList
 void WorldViewer_createAudio(void);
 
-//Destroy GUI's AudioList
+// Destroy GUI's AudioList
 void WorldViewer_destroyAudio(void);
