@@ -7,12 +7,9 @@ typedef struct ClientListItem {
   struct ClientListItem* next;
   int id;
   float x, y, theta, prev_x, prev_y, x_shift, y_shift;
-
-  struct sockaddr_in user_addr;
-  struct timeval last_update_time;
-  struct timeval creation_time;
-  struct timeval world_update_time;
-  char is_addr_ready;
+  struct sockaddr_in user_addr_tcp,user_addr_udp;
+  struct timeval last_update_time,creation_time,world_update_time;
+  char is_udp_addr_ready;
   int afk_counter;
   char inside_world;
   Vehicle* vehicle;
