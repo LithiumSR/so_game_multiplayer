@@ -82,16 +82,24 @@ void keyPressed(unsigned char key, int x, int y) {
 void specialInput(int key, int x, int y) {
   switch (key) {
     case GLUT_KEY_UP:
-      viewer.self->translational_force_update += 0.1;
+      pthread_mutex_lock(&(viewer.self->mutex));
+      Vehicle_increaseTranslationalForce(viewer.self, 0.1);
+      pthread_mutex_unlock(&(viewer.self->mutex));
       break;
     case GLUT_KEY_DOWN:
-      viewer.self->translational_force_update -= 0.1;
+      pthread_mutex_lock(&(viewer.self->mutex));
+      Vehicle_decreaseTranslationalForce(viewer.self, 0.1);
+      pthread_mutex_unlock(&(viewer.self->mutex));
       break;
     case GLUT_KEY_LEFT:
-      viewer.self->rotational_force_update += 0.1;
+      pthread_mutex_lock(&(viewer.self->mutex));
+      Vehicle_increaseRotationalForce(viewer.self, 0.1);
+      pthread_mutex_unlock(&(viewer.self->mutex));
       break;
     case GLUT_KEY_RIGHT:
-      viewer.self->rotational_force_update -= 0.1;
+      pthread_mutex_lock(&(viewer.self->mutex));
+      Vehicle_decreaseRotationalForce(viewer.self, 0.1);
+      pthread_mutex_unlock(&(viewer.self->mutex));
       break;
     case GLUT_KEY_PAGE_UP:
       viewer.camera_z += 0.1;
@@ -112,11 +120,11 @@ void idle(void) {
   World_update(viewer.world);
   usleep(30000);
   if (destroy) _WorldViewer_exit();
+  Vehicle_decayForcesUpdate(viewer.self, 0.999, 0.7);
+  pthread_mutex_lock(&audio_list_mutex);
+  AudioList_cleanExpiredItem(audio_list);
+  pthread_mutex_unlock(&audio_list_mutex);
   glutPostRedisplay();
-
-  // decay the commands
-  viewer.self->translational_force_update *= 0.999;
-  viewer.self->rotational_force_update *= 0.7;
 }
 
 void Surface_destructor(Surface *s) {
@@ -373,13 +381,13 @@ void WorldViewer_draw(WorldViewer *viewer) {
 }
 
 void WorldViewer_exit(int exit) {
-  //Stop audio
+  // Stop audio
   pthread_mutex_lock(&audio_list_mutex);
   AudioList_destroy(audio_list);
   AudioContext_closeDevice();
   pthread_mutex_unlock(&audio_list_mutex);
 
-  //Set destroy flag
+  // Set destroy flag
   pthread_mutex_lock(&lock);
   if (destroy) goto END;
   destroy = 1;
