@@ -48,7 +48,8 @@ void keyPressed(unsigned char key, int x, int y) {
       WorldViewer_exit(0);
       break;
     case ' ':
-      Vehicle_setForcesIntention(viewer.self, 0, 0);
+      viewer.self->translational_force_update = 0;
+      viewer.self->rotational_force_update = 0;
       break;
     case '+':
       viewer.zoom *= 1.1f;
@@ -81,10 +82,10 @@ void keyPressed(unsigned char key, int x, int y) {
 void specialInput(int key, int x, int y) {
   switch (key) {
     case GLUT_KEY_UP:
-      Vehicle_increaseTranslationForceIntention(viewer.self, 0.1);
+      Vehicle_increaseTranslationalForceIntention(viewer.self, 0.1);
       break;
     case GLUT_KEY_DOWN:
-      Vehicle_decreaseTranslationForceIntention(viewer.self, 0.1);
+      Vehicle_decreaseTranslationalForceIntention(viewer.self, 0.1);
       break;
     case GLUT_KEY_LEFT:
       Vehicle_increaseRotationalForceIntention(viewer.self, 0.1);
@@ -111,10 +112,10 @@ void idle(void) {
   World_update(viewer.world);
   usleep(30000);
   if (destroy) _WorldViewer_exit();
+  pthread_mutex_lock(&audio_list_mutex);
+  AudioList_cleanExpiredItem(audio_list);
+  pthread_mutex_unlock(&audio_list_mutex);
   glutPostRedisplay();
-
-  // decay the commands
-  Vehicle_decayForcesUpdate(viewer.self, 0.999, 0.7);
 }
 
 void Surface_destructor(Surface *s) {
