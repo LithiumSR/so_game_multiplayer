@@ -57,3 +57,18 @@ void Vehicle_setForcesUpdate(Vehicle* v, float translational_update,
                              float rotational_update);
 
 void Vehicle_destroy(Vehicle* v);
+
+void Vehicle_increaseRotationalForce(Vehicle* v,
+                                     float rotational_force_increase);
+
+void Vehicle_increaseTranslationalForce(Vehicle* v,
+                                        float translational_force_increase);
+
+void Vehicle_decreaseTranslationalForce(Vehicle* v,
+                                        float translational_force_decrease);
+
+void Vehicle_decreaseRotationalForce(Vehicle* v,
+                                     float rotational_force_decrease);
+
+void Vehicle_decayForcesUpdate(Vehicle* v, float translational_force_decay,
+                               float rotational_force_decay);

@@ -183,3 +183,49 @@ void Vehicle_destroy(Vehicle* v) {
   if (ret == -1) debug_print("Vehicle semaphore wasn't successfully destroyed");
   if (v->_destructor) (*v->_destructor)(v);
 }
+
+void Vehicle_increaseRotationalForce(Vehicle* v,
+                                     float rotational_force_increase) {
+  int ret = sem_wait(&(v->vsem));
+  if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
+  v->rotational_force_update += rotational_force_increase;
+  ret = sem_post(&(v->vsem));
+  if (ret == -1) debug_print("Post on vsem didn't worked as expected");
+}
+
+void Vehicle_increaseTranslationalForce(Vehicle* v,
+                                        float translational_force_increase) {
+  int ret = sem_wait(&(v->vsem));
+  if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
+  v->translational_force_update += translational_force_increase;
+  ret = sem_post(&(v->vsem));
+  if (ret == -1) debug_print("Post on vsem didn't worked as expected");
+}
+
+void Vehicle_decreaseRotationalForce(Vehicle* v,
+                                     float rotational_force_decrease) {
+  int ret = sem_wait(&(v->vsem));
+  if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
+  v->rotational_force_update -= rotational_force_decrease;
+  ret = sem_post(&(v->vsem));
+  if (ret == -1) debug_print("Post on vsem didn't worked as expected");
+}
+
+void Vehicle_decreaseTranslationalForce(Vehicle* v,
+                                        float translational_force_decrease) {
+  int ret = sem_wait(&(v->vsem));
+  if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
+  v->translational_force_update -= translational_force_decrease;
+  ret = sem_post(&(v->vsem));
+  if (ret == -1) debug_print("Post on vsem didn't worked as expected");
+}
+
+void Vehicle_decayForcesUpdate(Vehicle* v, float translational_force_decay,
+                               float rotational_force_decay) {
+  int ret = sem_wait(&(v->vsem));
+  if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
+  v->translational_force_update *= translational_force_decay;
+  v->rotational_force_update *= rotational_force_decay;
+  ret = sem_post(&(v->vsem));
+  if (ret == -1) debug_print("Post on vsem didn't worked as expected");
+}
