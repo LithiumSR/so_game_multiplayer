@@ -168,7 +168,7 @@ void Vehicle_getForcesUpdate(Vehicle* v, float* translational_update,
   if (ret == -1) debug_print("Post on vsem didn't worked as expected");
 }
 
-void Vehicle_setForcesUpdate(Vehicle* v, float translational_update,
+void Vehicle_addForcesUpdate(Vehicle* v, float translational_update,
                              float rotational_update) {
   int ret = sem_wait(&(v->vsem));
   if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
@@ -196,7 +196,7 @@ void Vehicle_getForcesIntention(Vehicle* v,
   if (ret == -1) debug_print("Post on vsem didn't worked as expected");
 }
 
-void Vehicle_increaseTranslationForceIntention(
+void Vehicle_increaseTranslationalForceIntention(
     Vehicle* v, float translational_force_update_intention) {
   int ret = sem_wait(&(v->vsem));
   if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
@@ -224,7 +224,7 @@ void Vehicle_decreaseRotationalForceIntention(
   if (ret == -1) debug_print("Post on vsem didn't worked as expected");
 }
 
-void Vehicle_decreaseTranslationForceIntention(
+void Vehicle_decreaseTranslationalForceIntention(
     Vehicle* v, float translational_force_update_intention) {
   int ret = sem_wait(&(v->vsem));
   if (ret == -1) debug_print("Wait on vsem didn't worked as expected");

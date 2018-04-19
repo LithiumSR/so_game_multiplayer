@@ -55,7 +55,7 @@ int Vehicle_update(Vehicle* v, float dt);
 void Vehicle_getForcesUpdate(Vehicle* v, float* translational_update,
                              float* rotational_update);
 
-void Vehicle_setForcesUpdate(Vehicle* v, float translational_update,
+void Vehicle_addForcesUpdate(Vehicle* v, float translational_update,
                              float rotational_update);
 
 void Vehicle_destroy(Vehicle* v);
@@ -68,7 +68,7 @@ void Vehicle_setForcesIntention(Vehicle* v,
                                 float translational_force_update_intention,
                                 float rotational_force_update_intention);
 
-void Vehicle_increaseTranslationForceIntention(
+void Vehicle_increaseTranslationalForceIntention(
     Vehicle* v, float translational_update_intention);
 
 void Vehicle_increaseRotationalForceIntention(
@@ -77,7 +77,7 @@ void Vehicle_increaseRotationalForceIntention(
 void Vehicle_decreaseRotationalForceIntention(
     Vehicle* v, float rotational_update_intention);
 
-void Vehicle_decreaseTranslationForceIntention(
+void Vehicle_decreaseTranslationalForceIntention(
     Vehicle* v, float translational_update_intention);
 
 void Vehicle_decayForcesUpdate(Vehicle* v, float translational_update_decay,
