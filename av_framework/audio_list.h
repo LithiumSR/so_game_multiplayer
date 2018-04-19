@@ -20,3 +20,4 @@ AudioListItem* AudioList_insert(AudioListHead* head, AudioListItem* item);
 AudioListItem* AudioList_detach(AudioListHead* head, AudioListItem* item);
 void AudioList_destroy(AudioListHead* head);
 void AudioList_setVolume(AudioListHead* head, float volume);
+void AudioList_cleanExpiredItem(AudioListHead* head);
