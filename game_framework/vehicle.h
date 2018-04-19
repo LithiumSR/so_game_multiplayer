@@ -13,8 +13,8 @@ typedef struct Vehicle {
   int id;
   struct World* world;
   Image* texture;
-  sem_t vsem;
-
+  pthread_mutex_t mutex;
+  struct timeval world_update_time; 
   // these are the forces that will be applied after the update and the critical
   // section
   float translational_force_update;
@@ -57,6 +57,10 @@ void Vehicle_setForcesUpdate(Vehicle* v, float translational_update,
                              float rotational_update);
 
 void Vehicle_destroy(Vehicle* v);
+
+void Vehicle_setTime(Vehicle* v, struct timeval time);
+
+void Vehicle_getTime(Vehicle* v, struct timeval* time);
 
 void Vehicle_increaseRotationalForce(Vehicle* v,
                                      float rotational_force_increase);
