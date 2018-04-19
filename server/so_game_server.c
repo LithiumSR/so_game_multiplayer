@@ -486,13 +486,13 @@ void* UDPSender(void* args) {
       ClientListItem* check = users->first;
       while (check != NULL) {
         if (check->inside_world && check->is_udp_addr_ready) {
-          pthread_mutex_lock(&client->vehicle->mutex);
+          pthread_mutex_lock(&check->vehicle->mutex);
           Vehicle_getXYTheta(check->vehicle, &check->x, &check->y,
                              &check->theta);
           Vehicle_getForcesUpdate(check->vehicle, &check->translational_force,
                                   &check->rotational_force);
           Vehicle_getTime(check->vehicle, &check->world_update_time);
-          pthread_mutex_unlock(&client->vehicle->mutex);
+          pthread_mutex_unlock(&check->vehicle->mutex);
         }
         check = check->next;
       }
