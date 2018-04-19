@@ -73,8 +73,8 @@ void AudioList_setVolume(AudioListHead* head, float volume) {
   }
 }
 
-void AudioList_cleanExpiredItem(AudioListHead* head){
-if (head == NULL) return;
+void AudioList_cleanExpiredItem(AudioListHead* head) {
+  if (head == NULL) return;
   AudioListItem* track = head->first;
   while (track != NULL) {
     ALenum state;
@@ -85,7 +85,7 @@ if (head == NULL) return;
       AudioContext_free(tmp->audio_context);
       free(tmp);
     }
-    END: track = track->next;
+  END:
+    track = track->next;
   }
-  free(head);
 }
