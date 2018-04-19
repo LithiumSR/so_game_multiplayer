@@ -4,10 +4,6 @@
 #include "../av_framework/surface.h"
 #include "linked_list.h"
 
-#if USE_VEHICLE_SEMAPHORE == 1
-#define _USE_VEHICLE_SEM_
-#endif
-
 struct World;
 struct Vehicle;
 typedef void (*VehicleDtor)(struct Vehicle* v);
@@ -17,9 +13,6 @@ typedef struct Vehicle {
   int id;
   struct World* world;
   Image* texture;
-#ifdef _USE_VEHICLE_SEM_
-  sem_t vsem;
-#endif
   pthread_mutex_t mutex;
   // these are the forces that will be applied after the update and the critical
   // section
@@ -67,3 +60,13 @@ void Vehicle_setTime(Vehicle* v, struct timeval time);
 int Vehicle_update(Vehicle* v, float dt);
 
 void Vehicle_destroy(Vehicle* v);
+
+void Vehicle_increaseTranslationalForce(Vehicle* v, float translational_force_update);
+
+void Vehicle_increaseRotationalForce(Vehicle* v, float rotational_force_update);
+
+void Vehicle_decreaseRotationalForce(Vehicle* v, float rotational_force_update);
+
+void Vehicle_decreaseTranslationalForce(Vehicle* v, float translational_force_update);
+
+void Vehicle_decayForcesUpdate(Vehicle* v, float translational_update_decay, float rotational_update_decay);
