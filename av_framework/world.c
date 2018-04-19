@@ -50,12 +50,18 @@ void World_update(World* w) {
   struct timeval dt;
   timersub(&current_time, &w->last_update, &dt);
   float delta = dt.tv_sec + 1e-6 * dt.tv_usec;
+  float exp = delta / (30 * 1000);
+  float tr_decay = powf(1 - 0.001, exp);
+  float rt_decay = powf(1 - 0.3, exp);
+  if (tr_decay > 0.999) tr_decay = 0.999;
+  if (rt_decay > 0.7) rt_decay = 0.7;
   sem_t sem = w->vehicles.sem;
   sem_wait(&sem);
   ListItem* item = w->vehicles.first;
   while (item) {
     Vehicle* v = (Vehicle*)item;
     pthread_mutex_lock(&v->mutex);
+    //Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
     if (!Vehicle_update(v, delta * w->time_scale)) {
       Vehicle_reset(v);
     }
@@ -73,9 +79,7 @@ void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time) {
   struct timeval dt;
   timersub(&current_time, &update_time, &dt);
   float delta = dt.tv_sec + 1e-6 * dt.tv_usec;
-  if (!Vehicle_update(v, delta * w->time_scale)) {
-    Vehicle_reset(v);
-  }
+  if (!Vehicle_update(v, delta * w->time_scale)) Vehicle_reset(v);
   Vehicle_setTime(v, current_time);
 }
 
