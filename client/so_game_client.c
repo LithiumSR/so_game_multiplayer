@@ -100,8 +100,10 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
       (VehicleUpdatePacket*)malloc(sizeof(VehicleUpdatePacket));
   vup->header = ph;
   gettimeofday(&vup->time, NULL);
+  pthread_mutex_lock(&vehicle->mutex);
   Vehicle_getForcesUpdate(vehicle, &(vup->translational_force),
                           &(vup->rotational_force));
+  pthread_mutex_unlock(&vehicle->mutex);
   vup->id = id;
   int size = Packet_serialize(buf_send, &vup->header);
   int bytes_sent =
@@ -234,9 +236,13 @@ void* UDPReceiver(void* args) {
           Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
           Vehicle_init(new_vehicle, &world, wup->updates[i].id, img);
           lw->vehicles[new_position] = new_vehicle;
+          pthread_mutex_lock(&lw->vehicles[new_position]->mutex);
           Vehicle_setXYTheta(lw->vehicles[new_position], wup->updates[i].x,
                              wup->updates[i].y, wup->updates[i].theta);
           World_addVehicle(&world, new_vehicle);
+          World_manualUpdate(&world, lw->vehicles[new_position],
+                             wup->updates[i].client_update_time);
+          pthread_mutex_unlock(&lw->vehicles[new_position]->mutex);
           lw->has_vehicle[new_position] = 1;
           lw->vehicle_login_time[new_position] =
               wup->updates[i].client_creation_time;
@@ -258,9 +264,13 @@ void* UDPReceiver(void* args) {
             Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
             Vehicle_init(new_vehicle, &world, wup->updates[i].id, img);
             lw->vehicles[id_struct] = new_vehicle;
+            pthread_mutex_lock(&lw->vehicles[id_struct]->mutex);
             Vehicle_setXYTheta(lw->vehicles[id_struct], wup->updates[i].x,
                                wup->updates[i].y, wup->updates[i].theta);
             World_addVehicle(&world, new_vehicle);
+            World_manualUpdate(&world, lw->vehicles[id_struct],
+                               wup->updates[i].client_update_time);
+            pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
             lw->has_vehicle[id_struct] = 1;
             lw->vehicle_login_time[id_struct] =
                 wup->updates[i].client_creation_time;
@@ -270,8 +280,12 @@ void* UDPReceiver(void* args) {
                   "Updating Vehicle with id %d and x: %f y: %f z: %f \n",
                   wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
                   wup->updates[i].theta);
+          pthread_mutex_lock(&lw->vehicles[id_struct]->mutex);
           Vehicle_setXYTheta(lw->vehicles[id_struct], wup->updates[i].x,
                              wup->updates[i].y, wup->updates[i].theta);
+          World_manualUpdate(&world, lw->vehicles[id_struct],
+                             wup->updates[i].client_update_time);
+          pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
         }
       }
       for (int i = 0; i < WORLDSIZE; i++) {

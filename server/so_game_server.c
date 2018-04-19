@@ -30,6 +30,7 @@ uint16_t port_number_no;
 int server_tcp = -1;
 int server_udp;
 World server_world;
+struct timeval world_update_time;
 
 typedef struct {
   int client_desc;
@@ -120,10 +121,12 @@ int UDPHandler(int socket_udp, char* buf_rcv, struct sockaddr_in client_addr) {
         client->user_addr_udp = client_addr;
         client->is_udp_addr_ready = 1;
       }
-
+      pthread_mutex_lock(&client->vehicle->mutex);
       Vehicle_setXYTheta(client->vehicle, client->x, client->y, client->theta);
       Vehicle_setForcesUpdate(client->vehicle, vup->translational_force,
                               vup->rotational_force);
+      World_manualUpdate(&server_world, client->vehicle, vup->time);
+
       if (client->prev_x != -1 && client->prev_y != -1) {
         client->x_shift += abs(client->x - client->prev_x);
         client->y_shift += abs(client->y - client->prev_y);
@@ -131,6 +134,7 @@ int UDPHandler(int socket_udp, char* buf_rcv, struct sockaddr_in client_addr) {
       client->prev_x = client->x;
       client->prev_y = client->y;
       client->last_update_time = vup->time;
+      pthread_mutex_unlock(&client->vehicle->mutex);
       fprintf(stdout,
               "[UDP_Receiver] Applied VehicleUpdatePacket with "
               "force_translational_update: %f force_rotation_update: %f.. \n",
@@ -479,8 +483,11 @@ void* UDPSender(void* args) {
       ClientListItem* check = users->first;
       while (check != NULL) {
         if (check->inside_world && check->is_udp_addr_ready) {
+          pthread_mutex_lock(&check->vehicle->mutex);
           Vehicle_getXYTheta(check->vehicle, &check->x, &check->y,
                              &check->theta);
+          Vehicle_getTime(check->vehicle, &check->world_update_time);
+          pthread_mutex_unlock(&check->vehicle->mutex);
         }
         check = check->next;
       }
@@ -521,6 +528,10 @@ void* UDPSender(void* args) {
         cup->x = tmp->x;
         cup->theta = tmp->theta;
         cup->id = tmp->id;
+        if (timercmp(&tmp->last_update_time, &tmp->world_update_time, >))
+          cup->client_update_time = tmp->last_update_time;
+        else
+          cup->client_update_time = tmp->world_update_time;
         cup->client_creation_time = tmp->creation_time;
         printf("--- Vehicle with id: %d x: %f y:%f z:%f --- \n", cup->id,
                cup->x, cup->y, cup->theta);
