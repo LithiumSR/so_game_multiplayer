@@ -122,7 +122,7 @@ int UDPHandler(int socket_udp, char* buf_rcv, struct sockaddr_in client_addr) {
       }
 
       Vehicle_setXYTheta(client->vehicle, client->x, client->y, client->theta);
-      Vehicle_setForcesUpdate(client->vehicle, vup->translational_force,
+      Vehicle_addForcesUpdate(client->vehicle, vup->translational_force,
                               vup->rotational_force);
       if (client->prev_x != -1 && client->prev_y != -1) {
         client->x_shift += abs(client->x - client->prev_x);
@@ -658,7 +658,6 @@ void* worldLoop(void* args) {
   while (connectivity) {
     World_update(&server_world);
     usleep(WORLD_LOOP_SLEEP);
-    World_decayUpdate(&server_world);
   }
   pthread_exit(NULL);
 }
