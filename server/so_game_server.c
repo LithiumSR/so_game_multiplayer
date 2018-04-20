@@ -122,7 +122,6 @@ int UDPHandler(int socket_udp, char* buf_rcv, struct sockaddr_in client_addr) {
         client->is_udp_addr_ready = 1;
       }
       pthread_mutex_lock(&client->vehicle->mutex);
-      Vehicle_setXYTheta(client->vehicle, client->x, client->y, client->theta);
       Vehicle_setForcesUpdate(client->vehicle, vup->translational_force,
                               vup->rotational_force);
       World_manualUpdate(&server_world, client->vehicle, vup->time);
