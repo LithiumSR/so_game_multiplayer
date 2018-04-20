@@ -108,6 +108,35 @@ int addUser(int ids[], int size, int id2, int* position, int* users_online) {
   return -1;
 }
 
+void* messageSender(void* args) {
+  char username[32];
+  udpArgs udp_args = *(udpArgs*)args;
+  struct sockaddr_in server_addr = udp_args.server_addr;
+  int socket_udp = udp_args.socket_udp;
+  int serverlen = sizeof(server_addr);
+  printf("This is a chat over UDP. There is no guarantee that the messages will be broadcasted \n");
+  printf("Insert your name: ");
+  while (fgets(username, 32, stdin) == NULL){
+    printf("Insert your name: ");
+  }
+  char *chr;
+  if ((chr=strchr(username, '\n')) != NULL) *chr = '\0';
+  while (connectivity) {
+    char buf_send[BUFFERSIZE];
+    PacketHeader ph;
+    ph.type = ChatMessage;
+    MessagePacket* mp = (MessagePacket*)malloc(sizeof(MessagePacket));
+    mp->header = ph;
+    mp->message.id = id;
+    strncpy(mp->message.sender, username, 32);
+    printf("%s :",username);
+    if (fgets(mp->message.text, 256, stdin) == NULL) continue;
+    int size = Packet_serialize(buf_send, &(mp->header));
+    int bytes_sent = sendto(socket_udp, buf_send, size, 0,(const struct sockaddr*)&server_addr, (socklen_t)serverlen);
+  }
+  pthread_exit(NULL);
+}
+
 int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
   char buf_send[BUFFERSIZE];
   PacketHeader ph;
@@ -225,7 +254,7 @@ void* UDPReceiver(void* args) {
       if (last_update_time.tv_sec != -1 &&
           timercmp(&last_update_time, &wup->time, >=)) {
         pthread_mutex_unlock(&time_lock);
-        fprintf(stdout, "[INFO] Ignoring a WorldUpdatePacket... \n");
+        debug_print("[INFO] Ignoring a WorldUpdatePacket... \n");
         Packet_free(&wup->header);
         usleep(RECEIVER_SLEEP);
         continue;
@@ -265,10 +294,10 @@ void* UDPReceiver(void* args) {
             printf("[INFO] Found new vehicle \n");
             mask[new_position] = 1;
             updated[new_position] = 1;
-            fprintf(stdout,
-                    "[INFO] New Vehicle with id %d and x: %f y: %f z: %f \n",
-                    wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
-                    wup->updates[i].theta);
+            debug_print(
+                "[INFO] New Vehicle with id %d and x: %f y: %f z: %f \n",
+                wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
+                wup->updates[i].theta);
             Image* img = getVehicleTexture(socket_tcp, wup->updates[i].id);
             if (img == NULL) continue;
             Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
@@ -295,9 +324,9 @@ void* UDPReceiver(void* args) {
                          &lw->vehicle_login_time[id_struct], !=)) {
               debug_print("[WARNING] Forcing refresh for client with id %d",
                           wup->updates[i].id);
-              fprintf(stdout, "Vehicle with id %d and x: %f y: %f z: %f \n",
-                      wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
-                      wup->updates[i].theta);
+              debug_print("Vehicle with id %d and x: %f y: %f z: %f \n",
+                          wup->updates[i].id, wup->updates[i].x,
+                          wup->updates[i].y, wup->updates[i].theta);
               if (lw->has_vehicle[id_struct]) {
                 Image* im = lw->vehicles[id_struct]->texture;
                 if (!lw->is_disabled[id_struct])
@@ -329,9 +358,9 @@ void* UDPReceiver(void* args) {
             } else {
               if (lw->is_disabled[id_struct]) {
                 printf("[INFO] Reusing old texture \n");
-                fprintf(stdout, "Vehicle with id %d and x: %f y: %f z: %f \n",
-                        wup->updates[i].id, wup->updates[i].x,
-                        wup->updates[i].y, wup->updates[i].theta);
+                debug_print("Vehicle with id %d and x: %f y: %f z: %f \n",
+                            wup->updates[i].id, wup->updates[i].x,
+                            wup->updates[i].y, wup->updates[i].theta);
                 Vehicle* old_vehicle = lw->vehicles[id_struct];
                 pthread_mutex_lock(&lw->vehicles[id_struct]->mutex);
                 Vehicle_setXYTheta(lw->vehicles[id_struct], wup->updates[i].x,
@@ -351,9 +380,9 @@ void* UDPReceiver(void* args) {
                     "\n",
                     lw->vehicle_login_time[id_struct].tv_sec,
                     wup->updates[i].client_creation_time.tv_sec);
-                fprintf(stdout, "Vehicle with id %d and x: %f y: %f z: %f \n",
-                        wup->updates[i].id, wup->updates[i].x,
-                        wup->updates[i].y, wup->updates[i].theta);
+                debug_print("Vehicle with id %d and x: %f y: %f z: %f \n",
+                            wup->updates[i].id, wup->updates[i].x,
+                            wup->updates[i].y, wup->updates[i].theta);
                 pthread_mutex_lock(&lw->vehicles[id_struct]->mutex);
                 Vehicle_setXYTheta(lw->vehicles[id_struct], wup->updates[i].x,
                                    wup->updates[i].y, wup->updates[i].theta);
@@ -386,8 +415,8 @@ void* UDPReceiver(void* args) {
       for (int i = 0; i < WORLDSIZE; i++) {
         if (i == 0) continue;
         if (mask[i] == NO_ACCESS && lw->ids[i] != -1) {
-          fprintf(stdout, "[WorldUpdate] Removing Vehicles with ID %d \n",
-                  lw->ids[i]);
+          debug_print("[WorldUpdate] Removing Vehicles with ID %d \n",
+                      lw->ids[i]);
           lw->users_online = lw->users_online - 1;
           if (!lw->has_vehicle[i]) goto END;
           Image* im = lw->vehicles[i]->texture;
@@ -432,9 +461,9 @@ void* UDPReceiver(void* args) {
       else if (id_struct == -1) {
         if (new_position == -1) continue;
         mask[new_position] = 1;
-        fprintf(stdout, "New Vehicle with id %d and x: %f y: %f z: %f \n",
-                wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
-                wup->updates[i].theta);
+        debug_print("New Vehicle with id %d and x: %f y: %f z: %f \n",
+                    wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
+                    wup->updates[i].theta);
         Image* img = getVehicleTexture(socket_tcp, wup->updates[i].id);
         if (img == NULL) continue;
         Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
@@ -487,9 +516,9 @@ void* UDPReceiver(void* args) {
               wup->updates[i].client_creation_time;
           continue;
         }
-        fprintf(stdout, "Updating Vehicle with id %d and x: %f y: %f z: %f \n",
-                wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
-                wup->updates[i].theta);
+        debug_print("Updating Vehicle with id %d and x: %f y: %f z: %f \n",
+                    wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
+                    wup->updates[i].theta);
         pthread_mutex_lock(&lw->vehicles[id_struct]->mutex);
         Vehicle_setXYTheta(lw->vehicles[id_struct], wup->updates[i].x,
                            wup->updates[i].y, wup->updates[i].theta);
@@ -513,8 +542,8 @@ void* UDPReceiver(void* args) {
 
       if (lw->ids[i] == id) continue;
       if (mask[i] == NO_ACCESS && lw->ids[i] != -1) {
-        fprintf(stdout, "[WorldUpdate] Removing Vehicles with ID %d \n",
-                lw->ids[i]);
+        debug_print("[WorldUpdate] Removing Vehicles with ID %d \n",
+                    lw->ids[i]);
         lw->users_online = lw->users_online - 1;
         if (!lw->has_vehicle[i]) goto END;
         Image* im = lw->vehicles[i]->texture;
@@ -655,7 +684,10 @@ int main(int argc, char** argv) {
   PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_sender");
   ret = pthread_create(&UDP_receiver, NULL, UDPReceiver, &udp_args);
   PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_receiver");
-
+  // Create message-sender thread
+  pthread_t message_sender;
+  ret = pthread_create(&message_sender, NULL, messageSender, &udp_args);
+  PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_receiver");
 // Disconnect from server if required by macro
 SKIP:
   if (SINGLEPLAYER) sendGoodbye(socket_desc, id);
@@ -671,6 +703,8 @@ SKIP:
     PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_sender failed");
     ret = pthread_join(UDP_receiver, NULL);
     PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_receiver failed");
+    ret = pthread_join(message_sender, NULL);
+    PTHREAD_ERROR_HELPER(ret, "pthread_join on thread message_sender failed");
     ret = close(socket_udp);
     ERROR_HELPER(ret, "Failed to close UDP socket");
   }
