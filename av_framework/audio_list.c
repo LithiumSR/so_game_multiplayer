@@ -32,7 +32,7 @@ AudioListItem* AudioList_insert(AudioListHead* head, AudioListItem* item) {
 }
 
 AudioListItem* AudioList_detach(AudioListHead* head, AudioListItem* item) {
-  if (head == NULL) return NULL;
+  if (head == NULL || item == NULL) return NULL;
   AudioListItem* track = head->first;
   if (track == item) {
     head->first = track->next;
@@ -78,8 +78,10 @@ void AudioList_cleanExpiredItem(AudioListHead* head) {
   AudioListItem* track = head->first;
   while (track != NULL) {
     ALenum state;
-    alGetSourcei(track->audio_context->source, AL_SOURCE_STATE, &state);
-    if (state != AL_STOPPED) goto END;
+    if (track->audio_context != NULL) {
+      alGetSourcei(track->audio_context->source, AL_SOURCE_STATE, &state);
+      if (state != AL_STOPPED) goto END;
+    }
     AudioListItem* tmp = AudioList_detach(head, track);
     if (tmp != NULL) {
       AudioContext_free(tmp->audio_context);
