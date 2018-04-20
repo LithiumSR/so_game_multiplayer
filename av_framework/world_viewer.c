@@ -78,16 +78,24 @@ void keyPressed(unsigned char key, int x, int y) {
 void specialInput(int key, int x, int y) {
   switch (key) {
     case GLUT_KEY_UP:
+      pthread_mutex_lock(&(viewer.self->mutex));
       Vehicle_increaseTranslationalForceIntention(viewer.self, 0.1);
+      pthread_mutex_unlock(&(viewer.self->mutex));
       break;
     case GLUT_KEY_DOWN:
+      pthread_mutex_lock(&(viewer.self->mutex));
       Vehicle_decreaseTranslationalForceIntention(viewer.self, 0.1);
+      pthread_mutex_unlock(&(viewer.self->mutex));
       break;
     case GLUT_KEY_LEFT:
+      pthread_mutex_lock(&(viewer.self->mutex));
       Vehicle_increaseRotationalForceIntention(viewer.self, 0.1);
+      pthread_mutex_unlock(&(viewer.self->mutex));
       break;
     case GLUT_KEY_RIGHT:
+      pthread_mutex_lock(&(viewer.self->mutex));
       Vehicle_decreaseRotationalForceIntention(viewer.self, 0.1);
+      pthread_mutex_unlock(&(viewer.self->mutex));
       break;
     case GLUT_KEY_PAGE_UP:
       viewer.camera_z += 0.1;
