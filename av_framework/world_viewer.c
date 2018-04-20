@@ -47,10 +47,6 @@ void keyPressed(unsigned char key, int x, int y) {
     case 27:
       WorldViewer_exit(0);
       break;
-    case ' ':
-      viewer.self->translational_force_update = 0;
-      viewer.self->rotational_force_update = 0;
-      break;
     case '+':
       viewer.zoom *= 1.1f;
       break;
@@ -111,10 +107,13 @@ void reshape(int width, int height) {
 void idle(void) {
   World_update(viewer.world);
   usleep(30000);
-  if (destroy) _WorldViewer_exit();
-  pthread_mutex_lock(&audio_list_mutex);
-  AudioList_cleanExpiredItem(audio_list);
-  pthread_mutex_unlock(&audio_list_mutex);
+  if (destroy)
+    _WorldViewer_exit();
+  else {
+    pthread_mutex_lock(&audio_list_mutex);
+    AudioList_cleanExpiredItem(audio_list);
+    pthread_mutex_unlock(&audio_list_mutex);
+  }
   glutPostRedisplay();
 }
 
