@@ -2,6 +2,7 @@
 #include <GL/glut.h>
 #include <assert.h>
 #include <math.h>
+#include <pthread.h>
 #include <semaphore.h>
 #include <stdio.h>
 #include <string.h>
@@ -45,8 +46,8 @@ int World_init(World* w, Image* surface_elevation, Image* surface_texture,
 
 void World_update(World* w) {
   struct timeval current_time;
-  sem_t sem = w->vehicles.sem;
   gettimeofday(&current_time, 0);
+
   struct timeval dt;
   timersub(&current_time, &w->last_update, &dt);
   float delta = dt.tv_sec + 1e-6 * dt.tv_usec;
@@ -55,10 +56,12 @@ void World_update(World* w) {
   float rt_decay = powf(1 - 0.3, exp);
   if (tr_decay > 0.999) tr_decay = 0.999;
   if (rt_decay > 0.7) rt_decay = 0.7;
+  sem_t sem = w->vehicles.sem;
   sem_wait(&sem);
   ListItem* item = w->vehicles.first;
   while (item) {
     Vehicle* v = (Vehicle*)item;
+    pthread_mutex_lock(&v->mutex);
     Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
     if (!Vehicle_update(v, delta * w->time_scale)) {
       Vehicle_reset(v);
@@ -67,23 +70,41 @@ void World_update(World* w) {
       char flag = 0;
       while (item2) {
         Vehicle* v2 = (Vehicle*)item2;
-        if (v != v2) Vehicle_fixCollisions(v, v2);
+        if (v2 == v) goto END;
+        pthread_mutex_lock(&v2->mutex);
+        Vehicle_fixCollisions(v, v2);
+        pthread_mutex_unlock(&v2->mutex);
+      END:
         item2 = item2->next;
       }
       if (!flag) {
-        int ret = sem_wait(&(v->vsem));
-        if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
         v->is_new = 0;
         v->temp_x = v->x;
         v->temp_y = v->y;
-        ret = sem_post(&(v->vsem));
-        if (ret == -1) debug_print("Post on vsem didn't worked as expected");
       }
     }
+    Vehicle_setTime(v, current_time);
+    pthread_mutex_unlock(&v->mutex);
     item = item->next;
   }
-  w->last_update = current_time;
   sem_post(&sem);
+  w->last_update = current_time;
+}
+
+void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time) {
+  struct timeval current_time;
+  gettimeofday(&current_time, 0);
+  struct timeval dt;
+  timersub(&current_time, &update_time, &dt);
+  float delta = dt.tv_sec + 1e-6 * dt.tv_usec;
+  float exp = delta / (30 * 1000);
+  float tr_decay = powf(1 - 0.001, exp);
+  float rt_decay = powf(1 - 0.3, exp);
+  if (tr_decay > 0.999) tr_decay = 0.999;
+  if (rt_decay > 0.7) rt_decay = 0.7;
+  Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
+  if (!Vehicle_update(v, delta * w->time_scale)) Vehicle_reset(v);
+  Vehicle_setTime(v, current_time);
 }
 
 Vehicle* World_getVehicle(World* w, int vehicle_id) {
