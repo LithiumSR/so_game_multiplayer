@@ -148,6 +148,11 @@ int UDPHandler(int socket_udp, char* buf_rcv, struct sockaddr_in client_addr) {
       Packet_free(&vup->header);
       return 0;
     }
+    case(ChatMessage):{
+      MessagePacket* mp=
+          (MessagePacket*)Packet_deserialize(buf_rcv, ph->size);
+      Packet_free(&mp->header);
+    }
     default:
       return -1;
   }
