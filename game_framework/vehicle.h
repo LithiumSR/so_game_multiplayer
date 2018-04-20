@@ -3,7 +3,7 @@
 #include "../av_framework/image.h"
 #include "../av_framework/surface.h"
 #include "linked_list.h"
-
+#include <pthread.h>
 struct World;
 struct Vehicle;
 typedef void (*VehicleDtor)(struct Vehicle* v);
@@ -13,7 +13,8 @@ typedef struct Vehicle {
   int id;
   struct World* world;
   Image* texture;
-  sem_t vsem;
+  pthread_mutex_t mutex;
+  struct timeval world_update_time;
 
   // these are the forces that will be applied after the update and the critical
   // section
@@ -86,3 +87,10 @@ void Vehicle_decayForcesUpdate(Vehicle* v, float translational_update_decay,
                                float rotational_update_decay);
 
 int Vehicle_fixCollisions(Vehicle* v, Vehicle* v2);
+
+void Vehicle_setForcesUpdate(Vehicle* v, float translational_force_update,
+                             float rotational_force_update);
+
+void Vehicle_setTime(Vehicle* v, struct timeval time);
+
+void Vehicle_getTime(Vehicle* v, struct timeval* time);
