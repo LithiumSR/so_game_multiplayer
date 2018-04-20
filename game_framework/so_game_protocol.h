@@ -16,7 +16,8 @@ typedef enum {
   VehicleUpdate = 0x7,
   PostDisconnect = 0x8,
   GetAudioInfo = 0x9,
-  PostAudioInfo = 0x10
+  PostAudioInfo = 0x10,
+  ChatMessage = 0x11
 } Type;
 
 #ifdef _USE_SERVER_SIDE_FOG_
@@ -68,6 +69,22 @@ typedef struct {
   float x, y, theta;
   struct timeval time;
 } VehicleUpdatePacket;
+
+typedef struct {
+  int id;
+  char sender[32];
+  char text[256];
+} Message;
+
+typedef struct {
+  PacketHeader header;
+  Message message;
+} MessagePacket;
+
+typedef struct {
+  int number_messages;
+  Message* messages;
+} MessageHistory;
 
 // block of the client updates, id of vehicle
 // x,y,theta (read from vehicle id) are position of vehicle

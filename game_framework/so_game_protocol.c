@@ -23,7 +23,12 @@ int Packet_serialize(char* dest, const PacketHeader* h) {
       dest_end += sizeof(AudioInfoPacket);
       break;
     }
-
+    case ChatMessage: {
+      const MessagePacket* mp = (MessagePacket*)h;
+      memcpy(dest, mp, sizeof(MessagePacket));
+      dest_end += sizeof(MessagePacket);
+      break;
+    }
     case PostTexture:
     case PostElevation: {
       printf("cast\n");
@@ -85,7 +90,12 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
       memcpy(audio_packet, buffer, sizeof(AudioInfoPacket));
       return (PacketHeader*)audio_packet;
     }
-
+    case ChatMessage: {
+      MessagePacket* mp =
+          (MessagePacket*)malloc(sizeof(MessagePacket));
+      memcpy(mp, buffer, sizeof(MessagePacket));
+      return (PacketHeader*)mp;
+    }
     case PostTexture:
     case PostElevation: {
       ImagePacket* img_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
@@ -139,6 +149,7 @@ void Packet_free(PacketHeader* h) {
     case GetTexture:
     case GetElevation:
     case VehicleUpdate:
+    case ChatMessage:
     case GetAudioInfo:
     case PostAudioInfo: {
       free(h);
