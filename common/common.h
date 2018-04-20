@@ -30,6 +30,8 @@
 #define SERVER_ADDRESS "127.0.0.1"
 #define USE_VEHICLE_SEMAPHORE 0  // Don't tinker with that
 #define WORLDSIZE 512
+#define USERNAME_LEN 32
+#define TEXT_LEN 256
 #define DEBUG 0
 #define SINGLEPLAYER 0
 #define BUFFERSIZE 1000000
