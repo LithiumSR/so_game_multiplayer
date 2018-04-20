@@ -92,7 +92,7 @@ void specialInput(int key, int x, int y) {
       pthread_mutex_unlock(&(viewer.self->mutex));
       break;
     case GLUT_KEY_LEFT:
-    pthread_mutex_lock(&(viewer.self->mutex));
+      pthread_mutex_lock(&(viewer.self->mutex));
       Vehicle_increaseRotationalForce(viewer.self, 0.1);
       pthread_mutex_unlock(&(viewer.self->mutex));
       break;
@@ -119,10 +119,13 @@ void reshape(int width, int height) {
 void idle(void) {
   World_update(viewer.world);
   usleep(30000);
-  if (destroy) _WorldViewer_exit();
-  pthread_mutex_lock(&audio_list_mutex);
-  AudioList_cleanExpiredItem(audio_list);
-  pthread_mutex_unlock(&audio_list_mutex);
+  if (destroy)
+    _WorldViewer_exit();
+  else {
+    pthread_mutex_lock(&audio_list_mutex);
+    AudioList_cleanExpiredItem(audio_list);
+    pthread_mutex_unlock(&audio_list_mutex);
+  }
   glutPostRedisplay();
 }
 
