@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
+#include "../common/common.h"
 #include "../game_framework/vehicle.h"
 #include "image.h"
 #include "surface.h"
@@ -58,10 +59,26 @@ void World_update(World* w) {
   ListItem* item = w->vehicles.first;
   while (item) {
     Vehicle* v = (Vehicle*)item;
-    printf("Vehicle forces: %f %f \n",v->translational_force_update,v->rotational_force_update);
     Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
     if (!Vehicle_update(v, delta * w->time_scale)) {
       Vehicle_reset(v);
+    } else {
+      ListItem* item2 = w->vehicles.first;
+      char flag = 0;
+      while (item2) {
+        Vehicle* v2 = (Vehicle*)item2;
+        if (v != v2) Vehicle_fixCollisions(v, v2);
+        item2 = item2->next;
+      }
+      if (!flag) {
+        int ret = sem_wait(&(v->vsem));
+        if (ret == -1) debug_print("Wait on vsem didn't worked as expected");
+        v->is_new = 0;
+        v->temp_x = v->x;
+        v->temp_y = v->y;
+        ret = sem_post(&(v->vsem));
+        if (ret == -1) debug_print("Post on vsem didn't worked as expected");
+      }
     }
     item = item->next;
   }
