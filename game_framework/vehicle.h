@@ -22,6 +22,8 @@ typedef struct Vehicle {
       theta;  // position and orientation of the vehicle, on the surface
 
   // dont' touch these
+  char is_new;
+  float temp_x, temp_y;
   float prev_x, prev_y, prev_z,
       prev_theta;  // orientation of the vehicle, on the surface
   float translational_velocity;
@@ -70,3 +72,5 @@ void Vehicle_decreaseRotationalForce(Vehicle* v, float rotational_force_update);
 void Vehicle_decreaseTranslationalForce(Vehicle* v, float translational_force_update);
 
 void Vehicle_decayForcesUpdate(Vehicle* v, float translational_update_decay, float rotational_update_decay);
+
+int Vehicle_fixCollisions(Vehicle* v, Vehicle* v2);
