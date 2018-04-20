@@ -6,9 +6,9 @@
 typedef struct ClientListItem {
   struct ClientListItem* next;
   int id;
-  float x, y, theta, prev_x, prev_y, x_shift, y_shift;
+  float x, y, theta, prev_x, prev_y, x_shift, y_shift, translational_force, rotational_force;
   struct sockaddr_in user_addr_udp, user_addr_tcp;
-  struct timeval last_update_time, creation_time;
+  struct timeval last_update_time, creation_time, world_update_time;
   char is_udp_addr_ready;
   int afk_counter;
   char force_refresh;
