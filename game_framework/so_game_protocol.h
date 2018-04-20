@@ -72,8 +72,8 @@ typedef struct {
 
 typedef struct {
   int id;
-  char sender[32];
-  char text[256];
+  char sender[USERNAME_LEN];
+  char text[TEXT_LEN];
 } Message;
 
 typedef struct {
