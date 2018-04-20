@@ -80,6 +80,7 @@ void Vehicle_init(Vehicle* v, World* w, int id, Image* texture) {
   v->translational_velocity = 0;
   v->rotational_velocity = 0;
   v->is_new = 1;
+  gettimeofday(&v->world_update_time, NULL);
   Vehicle_reset(v);
   v->temp_x = v->x;
   v->temp_y = v->y;
