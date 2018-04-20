@@ -119,10 +119,14 @@ void reshape(int width, int height) {
 void idle(void) {
   World_update(viewer.world);
   usleep(30000);
-  if (destroy) _WorldViewer_exit();
-  pthread_mutex_lock(&audio_list_mutex);
-  AudioList_cleanExpiredItem(audio_list);
-  pthread_mutex_unlock(&audio_list_mutex);
+  if (destroy)
+    _WorldViewer_exit();
+  else {
+    pthread_mutex_lock(&audio_list_mutex);
+    AudioList_cleanExpiredItem(audio_list);
+    pthread_mutex_unlock(&audio_list_mutex);
+  }
+  //Vehicle_decayForcesUpdate(viewer.self, 0.999, 0.7);
   glutPostRedisplay();
 }
 
