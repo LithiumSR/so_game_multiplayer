@@ -116,7 +116,7 @@ void* messageSender(void* args) {
   int serverlen = sizeof(server_addr);
   printf("This is a chat over UDP. There is no guarantee that the messages will be broadcasted \n");
   printf("Insert your name: ");
-  while (fgets(username, 32, stdin) == NULL){
+  while (fgets(username, USERNAME_LEN, stdin) == NULL){
     printf("Insert your name: ");
   }
   char *chr;
@@ -128,11 +128,12 @@ void* messageSender(void* args) {
     MessagePacket* mp = (MessagePacket*)malloc(sizeof(MessagePacket));
     mp->header = ph;
     mp->message.id = id;
-    strncpy(mp->message.sender, username, 32);
-    printf("%s :",username);
-    if (fgets(mp->message.text, 256, stdin) == NULL) continue;
+    strncpy(mp->message.sender, username, USERNAME_LEN);
+    printf("%s: ",username);
+    if (fgets(mp->message.text, TEXT_LEN, stdin) == NULL) continue;
     int size = Packet_serialize(buf_send, &(mp->header));
     int bytes_sent = sendto(socket_udp, buf_send, size, 0,(const struct sockaddr*)&server_addr, (socklen_t)serverlen);
+    if(bytes_sent!=size) printf("[ERROR] Message wasn't successfully sent");
   }
   pthread_exit(NULL);
 }
