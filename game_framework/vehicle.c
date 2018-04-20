@@ -26,8 +26,8 @@ int Vehicle_update(Vehicle* v, float dt) {
     return 0;
   }
 
-    // compute the new pose of the vehicle, based on the velocities
-    // vehicle moves only along the x axis!
+  // compute the new pose of the vehicle, based on the velocities
+  // vehicle moves only along the x axis!
 
   float nx = v->camera_to_world[12] +
              v->camera_to_world[0] * v->translational_velocity * dt;
@@ -48,7 +48,7 @@ int Vehicle_update(Vehicle* v, float dt) {
     return 0;
   }
 
-// compute the accelerations
+  // compute the accelerations
   float global_tf = (-9.8 * v->camera_to_world[2] + tf);
   if (fabs(global_tf) < v->min_translational_force) global_tf = 0;
   v->translational_velocity += global_tf * dt;
@@ -81,8 +81,11 @@ void Vehicle_init(Vehicle* v, World* w, int id, Image* texture) {
   v->min_translational_force = 0.05;
   v->translational_velocity = 0;
   v->rotational_velocity = 0;
+  v->is_new = 1;
   gettimeofday(&v->world_update_time, NULL);
   Vehicle_reset(v);
+  v->temp_x = v->x;
+  v->temp_y = v->y;
   v->gl_texture = -1;
   v->gl_list = -1;
   v->_destructor = 0;
@@ -145,24 +148,23 @@ void Vehicle_destroy(Vehicle* v) {
   if (v->_destructor) (*v->_destructor)(v);
 }
 
-void Vehicle_increaseTranslationalForce(
-    Vehicle* v, float translational_force_update) {
-  v->translational_force_update+=
-      translational_force_update;
+void Vehicle_increaseTranslationalForce(Vehicle* v,
+                                        float translational_force_update) {
+  v->translational_force_update += translational_force_update;
 }
 
-void Vehicle_increaseRotationalForce(
-    Vehicle* v, float rotational_force_update) {
+void Vehicle_increaseRotationalForce(Vehicle* v,
+                                     float rotational_force_update) {
   v->rotational_force_update += rotational_force_update;
 }
 
-void Vehicle_decreaseRotationalForce(
-    Vehicle* v, float rotational_force_update) {
+void Vehicle_decreaseRotationalForce(Vehicle* v,
+                                     float rotational_force_update) {
   v->rotational_force_update -= rotational_force_update;
 }
 
-void Vehicle_decreaseTranslationalForce(
-    Vehicle* v, float translational_force_update) {
+void Vehicle_decreaseTranslationalForce(Vehicle* v,
+                                        float translational_force_update) {
   v->translational_force_update -= translational_force_update;
 }
 
@@ -170,4 +172,28 @@ void Vehicle_decayForcesUpdate(Vehicle* v, float translational_update_decay,
                                float rotational_update_decay) {
   v->translational_force_update *= translational_update_decay;
   v->rotational_force_update *= rotational_update_decay;
+}
+
+int Vehicle_fixCollisions(Vehicle* v, Vehicle* v2) {
+  int flag = 0;
+  if (v->x < v2->x + COLLISION_RANGE && v->x > v2->x - COLLISION_RANGE &&
+      v->y < v2->y + COLLISION_RANGE && v->y > v2->y - COLLISION_RANGE) {
+    flag = 1;
+    if (v->is_new || v2->is_new)
+      goto END;
+    else {
+      if (v->temp_x < v2->x + COLLISION_RANGE &&
+          v->temp_x > v2->x - COLLISION_RANGE &&
+          v->temp_y < v2->y + COLLISION_RANGE &&
+          v->temp_y > v2->y - COLLISION_RANGE) {
+        goto END;
+      }
+      v->x = v->temp_x;
+      v->y = v->temp_y;
+      v->translational_force_update = 0;
+      v->rotational_force_update = 0;
+    }
+  }
+END:
+  return flag;
 }
