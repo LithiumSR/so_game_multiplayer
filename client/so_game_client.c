@@ -100,9 +100,11 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
       (VehicleUpdatePacket*)malloc(sizeof(VehicleUpdatePacket));
   vup->header = ph;
   gettimeofday(&vup->time, NULL);
+  pthread_mutex_lock(&vehicle->mutex);
   Vehicle_getForcesIntention(vehicle, &(vup->translational_force),
                              &(vup->rotational_force));
   Vehicle_setForcesIntention(vehicle, 0, 0);
+  pthread_mutex_unlock(&vehicle->mutex);
   vup->id = id;
   int size = Packet_serialize(buf_send, &vup->header);
   int bytes_sent =
@@ -221,10 +223,17 @@ void* UDPReceiver(void* args) {
         int new_position = -1;
         int id_struct = addUser(lw->ids, WORLDSIZE, wup->updates[i].id,
                                 &new_position, &(lw->users_online));
-        if (wup->updates[i].id == id)
+        if (wup->updates[i].id == id) {
+          pthread_mutex_lock(&lw->vehicles[0]->mutex);
           Vehicle_setXYTheta(lw->vehicles[0], wup->updates[i].x,
                              wup->updates[i].y, wup->updates[i].theta);
-        else if (id_struct == -1) {
+          Vehicle_setForcesUpdate(lw->vehicles[0],
+                                  wup->updates[i].translational_force,
+                                  wup->updates[i].rotational_force);
+          World_manualUpdate(&world, lw->vehicles[0],
+                             wup->updates[i].client_update_time);
+          pthread_mutex_unlock(&lw->vehicles[0]->mutex);
+        } else if (id_struct == -1) {
           if (new_position == -1) continue;
           mask[new_position] = 1;
           fprintf(stdout, "New Vehicle with id %d and x: %f y: %f z: %f \n",
@@ -235,8 +244,13 @@ void* UDPReceiver(void* args) {
           Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
           Vehicle_init(new_vehicle, &world, wup->updates[i].id, img);
           lw->vehicles[new_position] = new_vehicle;
+          pthread_mutex_lock(&lw->vehicles[new_position]->mutex);
           Vehicle_setXYTheta(lw->vehicles[new_position], wup->updates[i].x,
                              wup->updates[i].y, wup->updates[i].theta);
+          Vehicle_setForcesUpdate(lw->vehicles[new_position],
+                                  wup->updates[i].translational_force,
+                                  wup->updates[i].rotational_force);
+          pthread_mutex_unlock(&lw->vehicles[new_position]->mutex);
           World_addVehicle(&world, new_vehicle);
           lw->has_vehicle[new_position] = 1;
           lw->vehicle_login_time[new_position] =
@@ -259,8 +273,15 @@ void* UDPReceiver(void* args) {
             Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
             Vehicle_init(new_vehicle, &world, wup->updates[i].id, img);
             lw->vehicles[id_struct] = new_vehicle;
+            pthread_mutex_lock(&lw->vehicles[id_struct]->mutex);
             Vehicle_setXYTheta(lw->vehicles[id_struct], wup->updates[i].x,
                                wup->updates[i].y, wup->updates[i].theta);
+            Vehicle_setForcesUpdate(lw->vehicles[id_struct],
+                                    wup->updates[i].translational_force,
+                                    wup->updates[i].rotational_force);
+            World_manualUpdate(&world, lw->vehicles[id_struct],
+                               wup->updates[i].client_update_time);
+            pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
             World_addVehicle(&world, new_vehicle);
             lw->has_vehicle[id_struct] = 1;
             lw->vehicle_login_time[id_struct] =
@@ -271,8 +292,15 @@ void* UDPReceiver(void* args) {
                   "Updating Vehicle with id %d and x: %f y: %f z: %f \n",
                   wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
                   wup->updates[i].theta);
+          pthread_mutex_lock(&lw->vehicles[id_struct]->mutex);
           Vehicle_setXYTheta(lw->vehicles[id_struct], wup->updates[i].x,
                              wup->updates[i].y, wup->updates[i].theta);
+          Vehicle_setForcesUpdate(lw->vehicles[id_struct],
+                                  wup->updates[i].translational_force,
+                                  wup->updates[i].rotational_force);
+          World_manualUpdate(&world, lw->vehicles[id_struct],
+                             wup->updates[i].client_update_time);
+          pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
         }
       }
       for (int i = 0; i < WORLDSIZE; i++) {
