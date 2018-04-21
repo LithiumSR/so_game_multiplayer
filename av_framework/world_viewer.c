@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <unistd.h>
+#include "../common/common.h"
 #include "audio_context.h"
 #include "audio_list.h"
 #include "image.h"
@@ -190,7 +191,7 @@ void drawBox(float l, float w, float h) {
 int Image_toTexture(Image *src) {
   if (src->type != RGB8) return -1;
   unsigned int surface_texture;
-  printf("loading texture in system\n");
+  debug_print("loading texture in system\n");
   glGenTextures(1, &surface_texture);
   glBindTexture(GL_TEXTURE_2D, surface_texture);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -204,7 +205,7 @@ int Image_toTexture(Image *src) {
 
 void Surface_applyTexture(Surface *s, Image *img) {
   s->texture = img;
-  printf("applying texture %p to surface %p\n", img, s);
+  debug_print("applying texture %p to surface %p\n", img, s);
   s->_destructor = Surface_destructor;
   if (s->gl_list > -1) glDeleteLists(s->gl_list, 1);
   s->gl_list = -1;
@@ -263,7 +264,7 @@ void Surface_draw(Surface *s) {
 }
 
 void Vehicle_applyTexture(Vehicle *v) {
-  printf("applying texture %p to vehicle %p\n", v->texture, v);
+  debug_print("applying texture %p to vehicle %p\n", v->texture, v);
   v->_destructor = Vehicle_destructor;
   if (v->gl_list > -1) glDeleteLists(v->gl_list, 1);
   v->gl_list = -1;
