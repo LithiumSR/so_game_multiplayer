@@ -35,18 +35,20 @@ int window;
 World world;
 Vehicle *vehicle;  // The vehicle
 int id;
-char username[32];
-uint16_t port_number_no;
+AudioContext *backgroud_track = NULL;
+pthread_mutex_t time_lock = PTHREAD_MUTEX_INITIALIZER;
+//flags
 char connectivity = 1;
 char exchange_update = 1;
 char messaging_enabled = 0;
+int offline_server_counter = 0;
+//networking
+uint16_t port_number_no;
+char username[32];
 int socket_desc = -1;  // socket tcp
 int socket_udp = -1;   // socket udp
 struct timeval last_update_time;
-int offline_server_counter = 0;
 struct sockaddr_in udp_server = {0};
-AudioContext *backgroud_track = NULL;
-pthread_mutex_t time_lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct localWorld {
   int ids[WORLDSIZE];
