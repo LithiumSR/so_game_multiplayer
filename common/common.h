@@ -33,7 +33,9 @@
 #define LOOP_BACKGROUND_TRACK 1
 #define CLIENT_AUDIO 1
 #define WORLDSIZE 512
-#define DEBUG 1
+#define USERNAME_LEN 32
+#define TEXT_LEN 256
+#define DEBUG 0
 #define SINGLEPLAYER 0
 #define BUFFERSIZE 1000000
 #define UDPPORT 8888
