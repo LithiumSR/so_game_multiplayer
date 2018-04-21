@@ -1,6 +1,7 @@
 #pragma once
 #include <netinet/in.h>
 #include <time.h>
+#include <string.h>
 #include "../av_framework/image.h"
 #include "so_game_protocol.h"
 typedef struct MessageListItem {
@@ -27,3 +28,4 @@ MessageListItem* MessageList_detach(MessageListHead* head,
 void MessageList_destroy(MessageListHead* head);
 void MessageList_print(MessageListHead* users);
 void MessageList_removeAll(MessageListHead* users);
+MessageListItem* MessageList_addDisconnectMessage(MessageListHead* head, ClientListItem* user);
