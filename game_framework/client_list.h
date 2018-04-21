@@ -3,6 +3,7 @@
 #include <time.h>
 #include "../av_framework/image.h"
 #include "vehicle.h"
+#include "../common/common.h"
 typedef struct ClientListItem {
   struct ClientListItem* next;
   int id;
@@ -13,6 +14,8 @@ typedef struct ClientListItem {
   int afk_counter;
   char force_refresh;
   char inside_world;
+  char inside_chat;
+  char username[USERNAME_LEN];
   Vehicle* vehicle;
   Image* v_texture;
 } ClientListItem;
