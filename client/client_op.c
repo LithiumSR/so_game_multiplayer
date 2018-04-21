@@ -296,7 +296,8 @@ AudioContext *getAudioContext(int socket_desc) {
   return ac;
 }
 
-int sendGoodbye(int socket, int id) {
+int sendGoodbye(int socket, int socket_udp, int id, int messaging_enabled, char* username,
+                struct sockaddr_in server_addr) {
   char buf_send[BUFFERSIZE];
   IdPacket *idpckt = (IdPacket *)malloc(sizeof(IdPacket));
   PacketHeader ph;
@@ -304,7 +305,7 @@ int sendGoodbye(int socket, int id) {
   idpckt->id = id;
   idpckt->header = ph;
   int size = Packet_serialize(buf_send, &(idpckt->header));
-  debug_print("[Goodbye] Sending goodbye of %d bytes \n", size);
+  debug_print("[Goodbye] Sending goodbye  \n");
   int msg_len = 0;
   while (msg_len < size) {
     int ret = send(socket, buf_send + msg_len, size - msg_len, 0);
@@ -313,6 +314,24 @@ int sendGoodbye(int socket, int id) {
     if (ret == 0) break;
     msg_len += ret;
   }
+  if (!messaging_enabled || socket_udp == -1) return 0;
+  char buf_send2[BUFFERSIZE];
+  // send goodbye message
+  socklen_t serverlen = sizeof(server_addr);
+  PacketHeader goodbye_header;
+  goodbye_header.type = ChatMessage;
+  MessagePacket *goodbye_message =
+      (MessagePacket *)malloc(sizeof(MessagePacket));
+  goodbye_message->header = goodbye_header;
+  goodbye_message->message.id = id;
+  strncpy(goodbye_message->message.sender, username, USERNAME_LEN);
+  goodbye_message->message.type = Goodbye;
+  size = Packet_serialize(buf_send2, &(goodbye_message->header));
+  if (size > 0)
+    sendto(socket_udp, buf_send2, size, 0,
+           (const struct sockaddr *)&server_addr, serverlen);
+  Packet_free(&goodbye_message->header);
+
   debug_print("[Goodbye] Goodbye was successfully sent %d \n", msg_len);
   return 0;
 }
