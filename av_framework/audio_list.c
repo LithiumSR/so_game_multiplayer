@@ -77,17 +77,18 @@ void AudioList_cleanExpiredItem(AudioListHead* head) {
   if (head == NULL) return;
   AudioListItem* track = head->first;
   while (track != NULL) {
+    AudioListItem* tmp=track;
+    track = track->next;
     ALenum state;
-    if (track->audio_context != NULL) {
-      alGetSourcei(track->audio_context->source, AL_SOURCE_STATE, &state);
-      if (state != AL_STOPPED) goto END;
+    if (tmp->audio_context != NULL) {
+      alGetSourcei(tmp->audio_context->source, AL_SOURCE_STATE, &state);
+      if (state != AL_STOPPED) continue;
     }
-    AudioListItem* tmp = AudioList_detach(head, track);
-    if (tmp != NULL) {
+    AudioListItem* dt = AudioList_detach(head, tmp);
+    if (dt != NULL) {
       AudioContext_free(tmp->audio_context);
       free(tmp);
     }
-  END:
-    track = track->next;
+
   }
 }
