@@ -31,23 +31,24 @@
 #define _USE_SERVER_SIDE_FOG_
 #endif
 
+// world related variables
 int window;
 World world;
-Vehicle *vehicle;  // The vehicle
+Vehicle *vehicle;
 int id;
 AudioContext *backgroud_track = NULL;
-pthread_mutex_t time_lock = PTHREAD_MUTEX_INITIALIZER;
-//flags
+// flags
 char connectivity = 1;
 char exchange_update = 1;
 char messaging_enabled = 0;
 int offline_server_counter = 0;
-//networking
+// networking
 uint16_t port_number_no;
 char username[32];
 int socket_desc = -1;  // socket tcp
 int socket_udp = -1;   // socket udp
 struct timeval last_update_time;
+pthread_mutex_t time_lock = PTHREAD_MUTEX_INITIALIZER;
 struct sockaddr_in udp_server = {0};
 
 typedef struct localWorld {
@@ -171,9 +172,11 @@ void *messageSender(void *args) {
   printf(
       "This is a chat over UDP. There is no guarantee that the messages will "
       "be broadcasted \n");
-  USERNAME: printf("Insert your name: ");
-  char* ret = fgets(username, USERNAME_LEN, stdin);
-  if (ret==NULL || (username[0] == '\n' && username[1] == '\0')) goto USERNAME;
+USERNAME:
+  printf("Insert your name: ");
+  char *ret = fgets(username, USERNAME_LEN, stdin);
+  if (ret == NULL || (username[0] == '\n' && username[1] == '\0'))
+    goto USERNAME;
   username[strcspn(username, "\n")] = 0;
   printf("Hello %s! You can now write your messages (MAX %d characters) \n",
          username, TEXT_LEN);
@@ -204,8 +207,9 @@ void *messageSender(void *args) {
     mp->message.id = id;
     mp->message.type = Text;
     strncpy(mp->message.sender, username, USERNAME_LEN);
-    char* text=fgets(mp->message.text, TEXT_LEN, stdin);
-    if (text==NULL || (mp->message.text[0] == '\n' && mp->message.text[1] == '\0')){
+    char *text = fgets(mp->message.text, TEXT_LEN, stdin);
+    if (text == NULL ||
+        (mp->message.text[0] == '\n' && mp->message.text[1] == '\0')) {
       Packet_free(&mp->header);
       continue;
     }
@@ -216,7 +220,8 @@ void *messageSender(void *args) {
                (const struct sockaddr *)&server_addr, (socklen_t)serverlen);
     if (bytes_sent != size)
       debug_print("[ERROR] Message wasn't successfully sent");
-    else Packet_free(&mp->header);
+    else
+      Packet_free(&mp->header);
   }
   pthread_exit(NULL);
 }

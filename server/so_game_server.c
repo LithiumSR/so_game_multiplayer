@@ -24,14 +24,18 @@
 #define _USE_SERVER_SIDE_FOG_
 #endif
 
+// syncronization
 pthread_mutex_t users_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t messages_mutex = PTHREAD_MUTEX_INITIALIZER;
+// flags
 int connectivity = 1;
 int exchange_update = 1;
 int clean_garbage = 1;
 int has_users = 0;
+// lists
 ClientListHead *users;
 MessageListHead *messages;
+// networking
 uint16_t port_number_no;
 int server_tcp = -1;
 int server_udp;
