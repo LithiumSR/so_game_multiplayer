@@ -126,6 +126,22 @@ void* messageSender(void* args) {
   printf("Hello %s! You can now write your messages (MAX %d characters) \n",
          username, TEXT_LEN);
   messaging_enabled = 1;
+
+  // send hello message
+  char buf_s[BUFFERSIZE];
+  PacketHeader hello_header;
+  hello_header.type=ChatMessage;
+  MessagePacket* hello_message = (MessagePacket*)malloc(sizeof(MessagePacket));
+  hello_message->header = hello_header;
+  hello_message->message.id = id;
+  strncpy(hello_message->message.sender, username, USERNAME_LEN);
+  hello_message->message.type = Hello;
+  int size = Packet_serialize(buf_s, &(hello_message->header));
+  if (size > 0)
+    sendto(socket_udp, buf_s, size, 0, (const struct sockaddr*)&server_addr,
+           (socklen_t)serverlen);
+
+  // Get user messages
   while (connectivity) {
     char buf_send[BUFFERSIZE];
     PacketHeader ph;
@@ -133,9 +149,11 @@ void* messageSender(void* args) {
     MessagePacket* mp = (MessagePacket*)malloc(sizeof(MessagePacket));
     mp->header = ph;
     mp->message.id = id;
+    mp->message.type = Text;
     strncpy(mp->message.sender, username, USERNAME_LEN);
     if (fgets(mp->message.text, TEXT_LEN, stdin) == NULL) continue;
-    int size = Packet_serialize(buf_send, &(mp->header));
+    size = Packet_serialize(buf_send, &(mp->header));
+    if (size <= 0) continue;
     int bytes_sent =
         sendto(socket_udp, buf_send, size, 0,
                (const struct sockaddr*)&server_addr, (socklen_t)serverlen);
@@ -252,10 +270,27 @@ void* UDPReceiver(void* args) {
           info = localtime(&mh->messages[i].time);
           if (mh->messages[i].id == id) continue;
           mh->messages[i].text[strcspn(mh->messages[i].text, "\n")] = 0;
-          printf("%s (id %d): %s (%d:%d) \n", mh->messages[i].sender,
-                 mh->messages[i].id, mh->messages[i].text, info->tm_hour,
-                 info->tm_min);
-          fflush(stdout);
+          switch (mh->messages[i].type) {
+            case (Text): {
+              printf("%s (id %d): %s (%d:%d) \n", mh->messages[i].sender,
+                     mh->messages[i].id, mh->messages[i].text, info->tm_hour,
+                     info->tm_min);
+              fflush(stdout);
+              break;
+            }
+            case (Hello): {
+              printf("[INFO] %s (id %d) joined the chat! \n", mh->messages[i].sender,
+                     mh->messages[i].id);
+              fflush(stdout);
+              break;
+            }
+            case (Goodbye): {
+              printf("[INFO] %s (id %d) left the chat! \n", mh->messages[i].sender,
+                     mh->messages[i].id);
+              fflush(stdout);
+              break;
+            }
+          }
         }
       FREE:
         Packet_free(&mh->header);

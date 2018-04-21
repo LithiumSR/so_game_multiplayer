@@ -158,6 +158,7 @@ int UDPHandler(int socket_udp, char* buf_rcv, struct sockaddr_in client_addr) {
       strncpy(mli->sender, mp->message.sender, USERNAME_LEN);
       strncpy(mli->text, mp->message.text, TEXT_LEN);
       mli->id = mp->message.id;
+      mli->type = mp->message.type;
       time(&mli->time);
       pthread_mutex_lock(&messages_mutex);
       MessageList_insert(messages, mli);
@@ -484,10 +485,13 @@ int sendMessages(int socket_udp) {
   mh->messages = (Message*)malloc(sizeof(Message) * mh->num_messages);
   MessageListItem* mli = messages->first;
   for (int i = 0; i < mh->num_messages; i++) {
+    if (mli->type == Text) {
+      strncpy(mh->messages[i].text, mli->text, TEXT_LEN);
+    }
     strncpy(mh->messages[i].sender, mli->sender, USERNAME_LEN);
-    strncpy(mh->messages[i].text, mli->text, TEXT_LEN);
     mh->messages[i].id = mli->id;
     mh->messages[i].time = mli->time;
+    mh->messages[i].type = mli->type;
     mli = mli->next;
   }
   size = Packet_serialize(buf_send, &mh->header);
