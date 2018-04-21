@@ -50,3 +50,8 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+so_game_client
+so_game_server
+test_client_list
+test_packets_serialization
+.vscode/
