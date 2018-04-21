@@ -14,7 +14,7 @@
 #include "../common/common.h"
 #include "../game_framework/so_game_protocol.h"
 #include "../game_framework/vehicle.h"
-
+char sent_goodbye = 0;
 // Used to get ID from server
 int getID(int socket_desc) {
   char buf_send[BUFFERSIZE];
@@ -56,7 +56,7 @@ int getID(int socket_desc) {
   }
   IdPacket* deserialized_packet =
       (IdPacket*)Packet_deserialize(buf_rcv, msg_len + ph_len);
-  printf("[Get Id] Received %dbytes \n", msg_len + ph_len);
+  debug_print("[Get Id] Received %dbytes \n", msg_len + ph_len);
   int id = deserialized_packet->id;
   Packet_free(&(deserialized_packet->header));
   return id;
@@ -83,7 +83,7 @@ Image* getElevationMap(int socket) {
     bytes_sent += ret;
   }
 
-  printf("[Elevation request] Sent %d bytes \n", bytes_sent);
+  debug_print("[Elevation request] Sent %d bytes \n", bytes_sent);
   int msg_len = 0;
   int ph_len = sizeof(PacketHeader);
   while (msg_len < ph_len) {
@@ -105,7 +105,7 @@ Image* getElevationMap(int socket) {
 
   ImagePacket* deserialized_packet =
       (ImagePacket*)Packet_deserialize(buf_rcv, msg_len + ph_len);
-  printf("[Elevation request] Received %d bytes \n", msg_len + ph_len);
+  debug_print("[Elevation request] Received %d bytes \n", msg_len + ph_len);
   Packet_free(&(request->header));
   Image* ris = deserialized_packet->image;
   free(deserialized_packet);
@@ -131,7 +131,7 @@ Image* getTextureMap(int socket) {
     if (ret == 0) break;
     bytes_sent += ret;
   }
-  printf("[Texture request] Inviati %d bytes \n", bytes_sent);
+  debug_print("[Texture request] Inviati %d bytes \n", bytes_sent);
   int msg_len = 0;
   int ph_len = sizeof(PacketHeader);
   while (msg_len < ph_len) {
@@ -142,7 +142,7 @@ Image* getTextureMap(int socket) {
   }
   PacketHeader* incoming_pckt = (PacketHeader*)buf_rcv;
   size = incoming_pckt->size - ph_len;
-  printf("[Texture Request] Size da leggere %d \n", size);
+  debug_print("[Texture Request] Size da leggere %d \n", size);
   msg_len = 0;
   while (msg_len < size) {
     ret = recv(socket, buf_rcv + msg_len + ph_len, size - msg_len, 0);
@@ -152,7 +152,7 @@ Image* getTextureMap(int socket) {
   }
   ImagePacket* deserialized_packet =
       (ImagePacket*)Packet_deserialize(buf_rcv, msg_len + ph_len);
-  printf("[Texture Request] Ricevuto bytes %d \n", msg_len + ph_len);
+  debug_print("[Texture Request] Ricevuto bytes %d \n", msg_len + ph_len);
   Packet_free(&(request->header));
   Image* ris = deserialized_packet->image;
   free(deserialized_packet);
@@ -179,7 +179,7 @@ int sendVehicleTexture(int socket, Image* texture, int id) {
     if (ret == 0) break;
     bytes_sent += ret;
   }
-  printf("[Vehicle texture] Sent bytes %d  \n", bytes_sent);
+  debug_print("[Vehicle texture] Sent bytes %d  \n", bytes_sent);
   return 0;
 }
 
@@ -231,7 +231,7 @@ Image* getVehicleTexture(int socket, int id) {
   }
   ImagePacket* deserialized_packet =
       (ImagePacket*)Packet_deserialize(buf_rcv, msg_len + ph_len);
-  printf("[Get Vehicle Texture] Received %d bytes \n", msg_len + ph_len);
+  debug_print("[Get Vehicle Texture] Received %d bytes \n", msg_len + ph_len);
   Image* im = deserialized_packet->image;
   free(deserialized_packet);
   return im;
@@ -276,7 +276,7 @@ AudioContext* getAudioContext(int socket_desc) {
   }
   AudioInfoPacket* deserialized_packet =
       (AudioInfoPacket*)Packet_deserialize(buf_rcv, msg_len + ph_len);
-  printf("[Get Id] Received %dbytes \n", msg_len + ph_len);
+  debug_print("[Get Id] Received %dbytes \n", msg_len + ph_len);
   int track_number = deserialized_packet->track_number;
   char loop = deserialized_packet->loop;
   Packet_free(&(deserialized_packet->header));
@@ -287,14 +287,15 @@ AudioContext* getAudioContext(int socket_desc) {
   strcpy(filename, "./resources/sounds/track");
   strcat(filename, number);
   strcat(filename, ".wav");
-  fprintf(stdout, "[GetAudioContext] Loading %s file...\n", filename);
+  fprintf(stderr, "[GetAudioContext] Loading %s file...\n", filename);
   AudioContext_openDevice();
   AudioContext* ac = (AudioContext*)malloc(sizeof(AudioContext));
   AudioContext_init(ac, filename, loop);
   return ac;
 }
 
-int sendGoodbye(int socket, int id) {
+int sendGoodbye(int socket, int socket_udp, int id, int messaging_enabled,
+                char* username, struct sockaddr_in server_addr) {
   char buf_send[BUFFERSIZE];
   IdPacket* idpckt = (IdPacket*)malloc(sizeof(IdPacket));
   PacketHeader ph;
@@ -302,7 +303,7 @@ int sendGoodbye(int socket, int id) {
   idpckt->id = id;
   idpckt->header = ph;
   int size = Packet_serialize(buf_send, &(idpckt->header));
-  printf("[Goodbye] Sending goodbye of %d bytes \n", size);
+  debug_print("[Goodbye] Sending goodbye  \n");
   int msg_len = 0;
   while (msg_len < size) {
     int ret = send(socket, buf_send + msg_len, size - msg_len, 0);
@@ -311,6 +312,24 @@ int sendGoodbye(int socket, int id) {
     if (ret == 0) break;
     msg_len += ret;
   }
-  printf("[Goodbye] Goodbye was successfully sent %d \n", msg_len);
+  if (!messaging_enabled || socket_udp == -1 || sent_goodbye) return 0;
+  // send goodbye message
+  socklen_t serverlen = sizeof(server_addr);
+  PacketHeader goodbye_header;
+  goodbye_header.type = ChatMessage;
+  MessagePacket* goodbye_message =
+      (MessagePacket*)malloc(sizeof(MessagePacket));
+  goodbye_message->header = goodbye_header;
+  goodbye_message->message.id = id;
+  strncpy(goodbye_message->message.sender, username, USERNAME_LEN);
+  goodbye_message->message.type = Goodbye;
+  size = Packet_serialize(buf_send, &(goodbye_message->header));
+  if (size > 0)
+    sendto(socket_udp, buf_send, size, 0, (const struct sockaddr*)&server_addr,
+           serverlen);
+  Packet_free(&goodbye_message->header);
+
+  debug_print("[Goodbye] Goodbye was successfully sent %d \n", msg_len);
+  sent_goodbye = 1;
   return 0;
 }
