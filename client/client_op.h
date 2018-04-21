@@ -8,7 +8,7 @@ int getID(int socket);
 Image* getElevationMap(int socket);
 Image* getTextureMap(int socket);
 int sendVehicleTexture(int socket, Image* texture, int id);
-int sendGoodbye(int socket, int socket_udp, int id, int messaging_enabled,
-                char* username, struct sockaddr_in server_addr);
+int sendGoodbye(int socket,int id);
 Image* getVehicleTexture(int socket, int id);
 AudioContext* getAudioContext(int socket);
+int joinChat(int socket, int id, char* username);
