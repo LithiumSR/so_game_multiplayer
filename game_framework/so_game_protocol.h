@@ -30,6 +30,11 @@ typedef enum {
 } Status;
 #endif
 
+typedef enum {
+  Effect = 0x1,
+  Track = 0x2
+} MusicType;
+
 typedef struct {
   Type type;
   int size;
@@ -128,6 +133,7 @@ typedef struct {
   PacketHeader header;
   int track_number;
   char loop;
+  MusicType type;
 } AudioInfoPacket;
 
 // converts a well formed packet into a string in dest.
