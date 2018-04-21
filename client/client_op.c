@@ -358,6 +358,6 @@ int joinChat(int socket_desc, int id, char* username) {
   int id_received= deserialized_packet->id;
   Packet_free(&deserialized_packet->header);
   Packet_free(&mp->header);
-  if(id==id_received) return 1;
+  if(id!=id_received) return -1;
   else return 0;
 }
