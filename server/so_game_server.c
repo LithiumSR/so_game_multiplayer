@@ -499,7 +499,7 @@ EXIT:
   pthread_mutex_unlock(&messages_mutex);
   if (!del->inside_world) goto END;
   World_detachVehicle(&server_world, del->vehicle);
-  Vehicle_destroy(del->vehicle); // Be careful here
+  Vehicle_destroy(del->vehicle);  // Be careful here
   free(del->vehicle);
   Image* user_texture = del->v_texture;
   if (user_texture != NULL) Image_free(user_texture);
@@ -569,7 +569,7 @@ int sendMessages(int socket_udp) {
   pthread_mutex_lock(&users_mutex);
   ClientListItem* client = users->first;
   for (; client != NULL; client = client->next) {
-    if (!client->is_udp_addr_ready) continue;
+    if (!client->is_udp_addr_ready || !client->inside_chat) continue;
     int ret = sendto(socket_udp, buf_send, size, 0,
                      (struct sockaddr*)&client->user_addr_udp,
                      (socklen_t)sizeof(client->user_addr_udp));
