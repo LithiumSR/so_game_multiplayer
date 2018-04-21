@@ -83,3 +83,15 @@ void MessageList_print(MessageListHead* users) {
   }
   printf("]\n");
 }
+
+MessageListItem* MessageList_addDisconnectMessage(MessageListHead* head, ClientListItem* user){
+    if (head==NULL || !user->inside_chat) return NULL;
+    MessageListItem* item = (MessageListItem*)malloc(sizeof(MessageListItem));
+    item->id=user->id;
+    item->type=Goodbye;
+    time(&item->time);
+    strncpy(item->sender, user->username, USERNAME_LEN);
+    MessageList_insert(head,item);
+    user->inside_chat=0;
+    return item;
+}
