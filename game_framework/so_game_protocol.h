@@ -1,5 +1,6 @@
 #pragma once
 #include <time.h>
+#include "../common/common.h"
 #include "vehicle.h"
 // ia brief desription required
 typedef enum {
@@ -12,8 +13,14 @@ typedef enum {
   VehicleUpdate = 0x7,
   PostDisconnect = 0x8,
   GetAudioInfo = 0x9,
-  PostAudioInfo = 0x10
+  PostAudioInfo = 0x10,
+  ChatMessage = 0x11,
+  ChatHistory = 0x12
 } Type;
+
+typedef enum { Effect = 0x1, Track = 0x2 } MusicType;
+
+typedef enum { Hello = 0x1, Goodbye = 0x2, Text = 0x3 } MessageType;
 
 typedef struct {
   Type type;
@@ -65,8 +72,27 @@ typedef struct {
   float theta;
   float rotational_force;
   float translational_force;
-  struct timeval client_update_time,client_creation_time;
+  struct timeval client_update_time, client_creation_time;
 } ClientUpdate;
+
+typedef struct {
+  int id;
+  char sender[USERNAME_LEN];
+  char text[TEXT_LEN];
+  time_t time;  // Used only by server to save the time the message was received
+  MessageType type;
+} Message;
+
+typedef struct {
+  PacketHeader header;
+  Message message;
+} MessagePacket;
+
+typedef struct {
+  PacketHeader header;
+  int num_messages;
+  Message* messages;
+} MessageHistory;
 
 // server world update, send by server (UDP)
 typedef struct {
