@@ -17,8 +17,8 @@ typedef enum {
   PostDisconnect = 0x8,
   GetAudioInfo = 0x9,
   PostAudioInfo = 0x10,
-  ChatMessage = 0x11, 
-  ChatHistory = 0x12 
+  ChatMessage = 0x11,
+  ChatHistory = 0x12
 } Type;
 
 #ifdef _USE_SERVER_SIDE_FOG_
@@ -35,7 +35,8 @@ typedef struct {
   int size;
 } PacketHeader;
 
-typedef enum { Hello = 0x1, Goodbye = 0x2, Text = 0x3 } MessageType; 
+typedef enum { Effect = 0x1, Track = 0x2 } MusicType;
+typedef enum { Hello = 0x1, Goodbye = 0x2, Text = 0x3 } MessageType;
 
 // sent from client to server to notify its intentions
 typedef struct {
@@ -131,6 +132,7 @@ typedef struct {
   PacketHeader header;
   int track_number;
   char loop;
+  MusicType type; 
 } AudioInfoPacket;
 
 // converts a well formed packet into a string in dest.

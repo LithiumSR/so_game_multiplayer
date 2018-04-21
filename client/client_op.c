@@ -283,12 +283,16 @@ AudioContext *getAudioContext(int socket_desc) {
   debug_print("[Get Id] Received %dbytes \n", msg_len + ph_len);
   int track_number = deserialized_packet->track_number;
   char loop = deserialized_packet->loop;
+  MusicType type = deserialized_packet->type;
   Packet_free(&(deserialized_packet->header));
   char number[12];
   if (track_number > 1000) return NULL;
   sprintf(number, "%d", track_number);
   char filename[128];
-  strcpy(filename, "./resources/sounds/track");
+  if (type == Track)
+    strcpy(filename, "./resources/sounds/track");
+  else if (type == Effect)
+    strcpy(filename, "./resources/sounds/effect");
   strcat(filename, number);
   strcat(filename, ".wav");
   fprintf(stderr, "[GetAudioContext] Loading %s file...\n", filename);
