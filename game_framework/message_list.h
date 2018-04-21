@@ -2,13 +2,14 @@
 #include <netinet/in.h>
 #include <time.h>
 #include "../av_framework/image.h"
-#include "vehicle.h"
+#include "so_game_protocol.h"
 typedef struct MessageListItem {
   struct MessageListItem* next;
   int id;
   char text[256];
   char sender[32];
   time_t time;
+  MessageType type;
 } MessageListItem;
 
 typedef struct MessageListHead {
