@@ -19,6 +19,7 @@
 #include "../game_framework/so_game_protocol.h"
 #include "../game_framework/vehicle.h"
 #define RECEIVER_SLEEP 50 * 1000
+#define SENDER_SLEEP 1000 * 1000
 #if SERVER_SIDE_POSITION_CHECK == 1
 #define _USE_SERVER_SIDE_FOG_
 #endif
@@ -142,8 +143,9 @@ int UDPHandler(int socket_udp, char *buf_rcv, struct sockaddr_in client_addr) {
       return 0;
     }
     case (ChatMessage): {
-      MessagePacket* mp = (MessagePacket*)Packet_deserialize(buf_rcv, ph->size);
-      MessageListItem* mli = (MessageListItem*)malloc(sizeof(MessageListItem));
+      MessagePacket *mp =
+          (MessagePacket *)Packet_deserialize(buf_rcv, ph->size);
+      MessageListItem *mli = (MessageListItem *)malloc(sizeof(MessageListItem));
       strncpy(mli->sender, mp->message.sender, USERNAME_LEN);
       strncpy(mli->text, mp->message.text, TEXT_LEN);
       mli->id = mp->message.id;
@@ -419,7 +421,7 @@ void *UDPReceiver(void *args) {
   int socket_udp = *(int *)args;
   while (connectivity && exchange_update) {
     if (!has_users) {
-      sleep(1);
+      usleep(RECEIVER_SLEEP);
       continue;
     }
 
@@ -446,7 +448,6 @@ void *UDPReceiver(void *args) {
   pthread_exit(NULL);
 }
 
-
 int sendMessages(int socket_udp) {
   char buf_send[BUFFERSIZE];
   pthread_mutex_lock(&messages_mutex);
@@ -454,11 +455,11 @@ int sendMessages(int socket_udp) {
   if (messages->size == 0) goto END;
   PacketHeader ph;
   ph.type = ChatHistory;
-  MessageHistory* mh = (MessageHistory*)malloc(sizeof(MessageHistory));
+  MessageHistory *mh = (MessageHistory *)malloc(sizeof(MessageHistory));
   mh->header = ph;
   mh->num_messages = messages->size;
-  mh->messages = (Message*)malloc(sizeof(Message) * mh->num_messages);
-  MessageListItem* mli = messages->first;
+  mh->messages = (Message *)malloc(sizeof(Message) * mh->num_messages);
+  MessageListItem *mli = messages->first;
   for (int i = 0; i < mh->num_messages; i++) {
     strncpy(mh->messages[i].sender, mli->sender, USERNAME_LEN);
     strncpy(mh->messages[i].text, mli->text, TEXT_LEN);
@@ -469,11 +470,11 @@ int sendMessages(int socket_udp) {
   size = Packet_serialize(buf_send, &mh->header);
   if (size == 0 || size == -1) goto END;
   pthread_mutex_lock(&users_mutex);
-  ClientListItem* client = users->first;
+  ClientListItem *client = users->first;
   for (; client != NULL; client = client->next) {
     if (!client->is_udp_addr_ready) continue;
     int ret = sendto(socket_udp, buf_send, size, 0,
-                     (struct sockaddr*)&client->user_addr_udp,
+                     (struct sockaddr *)&client->user_addr_udp,
                      (socklen_t)sizeof(client->user_addr_udp));
     if (ret < size)
       debug_print(
@@ -495,7 +496,7 @@ void *UDPSender(void *args) {
   int socket_udp = *(int *)args;
   while (connectivity && exchange_update) {
     if (!has_users) {
-      sleep(1);
+      usleep(SENDER_SLEEP);
       continue;
     }
     int bytes_sent = sendMessages(socket_udp);
@@ -594,7 +595,7 @@ void *UDPSender(void *args) {
     }
     fprintf(stdout, "[UDP_Send] WorldUpdatePacket sent to each client \n");
     pthread_mutex_unlock(&users_mutex);
-    sleep(1);
+    usleep(SENDER_SLEEP);
   }
   pthread_exit(NULL);
 }
@@ -605,7 +606,7 @@ void *UDPSender(void *args) {
   int socket_udp = *(int *)args;
   while (connectivity && exchange_update) {
     if (!has_users) {
-      sleep(1);
+      usleep(SENDER_SLEEP);
       continue;
     }
     int bytes_sent = sendMessages(socket_udp);
@@ -629,7 +630,7 @@ void *UDPSender(void *args) {
             n);
     if (n == 0) {
       pthread_mutex_unlock(&users_mutex);
-      sleep(1);
+      usleep(SENDER_SLEEP);
       continue;
     }
     wup->updates = (ClientUpdate *)malloc(sizeof(ClientUpdate) * n);
@@ -658,7 +659,7 @@ void *UDPSender(void *args) {
     int size = Packet_serialize(buf_send, &wup->header);
     if (size == 0 || size == -1) {
       pthread_mutex_unlock(&users_mutex);
-      sleep(1);
+      usleep(SENDER_SLEEP);
       continue;
     }
     client = users->first;
@@ -676,7 +677,7 @@ void *UDPSender(void *args) {
     Packet_free(&(wup->header));
     fprintf(stdout, "[UDP_Send] WorldUpdatePacket sent to each client \n");
     pthread_mutex_unlock(&users_mutex);
-    sleep(1);
+    usleep(SENDER_SLEEP);
   }
   pthread_exit(NULL);
 }
