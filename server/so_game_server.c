@@ -144,10 +144,10 @@ int UDPHandler(int socket_udp, char* buf_rcv, struct sockaddr_in client_addr) {
       client->last_update_time = vup->time;
     END:
       pthread_mutex_unlock(&users_mutex);
-      fprintf(stdout,
-              "[UDP_Receiver] Applied VehicleUpdatePacket with "
-              "force_translational_update: %f force_rotation_update: %f.. \n",
-              vup->translational_force, vup->rotational_force);
+      debug_print(
+          "[UDP_Receiver] Applied VehicleUpdatePacket with "
+          "force_translational_update: %f force_rotation_update: %f.. \n",
+          vup->translational_force, vup->rotational_force);
       Packet_free(&vup->header);
       return 0;
     }
@@ -157,11 +157,11 @@ int UDPHandler(int socket_udp, char* buf_rcv, struct sockaddr_in client_addr) {
       strncpy(mli->sender, mp->message.sender, USERNAME_LEN);
       strncpy(mli->text, mp->message.text, TEXT_LEN);
       mli->id = mp->message.id;
+      time(&mli->time);
       pthread_mutex_lock(&messages_mutex);
       MessageList_insert(messages, mli);
-      pthread_mutex_unlock(&messages_mutex);
-      printf("\n Received a message \n ");
       Packet_free(&mp->header);
+      pthread_mutex_unlock(&messages_mutex);
     }
     default:
       return -1;
@@ -468,6 +468,47 @@ void* UDPReceiver(void* args) {
   pthread_exit(NULL);
 }
 
+int sendMessages(int socket_udp) {
+  char buf_send[BUFFERSIZE];
+  pthread_mutex_lock(&messages_mutex);
+  int size = 0;
+  if (messages->size == 0) goto END;
+  PacketHeader ph;
+  ph.type = ChatHistory;
+  MessageHistory* mh = (MessageHistory*)malloc(sizeof(MessageHistory));
+  mh->header = ph;
+  mh->num_messages = messages->size;
+  mh->messages = (Message*)malloc(sizeof(Message) * mh->num_messages);
+  MessageListItem* mli = messages->first;
+  for (int i = 0; i < mh->num_messages; i++) {
+    strncpy(mh->messages[i].sender, mli->sender, USERNAME_LEN);
+    strncpy(mh->messages[i].text, mli->text, TEXT_LEN);
+    mh->messages[i].id = mli->id;
+    mh->messages[i].time = mli->time;
+    mli = mli->next;
+  }
+  size = Packet_serialize(buf_send, &mh->header);
+  if (size == 0 || size == -1) goto END;
+  pthread_mutex_lock(&users_mutex);
+  ClientListItem* client = users->first;
+  for (; client != NULL; client = client->next) {
+    if (!client->is_udp_addr_ready) continue;
+    int ret = sendto(socket_udp, buf_send, size, 0,
+                     (struct sockaddr*)&client->user_addr_udp,
+                     (socklen_t)sizeof(client->user_addr_udp));
+    if (ret < size)
+      debug_print(
+          "[MessageSender] Something went wrong when sending the packet over "
+          "UDP \n ");
+  }
+  pthread_mutex_unlock(&users_mutex);
+  Packet_free(&mh->header);
+  MessageList_removeAll(messages);
+END:
+  pthread_mutex_unlock(&messages_mutex);
+  return size;
+}
+
 // Send WorldUpdatePacket to every client that sent al least one
 // VehicleUpdatePacket
 #ifdef _USE_SERVER_SIDE_FOG_
@@ -478,6 +519,8 @@ void* UDPSender(void* args) {
       sleep(1);
       continue;
     }
+    int bytes_sent = sendMessages(socket_udp);
+    debug_print("Messages sent - %d bytes", bytes_sent);
     pthread_mutex_lock(&users_mutex);
     ClientListItem* client = users->first;
     debug_print("I'm going to create a WorldUpdatePacket \n");
@@ -606,8 +649,9 @@ void* UDPSender(void* args) {
       sleep(1);
       continue;
     }
+    int bytes_sent = sendMessages(socket_udp);
+    debug_print("Messages sent - %d bytes", bytes_sent);
     char buf_send[BUFFERSIZE];
-
     PacketHeader ph;
     ph.type = WorldUpdate;
     WorldUpdatePacket* wup =
@@ -940,24 +984,24 @@ int main(int argc, char** argv) {
 
   ret = pthread_join(world_thread, NULL);
   ERROR_HELPER(ret, "Join on world_loop thread failed");
-  debug_print("[Main] World_loop ended... \n");
+  fprintf(stdout, "[Main] World_loop ended... \n");
   ret = pthread_join(UDP_receiver, NULL);
   ERROR_HELPER(ret, "Join on UDP_receiver thread failed");
-  debug_print("[Main] UDP_receiver ended... \n");
+  fprintf(stdout, "[Main] UDP_receiver ended... \n");
   ret = pthread_join(TCP_thread, NULL);
   ERROR_HELPER(ret, "Join on tcp_auth thread failed");
-  debug_print("[Main] TCP_receiver/sender ended... \n");
+  fprintf(stdout, "[Main] TCP_receiver/sender ended... \n");
   ret = pthread_join(UDP_sender, NULL);
   ERROR_HELPER(ret, "Join on UDP_sender thread failed");
-  debug_print("[Main] UDP_sender ended... \n");
+  fprintf(stdout, "[Main] UDP_sender ended... \n");
   ret = pthread_join(GC_thread, NULL);
   ERROR_HELPER(ret, "Join on garbage collector thread failed");
-  debug_print("[Main] GC ended... \n");
-  debug_print("[Main] Freeing resources... \n");
+  fprintf(stdout, "[Main] GC ended... \n");
+  fprintf(stdout, "[Main] Freeing resources... \n");
 
   // Delete list
-  pthread_mutex_lock(&users_mutex);
   ClientList_destroy(users);
+  MessageList_destroy(messages);
   pthread_mutex_unlock(&users_mutex);
   pthread_mutex_destroy(&users_mutex);
   pthread_mutex_destroy(&messages_mutex);
