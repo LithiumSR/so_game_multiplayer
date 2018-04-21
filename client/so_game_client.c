@@ -31,18 +31,24 @@
 #define _USE_SERVER_SIDE_FOG_
 #endif
 
+// world related variables
 int window;
 World world;
 Vehicle* vehicle;  // The vehicle
 int id;
-uint16_t port_number_no;
+char username[32];
+AudioContext* backgroud_track = NULL;
+// flags and counters
 char connectivity = 1;
 char exchange_update = 1;
 char messaging_enabled = 0;
-int socket_desc;  // socket tcp
-struct timeval last_update_time;
 int offline_server_counter = 0;
-AudioContext* backgroud_track = NULL;
+// networking
+uint16_t port_number_no;
+int socket_desc = -1;  // socket tcp
+int socket_udp = -1;   // socket udp
+struct sockaddr_in udp_server = {0};
+struct timeval last_update_time;
 pthread_mutex_t time_lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct localWorld {
@@ -81,7 +87,9 @@ void handleSignal(int signal) {
       connectivity = 0;
       exchange_update = 0;
       pthread_mutex_lock(&time_lock);
-      if (last_update_time.tv_sec != 1) sendGoodbye(socket_desc, id);
+      if (last_update_time.tv_sec != 1)
+        sendGoodbye(socket_desc, socket_udp, id, messaging_enabled, username,
+                    udp_server);
       pthread_mutex_unlock(&time_lock);
       WorldViewer_exit(0);
       break;
@@ -110,7 +118,6 @@ int addUser(int ids[], int size, int id2, int* position, int* users_online) {
 }
 
 void* messageSender(void* args) {
-  char username[32];
   udpArgs udp_args = *(udpArgs*)args;
   struct sockaddr_in server_addr = udp_args.server_addr;
   int socket_udp = udp_args.socket_udp;
@@ -118,10 +125,11 @@ void* messageSender(void* args) {
   printf(
       "This is a chat over UDP. There is no guarantee that the messages will "
       "be broadcasted \n");
+USERNAME:
   printf("Insert your name: ");
-  while (fgets(username, USERNAME_LEN, stdin) == NULL) {
-    printf("Insert your name: ");
-  }
+  char* ret = fgets(username, USERNAME_LEN, stdin);
+  if (ret == NULL || (username[0] == '\n' && username[1] == '\0'))
+    goto USERNAME;
   username[strcspn(username, "\n")] = 0;
   printf("Hello %s! You can now write your messages (MAX %d characters) \n",
          username, TEXT_LEN);
@@ -130,16 +138,18 @@ void* messageSender(void* args) {
   // send hello message
   char buf_s[BUFFERSIZE];
   PacketHeader hello_header;
-  hello_header.type=ChatMessage;
+  hello_header.type = ChatMessage;
   MessagePacket* hello_message = (MessagePacket*)malloc(sizeof(MessagePacket));
   hello_message->header = hello_header;
   hello_message->message.id = id;
   strncpy(hello_message->message.sender, username, USERNAME_LEN);
   hello_message->message.type = Hello;
   int size = Packet_serialize(buf_s, &(hello_message->header));
-  if (size > 0)
+  if (size > 0) {
     sendto(socket_udp, buf_s, size, 0, (const struct sockaddr*)&server_addr,
            (socklen_t)serverlen);
+    Packet_free(&hello_message->header);
+  }
 
   // Get user messages
   while (connectivity) {
@@ -151,7 +161,12 @@ void* messageSender(void* args) {
     mp->message.id = id;
     mp->message.type = Text;
     strncpy(mp->message.sender, username, USERNAME_LEN);
-    if (fgets(mp->message.text, TEXT_LEN, stdin) == NULL) continue;
+    char* text = fgets(mp->message.text, TEXT_LEN, stdin);
+    if (text == NULL ||
+        (mp->message.text[0] == '\n' && mp->message.text[1] == '\0')) {
+      Packet_free(&mp->header);
+      continue;
+    }
     size = Packet_serialize(buf_send, &(mp->header));
     if (size <= 0) continue;
     int bytes_sent =
@@ -159,6 +174,8 @@ void* messageSender(void* args) {
                (const struct sockaddr*)&server_addr, (socklen_t)serverlen);
     if (bytes_sent != size)
       debug_print("[ERROR] Message wasn't successfully sent");
+    else
+      Packet_free(&mp->header);
   }
   pthread_exit(NULL);
 }
@@ -255,7 +272,8 @@ void* UDPReceiver(void* args) {
         fprintf(stderr,
                 "[WARNING] You were kicked out of the server for inactivity... "
                 "Closing the client now \n");
-        sendGoodbye(socket_desc, id);
+        sendGoodbye(socket_desc, socket_udp, id, messaging_enabled, username,
+                    udp_server);
         connectivity = 0;
         exchange_update = 0;
         WorldViewer_exit(0);
@@ -279,14 +297,14 @@ void* UDPReceiver(void* args) {
               break;
             }
             case (Hello): {
-              printf("[INFO] %s (id %d) joined the chat! \n", mh->messages[i].sender,
-                     mh->messages[i].id);
+              printf("[INFO] %s (id %d) joined the chat! \n",
+                     mh->messages[i].sender, mh->messages[i].id);
               fflush(stdout);
               break;
             }
             case (Goodbye): {
-              printf("[INFO] %s (id %d) left the chat! \n", mh->messages[i].sender,
-                     mh->messages[i].id);
+              printf("[INFO] %s (id %d) left the chat! \n",
+                     mh->messages[i].sender, mh->messages[i].id);
               fflush(stdout);
               break;
             }
@@ -622,7 +640,8 @@ void* UDPReceiver(void* args) {
       fprintf(stderr,
               "[UDP_Receiver] Found an unknown udp packet. Terminating the "
               "client now... \n");
-      sendGoodbye(socket_desc, id);
+      sendGoodbye(socket_desc, socket_udp, id, messaging_enabled, username,
+                  udp_server);
       connectivity = 0;
       exchange_update = 0;
       WorldViewer_exit(-1);
@@ -736,10 +755,8 @@ int main(int argc, char** argv) {
   // UDP Init
   uint16_t port_number_udp =
       htons((uint16_t)UDPPORT);  // we use network byte order
-  int socket_udp = socket(AF_INET, SOCK_DGRAM, 0);
+  socket_udp = socket(AF_INET, SOCK_DGRAM, 0);
   ERROR_HELPER(socket_desc, "Can't create an UDP socket");
-  struct sockaddr_in udp_server = {
-      0};  // some fields are required to be filled with 0
   udp_server.sin_addr.s_addr = ip_addr;
   udp_server.sin_family = AF_INET;
   udp_server.sin_port = port_number_udp;
@@ -762,7 +779,9 @@ int main(int argc, char** argv) {
   PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_receiver");
 // Disconnect from server if required by macro
 SKIP:
-  if (SINGLEPLAYER) sendGoodbye(socket_desc, id);
+  if (SINGLEPLAYER)
+    sendGoodbye(socket_desc, socket_udp, id, messaging_enabled, username,
+                udp_server);
 
   WorldViewer_runGlobal(&world, vehicle, backgroud_track, &argc, argv);
 
@@ -782,7 +801,8 @@ SKIP:
   }
 
   fprintf(stdout, "[Main] Cleaning up... \n");
-  sendGoodbye(socket_desc, id);
+  sendGoodbye(socket_desc, socket_udp, id, messaging_enabled, username,
+              udp_server);
   // Clean resources
   pthread_mutex_destroy(&time_lock);
   for (int i = 0; i < WORLDSIZE; i++) {
