@@ -2,7 +2,9 @@
 #include <netinet/in.h>
 #include <time.h>
 #include "../av_framework/image.h"
+#include "client_list.h"
 #include "so_game_protocol.h"
+#include "string.h"
 #include "vehicle.h"
 typedef struct MessageListItem {
   struct MessageListItem* next;
@@ -28,3 +30,5 @@ MessageListItem* MessageList_detach(MessageListHead* head,
 void MessageList_destroy(MessageListHead* head);
 void MessageList_print(MessageListHead* users);
 void MessageList_removeAll(MessageListHead* users);
+MessageListItem* MessageList_addDisconnectMessage(MessageListHead* head,
+                                                  ClientListItem* user);
