@@ -8,17 +8,21 @@ typedef struct MessageListItem {
   int id;
   char text[256];
   char sender[32];
-}MessageListItem;
+  time_t time;
+} MessageListItem;
 
 typedef struct MessageListHead {
   MessageListItem* first;
+  MessageListItem* last;
   int size;
 } MessageListHead;
 
 void MessageList_init(MessageListHead* head);
 MessageListItem* MessageList_find(MessageListHead* head, MessageListItem* item);
-MessageListItem* MessageList_insert(MessageListHead* head, MessageListItem* item);
-MessageListItem* MessageList_detach(MessageListHead* head, MessageListItem* item);
+MessageListItem* MessageList_insert(MessageListHead* head,
+                                    MessageListItem* item);
+MessageListItem* MessageList_detach(MessageListHead* head,
+                                    MessageListItem* item);
 void MessageList_destroy(MessageListHead* head);
 void MessageList_print(MessageListHead* users);
 void MessageList_removeAll(MessageListHead* users);
