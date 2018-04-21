@@ -16,7 +16,9 @@ typedef enum {
   VehicleUpdate = 0x7,
   PostDisconnect = 0x8,
   GetAudioInfo = 0x9,
-  PostAudioInfo = 0x10
+  PostAudioInfo = 0x10,
+  ChatMessage = 0x11, 
+  ChatHistory = 0x12 
 } Type;
 
 #ifdef _USE_SERVER_SIDE_FOG_
@@ -88,6 +90,24 @@ typedef struct {
   Status status;
 } ClientStatusUpdate;
 #endif
+
+typedef struct {
+  int id;
+  char sender[USERNAME_LEN];
+  char text[TEXT_LEN];
+  time_t time;  // Used only by server to save the time the message was received
+} Message;
+
+typedef struct {
+  PacketHeader header;
+  Message message;
+} MessagePacket;
+
+typedef struct {
+  PacketHeader header;
+  int num_messages;
+  Message* messages;
+} MessageHistory;
 
 // server world update, send by server (UDP)
 typedef struct {
