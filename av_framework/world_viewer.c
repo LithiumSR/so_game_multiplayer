@@ -125,6 +125,9 @@ void idle(void) {
     pthread_mutex_lock(&audio_list_mutex);
     AudioList_cleanExpiredItem(audio_list);
     pthread_mutex_unlock(&audio_list_mutex);
+    pthread_mutex_lock(&(viewer.self->mutex));
+    Vehicle_decayForcesUpdate(viewer.self, 0.999, 0.7);
+    pthread_mutex_unlock(&(viewer.self->mutex));
   }
   //Vehicle_decayForcesUpdate(viewer.self, 0.999, 0.7);
   glutPostRedisplay();
@@ -195,7 +198,7 @@ void drawBox(float l, float w, float h) {
 int Image_toTexture(Image *src) {
   if (src->type != RGB8) return -1;
   unsigned int surface_texture;
-  printf("loading texture in system\n");
+  debug_print("loading texture in system\n");
   glGenTextures(1, &surface_texture);
   glBindTexture(GL_TEXTURE_2D, surface_texture);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -209,7 +212,7 @@ int Image_toTexture(Image *src) {
 
 void Surface_applyTexture(Surface *s, Image *img) {
   s->texture = img;
-  printf("applying texture %p to surface %p\n", img, s);
+  debug_print("applying texture %p to surface %p\n", img, s);
   s->_destructor = Surface_destructor;
   if (s->gl_list > -1) glDeleteLists(s->gl_list, 1);
   s->gl_list = -1;
@@ -268,7 +271,7 @@ void Surface_draw(Surface *s) {
 }
 
 void Vehicle_applyTexture(Vehicle *v) {
-  printf("applying texture %p to vehicle %p\n", v->texture, v);
+  debug_print("applying texture %p to vehicle %p\n", v->texture, v);
   v->_destructor = Vehicle_destructor;
   if (v->gl_list > -1) glDeleteLists(v->gl_list, 1);
   v->gl_list = -1;
