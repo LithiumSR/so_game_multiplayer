@@ -499,7 +499,8 @@ EXIT:
   pthread_mutex_unlock(&messages_mutex);
   if (!del->inside_world) goto END;
   World_detachVehicle(&server_world, del->vehicle);
-  Vehicle_destroy(del->vehicle);
+  Vehicle_destroy(del->vehicle); // Be careful here
+  free(del->vehicle);
   Image* user_texture = del->v_texture;
   if (user_texture != NULL) Image_free(user_texture);
   if (users->size == 0) has_users = 0;
