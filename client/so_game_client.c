@@ -38,6 +38,7 @@ int id;
 uint16_t port_number_no;
 char connectivity = 1;
 char exchange_update = 1;
+char messaging_enabled = 0;
 int socket_desc;  // socket tcp
 struct timeval last_update_time;
 int offline_server_counter = 0;
@@ -124,6 +125,7 @@ void* messageSender(void* args) {
   username[strcspn(username, "\n")] = 0;
   printf("Hello %s! You can now write your messages (MAX %d characters) \n",
          username, TEXT_LEN);
+  messaging_enabled = 1;
   while (connectivity) {
     char buf_send[BUFFERSIZE];
     PacketHeader ph;
@@ -172,7 +174,7 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
   if (offline_server_counter >= MAX_FAILED_ATTEMPTS) {
     connectivity = 0;
     exchange_update = 0;
-    fprintf(stdout,
+    fprintf(stderr,
             "[WARNING] Server is not avaiable. Terminating the client now...");
     WorldViewer_exit(0);
   } else if (last_update_time.tv_sec != -1 &&
@@ -180,7 +182,7 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
                  MAX_TIME_WITHOUT_WORLDUPDATE) {
     connectivity = 0;
     exchange_update = 0;
-    fprintf(stdout,
+    fprintf(stderr,
             "[WARNING] Server is not avaiable. Terminating the client now...");
     WorldViewer_exit(0);
   } else if (last_update_time.tv_sec != -1)
@@ -232,7 +234,7 @@ void* UDPReceiver(void* args) {
     if (ph->size != bytes_read) ERROR_HELPER(-1, "Partial UDP READ!");
     switch (ph->type) {
       case (PostDisconnect): {
-        fprintf(stdout,
+        fprintf(stderr,
                 "[WARNING] You were kicked out of the server for inactivity... "
                 "Closing the client now \n");
         sendGoodbye(socket_desc, id);
@@ -244,6 +246,7 @@ void* UDPReceiver(void* args) {
       case (ChatHistory): {
         MessageHistory* mh =
             (MessageHistory*)Packet_deserialize(buf_rcv, bytes_read);
+        if (!messaging_enabled) goto FREE;
         for (int i = 0; i < mh->num_messages; i++) {
           struct tm* info;
           info = localtime(&mh->messages[i].time);
@@ -254,6 +257,7 @@ void* UDPReceiver(void* args) {
                  info->tm_min);
           fflush(stdout);
         }
+      FREE:
         Packet_free(&mh->header);
         break;
       }
@@ -261,7 +265,7 @@ void* UDPReceiver(void* args) {
         WorldUpdatePacket* wup =
             (WorldUpdatePacket*)Packet_deserialize(buf_rcv, bytes_read);
         debug_print("WorldUpdatePacket contains %d vehicles besides mine \n",
-                    wup->num_vehicles - 1);
+                    wup->num_update_vehicles - 1);
         pthread_mutex_lock(&time_lock);
         if (last_update_time.tv_sec != -1 &&
             timercmp(&last_update_time, &wup->time, >=)) {
@@ -292,7 +296,7 @@ void* UDPReceiver(void* args) {
         }
 #endif
 
-        for (int i = 0; i < wup->num_vehicles; i++) {
+        for (int i = 0; i < wup->num_update_vehicles; i++) {
           if (wup->updates[i].id == id)
             continue;
           else if (SERVER_SIDE_POSITION_CHECK ||
@@ -451,6 +455,7 @@ void* UDPReceiver(void* args) {
             World_detachVehicle(&world, lw->vehicles[i]);
           }
         }
+        Packet_free(&wup->header);
         break;
       }
 #endif
@@ -461,7 +466,7 @@ void* UDPReceiver(void* args) {
         int ignored = 0;
 #endif
 
-        for (int i = 0; i < wup->num_vehicles; i++) {
+        for (int i = 0; i < wup->num_update_vehicles; i++) {
 #ifndef _USE_SERVER_SIDE_FOG_
           if (wup->updates[i].id != id &&
               (abs((int)x - (int)wup->updates[i].x) > HIDE_RANGE ||
@@ -574,23 +579,24 @@ void* UDPReceiver(void* args) {
             lw->has_vehicle[i] = 0;
           }
         }
+        Packet_free(&wup->header);
         break;
-      }
-#endif
-      default: {
-        fprintf(stdout,
-                "[UDP_Receiver] Found an unknown udp packet. Terminating the "
-                "client now... \n");
-        sendGoodbye(socket_desc, id);
-        connectivity = 0;
-        exchange_update = 0;
-        WorldViewer_exit(-1);
-        break;
-      }
     }
-    usleep(RECEIVER_SLEEP);
+#endif
+    default: {
+      fprintf(stderr,
+              "[UDP_Receiver] Found an unknown udp packet. Terminating the "
+              "client now... \n");
+      sendGoodbye(socket_desc, id);
+      connectivity = 0;
+      exchange_update = 0;
+      WorldViewer_exit(-1);
+      break;
+    }
   }
-  pthread_exit(NULL);
+  usleep(RECEIVER_SLEEP);
+}
+pthread_exit(NULL);
 }
 
 int main(int argc, char** argv) {
