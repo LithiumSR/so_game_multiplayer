@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-
+#include "../common/common.h"
 static const int MAX_SIZE = 1024 * 1024;
 
 void Image_free(Image *img) {
@@ -129,12 +129,12 @@ Image *Image_deserialize(const char *buffer, int size) {
     if (!char_read) return 0;
     buffer += char_read;
     size -= char_read;
-    printf("read");
+    debug_print("read");
   } while (line[0] == '#');
 
   sscanf(line, "%d %d\n", &cols, &rows);
-  printf("rows:%d, cols: %d\n", rows, cols);
-  printf("magic number: [%s]\n", magic_number);
+  debug_print("rows:%d, cols: %d\n", rows, cols);
+  debug_print("magic number: [%s]\n", magic_number);
 
   int maxval;
   char_read = getLine(line, buffer, size);
@@ -180,7 +180,7 @@ int Image_save(Image *img, const char *filename) {
   char buffer[MAX_SIZE];
   int fd = open(filename, O_RDWR | O_CREAT, 0666);
   if (fd < 0) {
-    printf("save error, cant open file\n");
+    debug_print("save error, cant open file\n");
     return 0;
   }
   int size = Image_serialize(img, buffer, MAX_SIZE);
