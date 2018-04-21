@@ -21,8 +21,6 @@ OBJS = av_framework/vec3.o\
        game_framework/so_game_protocol.o\
        game_framework/client_list.o\
 	   game_framework/message_list.o\
-       server/so_game_server.o\
-       client/so_game_client.o\
        client/client_op.o\
        
 HEADERS=av_framework/image.h\
