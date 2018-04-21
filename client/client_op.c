@@ -16,6 +16,8 @@
 #include "../game_framework/so_game_protocol.h"
 #include "../game_framework/vehicle.h"
 
+char sent_goodbye=0;
+
 // Used to get ID from server
 int getID(int socket_desc) {
   char buf_send[BUFFERSIZE];
@@ -314,8 +316,7 @@ int sendGoodbye(int socket, int socket_udp, int id, int messaging_enabled, char*
     if (ret == 0) break;
     msg_len += ret;
   }
-  if (!messaging_enabled || socket_udp == -1) return 0;
-  char buf_send2[BUFFERSIZE];
+  if (!messaging_enabled || socket_udp == -1 || sent_goodbye) return 0;
   // send goodbye message
   socklen_t serverlen = sizeof(server_addr);
   PacketHeader goodbye_header;
@@ -326,12 +327,13 @@ int sendGoodbye(int socket, int socket_udp, int id, int messaging_enabled, char*
   goodbye_message->message.id = id;
   strncpy(goodbye_message->message.sender, username, USERNAME_LEN);
   goodbye_message->message.type = Goodbye;
-  size = Packet_serialize(buf_send2, &(goodbye_message->header));
+  size = Packet_serialize(buf_send, &(goodbye_message->header));
   if (size > 0)
-    sendto(socket_udp, buf_send2, size, 0,
+    sendto(socket_udp, buf_send, size, 0,
            (const struct sockaddr *)&server_addr, serverlen);
   Packet_free(&goodbye_message->header);
 
   debug_print("[Goodbye] Goodbye was successfully sent %d \n", msg_len);
+  sent_goodbye=1;
   return 0;
 }
