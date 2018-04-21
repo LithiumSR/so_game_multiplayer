@@ -30,10 +30,9 @@ typedef enum {
 } Status;
 #endif
 
-typedef enum {
-  Effect = 0x1,
-  Track = 0x2
-} MusicType;
+typedef enum { Effect = 0x1, Track = 0x2 } MusicType;
+
+typedef enum { Hello = 0x1, Goodbye = 0x2, Text = 0x3 } MessageType;
 
 typedef struct {
   Type type;
@@ -81,6 +80,7 @@ typedef struct {
   char sender[USERNAME_LEN];
   char text[TEXT_LEN];
   time_t time;  // Used only by server to save the time the message was received
+  MessageType type;
 } Message;
 
 typedef struct {
