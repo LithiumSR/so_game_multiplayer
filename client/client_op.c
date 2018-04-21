@@ -279,12 +279,16 @@ AudioContext* getAudioContext(int socket_desc) {
   debug_print("[Get Id] Received %dbytes \n", msg_len + ph_len);
   int track_number = deserialized_packet->track_number;
   char loop = deserialized_packet->loop;
+  MusicType type = deserialized_packet->type;
   Packet_free(&(deserialized_packet->header));
   char number[12];
   if (track_number > 1000) return NULL;
   sprintf(number, "%d", track_number);
   char filename[128];
-  strcpy(filename, "./resources/sounds/track");
+  if (type == Track)
+    strcpy(filename, "./resources/sounds/track");
+  else if (type == Effect)
+    strcpy(filename, "./resources/sounds/effect");
   strcat(filename, number);
   strcat(filename, ".wav");
   fprintf(stderr, "[GetAudioContext] Loading %s file...\n", filename);
@@ -337,7 +341,7 @@ int joinChat(int socket_desc, int id, char* username) {
 
   int ph_len = sizeof(PacketHeader);
   msg_len = 0;
-  int ret=0;
+  int ret = 0;
   while (msg_len < ph_len) {
     ret = recv(socket_desc, buf_rcv + msg_len, ph_len - msg_len, 0);
     if (ret == -1 && errno == EINTR) continue;
@@ -355,9 +359,11 @@ int joinChat(int socket_desc, int id, char* username) {
   }
   IdPacket* deserialized_packet =
       (IdPacket*)Packet_deserialize(buf_rcv, msg_len + ph_len);
-  int id_received= deserialized_packet->id;
+  int id_received = deserialized_packet->id;
   Packet_free(&deserialized_packet->header);
   Packet_free(&mp->header);
-  if(id!=id_received) return -1;
-  else return 0;
+  if (id != id_received)
+    return -1;
+  else
+    return 0;
 }
