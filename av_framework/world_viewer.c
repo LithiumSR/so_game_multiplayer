@@ -128,7 +128,7 @@ void idle(void) {
     pthread_mutex_unlock(&audio_list_mutex);
   }
   pthread_mutex_lock(&(viewer.self->mutex));
-  Vehicle_decayForcesUpdate(viewer.self, 0.999, 0.7);
+  Vehicle_decayForcesUpdate(viewer.self, 0.999, 0.75);
   pthread_mutex_unlock(&(viewer.self->mutex));
   glutPostRedisplay();
 }
