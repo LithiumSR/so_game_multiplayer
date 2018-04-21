@@ -29,7 +29,7 @@
 /* Configuration parameters */
 #define SERVER_ADDRESS "127.0.0.1"
 #define WORLDSIZE 512
-#define DEBUG 1
+#define DEBUG 0
 #define SINGLEPLAYER 0
 #define BUFFERSIZE 1000000
 #define UDPPORT 8888
@@ -42,4 +42,6 @@
 #define MAX_TIME_WITHOUT_VEHICLEUPDATE 10
 #define MAX_TIME_WITHOUT_WORLDUPDATE 10
 #define COLLISION_RANGE 0.5
+#define USERNAME_LEN 32
+#define TEXT_LEN 256
 #endif
