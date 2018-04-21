@@ -20,8 +20,7 @@ OBJS = av_framework/vec3.o\
        game_framework/vehicle.o\
        game_framework/so_game_protocol.o\
        game_framework/client_list.o\
-       server/so_game_server.o\
-       client/so_game_client.o\
+	   game_framework/message_list.o\
        client/client_op.o\
        
 HEADERS=av_framework/image.h\
@@ -29,6 +28,7 @@ HEADERS=av_framework/image.h\
 	game_framework/so_game_protocol.h\
 	game_framework/vehicle.h\
 	game_framework/client_list.h\
+	game_framework/message_list.h\
 	av_framework/surface.h\
 	av_framework/vec3.h\
 	av_framework/audio_list.h\
