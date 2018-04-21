@@ -81,6 +81,8 @@ void Vehicle_init(Vehicle* v, World* w, int id, Image* texture) {
   v->min_translational_force = 0.05;
   v->translational_velocity = 0;
   v->rotational_velocity = 0;
+  v->translational_force_update_intention = 0;
+  v->rotational_force_update_intention = 0;
   v->is_new = 1;
   v->temp_x = v->x;
   v->temp_y = v->y;
