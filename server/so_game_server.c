@@ -25,19 +25,24 @@
 #define _USE_SERVER_SIDE_FOG_
 #endif
 
-pthread_mutex_t users_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t messages_mutex = PTHREAD_MUTEX_INITIALIZER;
+// world
+World server_world;
+struct timeval world_update_time;
+// flags
 int connectivity = 1;
 int exchange_update = 1;
 int clean_garbage = 1;
 int has_users = 0;
+// lists
 ClientListHead* users;
 MessageListHead* messages;
+// networking
 uint16_t port_number_no;
 int server_tcp = -1;
 int server_udp;
-World server_world;
-struct timeval world_update_time;
+// syncronization
+pthread_mutex_t users_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t messages_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct {
   int client_desc;
