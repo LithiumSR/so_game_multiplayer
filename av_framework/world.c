@@ -51,7 +51,7 @@ void World_update(World* w) {
   struct timeval dt;
   timersub(&current_time, &w->last_update, &dt);
   float delta = dt.tv_sec + 1e-6 * dt.tv_usec;
-  float exp = delta / (30 * 1000);
+  float exp = delta / (3000*1e-6);
   float tr_decay = powf(1 - 0.001, exp);
   float rt_decay = powf(1 - 0.3, exp);
   if (tr_decay > 0.999) tr_decay = 0.999;
@@ -97,7 +97,7 @@ void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time) {
   struct timeval dt;
   timersub(&current_time, &update_time, &dt);
   float delta = dt.tv_sec + 1e-6 * dt.tv_usec;
-  float exp = delta / (30 * 1000);
+  float exp = delta / (3000*1e-6);
   float tr_decay = powf(1 - 0.001, exp);
   float rt_decay = powf(1 - 0.3, exp);
   if (tr_decay > 0.999) tr_decay = 0.999;
