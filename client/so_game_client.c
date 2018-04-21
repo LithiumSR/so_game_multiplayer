@@ -19,23 +19,30 @@
 #include "../game_framework/so_game_protocol.h"
 #include "../game_framework/vehicle.h"
 #include "client_op.h"
-#define NO_ACCESS -2
+#define UNTOUCHED 0
+#define TOUCHED 1
 #define SENDER_SLEEP 200 * 1000
 #define RECEIVER_SLEEP 500 * 1000
 #define MAX_FAILED_ATTEMPTS 20
-
+// world related variables
 int window;
 World world;
 Vehicle* vehicle;  // The vehicle
 int id;
-uint16_t port_number_no;
+char username[32];
+AudioContext* backgroud_track = NULL;
+// flags and counters
 char connectivity = 1;
 char exchange_update = 1;
-int socket_desc;  // socket tcp
-struct timeval last_update_time;
 int offline_server_counter = 0;
-AudioContext* backgroud_track = NULL;
-pthread_mutex_t time_lock;
+char messaging_enabled = 0;
+// networking
+uint16_t port_number_no;
+int socket_desc = -1;  // socket tcp
+int socket_udp = -1;   // socket udp
+struct sockaddr_in udp_server = {0};
+struct timeval last_update_time;
+pthread_mutex_t time_lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct localWorld {
   int ids[WORLDSIZE];
@@ -61,7 +68,8 @@ void handleSignal(int signal) {
       connectivity = 0;
       exchange_update = 0;
       pthread_mutex_lock(&time_lock);
-      if (last_update_time.tv_sec != 1) sendGoodbye(socket_desc, id);
+      if (last_update_time.tv_sec != 1)
+        sendGoodbye(socket_desc, socket_udp, id, messaging_enabled, username,udp_server);
       pthread_mutex_unlock(&time_lock);
       WorldViewer_exit(0);
       break;
@@ -121,7 +129,7 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
   if (offline_server_counter >= MAX_FAILED_ATTEMPTS) {
     connectivity = 0;
     exchange_update = 0;
-    fprintf(stdout,
+    fprintf(stderr,
             "[WARNING] Server is not avaiable. Terminating the client now...");
     WorldViewer_exit(0);
   } else if (last_update_time.tv_sec != -1 &&
@@ -129,7 +137,7 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
                  MAX_TIME_WITHOUT_WORLDUPDATE) {
     connectivity = 0;
     exchange_update = 0;
-    fprintf(stdout,
+    fprintf(stderr,
             "[WARNING] Server is not avaiable. Terminating the client now...");
     WorldViewer_exit(0);
   } else if (last_update_time.tv_sec != -1)
@@ -137,6 +145,68 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
   pthread_mutex_unlock(&time_lock);
   if (bytes_sent < 0) return -1;
   return 0;
+}
+
+void* messageSender(void* args) {
+  udpArgs udp_args = *(udpArgs*)args;
+  struct sockaddr_in server_addr = udp_args.server_addr;
+  int socket_udp = udp_args.socket_udp;
+  int serverlen = sizeof(server_addr);
+  printf(
+      "This is a chat over UDP. There is no guarantee that the messages will "
+      "be broadcasted \n");
+USERNAME:
+  printf("Insert your name: ");
+  char* ret = fgets(username, USERNAME_LEN, stdin);
+  if (ret == NULL || (username[0] == '\n' && username[1] == '\0'))
+    goto USERNAME;
+  username[strcspn(username, "\n")] = 0;
+  printf("Hello %s! You can now write your messages (MAX %d characters) \n",
+         username, TEXT_LEN);
+  messaging_enabled = 1;
+
+  // send hello message
+  char buf_s[BUFFERSIZE];
+  PacketHeader hello_header;
+  hello_header.type = ChatMessage;
+  MessagePacket* hello_message = (MessagePacket*)malloc(sizeof(MessagePacket));
+  hello_message->header = hello_header;
+  hello_message->message.id = id;
+  strncpy(hello_message->message.sender, username, USERNAME_LEN);
+  hello_message->message.type = Hello;
+  int size = Packet_serialize(buf_s, &(hello_message->header));
+  if (size > 0)
+    sendto(socket_udp, buf_s, size, 0, (const struct sockaddr*)&server_addr,
+           (socklen_t)serverlen);
+  Packet_free(&hello_message->header);
+
+  // Get user messages
+  while (connectivity) {
+    char buf_send[BUFFERSIZE];
+    PacketHeader ph;
+    ph.type = ChatMessage;
+    MessagePacket* mp = (MessagePacket*)malloc(sizeof(MessagePacket));
+    mp->header = ph;
+    mp->message.id = id;
+    mp->message.type = Text;
+    strncpy(mp->message.sender, username, USERNAME_LEN);
+    char* text = fgets(mp->message.text, TEXT_LEN, stdin);
+    if (text == NULL ||
+        (mp->message.text[0] == '\n' && mp->message.text[1] == '\0')) {
+      Packet_free(&mp->header);
+      continue;
+    }
+    size = Packet_serialize(buf_send, &(mp->header));
+    if (size <= 0) continue;
+    int bytes_sent =
+        sendto(socket_udp, buf_send, size, 0,
+               (const struct sockaddr*)&server_addr, (socklen_t)serverlen);
+    if (bytes_sent != size)
+      debug_print("[ERROR] Message wasn't successfully sent");
+    else
+      Packet_free(&mp->header);
+  }
+  pthread_exit(NULL);
 }
 
 // Send vehicleUpdatePacket to server
@@ -182,97 +252,146 @@ void* UDPReceiver(void* args) {
       debug_print("[WARNING] Skipping partial UDP packet \n");
       usleep(RECEIVER_SLEEP);
       continue;
-    } else if (ph->type == PostDisconnect) {
-      fprintf(stdout,
-              "[WARNING] You were kicked out of the server for inactivity... "
-              "Closing the client now \n");
-      sendGoodbye(socket_desc, id);
-      connectivity = 0;
-      exchange_update = 0;
-      WorldViewer_exit(0);
     }
-
-    else if (ph->type != PostDisconnect && ph->type != WorldUpdate) {
-      fprintf(stdout,
-              "[UDP_Receiver] Found an unknown udp packet. Terminating the "
-              "client now... \n");
-      sendGoodbye(socket_desc, id);
-      connectivity = 0;
-      exchange_update = 0;
-      WorldViewer_exit(-1);
-    } else {
-      WorldUpdatePacket* wup =
-          (WorldUpdatePacket*)Packet_deserialize(buf_rcv, bytes_read);
-      pthread_mutex_lock(&time_lock);
-      if (last_update_time.tv_sec != -1 &&
-          timercmp(&last_update_time, &wup->time, >=)) {
-        pthread_mutex_unlock(&time_lock);
-        fprintf(stdout, "[INFO] Ignoring a WorldUpdatePacket... \n");
-        Packet_free(&wup->header);
-        usleep(RECEIVER_SLEEP);
-        continue;
+    switch (ph->type) {
+      case (PostDisconnect): {
+        fprintf(stderr,
+                "[WARNING] You were kicked out of the server for inactivity... "
+                "Closing the client now \n");
+        sendGoodbye(socket_desc, socket_udp, id, messaging_enabled, username,
+                    udp_server);
+        connectivity = 0;
+        exchange_update = 0;
+        WorldViewer_exit(0);
       }
-
-      debug_print("WorldUpdatePacket contains %d vehicles besides mine \n",
-                  wup->num_vehicles - 1);
-      last_update_time = wup->time;
-      pthread_mutex_unlock(&time_lock);
-      char mask[WORLDSIZE];
-      for (int k = 0; k < WORLDSIZE; k++) mask[k] = NO_ACCESS;
-      for (int i = 0; i < wup->num_vehicles; i++) {
-        int new_position = -1;
-        int id_struct = addUser(lw->ids, WORLDSIZE, wup->updates[i].id,
-                                &new_position, &(lw->users_online));
-        if (wup->updates[i].id == id) {
-          pthread_mutex_lock(&lw->vehicles[0]->mutex);
-          Vehicle_setXYTheta(lw->vehicles[0], wup->updates[i].x,
-                             wup->updates[i].y, wup->updates[i].theta);
-          Vehicle_setForcesUpdate(lw->vehicles[0],
-                                  wup->updates[i].translational_force,
-                                  wup->updates[i].rotational_force);
-          World_manualUpdate(&world, lw->vehicles[0],
-                             wup->updates[i].client_update_time);
-          pthread_mutex_unlock(&lw->vehicles[0]->mutex);
-        } else if (id_struct == -1) {
-          if (new_position == -1) continue;
-          mask[new_position] = 1;
-          fprintf(stdout, "New Vehicle with id %d and x: %f y: %f z: %f \n",
-                  wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
-                  wup->updates[i].theta);
-          Image* img = getVehicleTexture(socket_tcp, wup->updates[i].id);
-          if (img == NULL) continue;
-          Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
-          Vehicle_init(new_vehicle, &world, wup->updates[i].id, img);
-          lw->vehicles[new_position] = new_vehicle;
-          pthread_mutex_lock(&lw->vehicles[new_position]->mutex);
-          Vehicle_setXYTheta(lw->vehicles[new_position], wup->updates[i].x,
-                             wup->updates[i].y, wup->updates[i].theta);
-          Vehicle_setForcesUpdate(lw->vehicles[new_position],
-                                  wup->updates[i].translational_force,
-                                  wup->updates[i].rotational_force);
-          pthread_mutex_unlock(&lw->vehicles[new_position]->mutex);
-          World_addVehicle(&world, new_vehicle);
-          lw->has_vehicle[new_position] = 1;
-          lw->vehicle_login_time[new_position] =
-              wup->updates[i].client_creation_time;
-        } else {
-          mask[id_struct] = 1;
-          if (timercmp(&wup->updates[i].client_creation_time,
-                       &lw->vehicle_login_time[id_struct], !=)) {
-            debug_print("[WARNING] Forcing refresh for client with id %d",
-                        wup->updates[i].id);
-            if (lw->has_vehicle[id_struct]) {
-              Image* im = lw->vehicles[id_struct]->texture;
-              World_detachVehicle(&world, lw->vehicles[id_struct]);
-              Vehicle_destroy(lw->vehicles[id_struct]);
-              if (im != NULL) Image_free(im);
-              free(lw->vehicles[id_struct]);
+      case (ChatHistory): {
+        MessageHistory* mh =
+            (MessageHistory*)Packet_deserialize(buf_rcv, bytes_read);
+        if (!messaging_enabled) goto FREE;
+        for (int i = 0; i < mh->num_messages; i++) {
+          struct tm* info;
+          info = localtime(&mh->messages[i].time);
+          if (mh->messages[i].id == id) continue;
+          mh->messages[i].text[strcspn(mh->messages[i].text, "\n")] = 0;
+          switch (mh->messages[i].type) {
+            case (Text): {
+              printf("%s (id %d): %s (%d:%d) \n", mh->messages[i].sender,
+                     mh->messages[i].id, mh->messages[i].text, info->tm_hour,
+                     info->tm_min);
+              fflush(stdout);
+              break;
             }
+            case (Hello): {
+              printf("[INFO] %s (id %d) joined the chat! \n",
+                     mh->messages[i].sender, mh->messages[i].id);
+              fflush(stdout);
+              break;
+            }
+            case (Goodbye): {
+              printf("[INFO] %s (id %d) left the chat! \n",
+                     mh->messages[i].sender, mh->messages[i].id);
+              fflush(stdout);
+              break;
+            }
+          }
+        }
+      FREE:
+        Packet_free(&mh->header);
+        break;
+      }
+      case (WorldUpdate): {
+        WorldUpdatePacket* wup =
+            (WorldUpdatePacket*)Packet_deserialize(buf_rcv, bytes_read);
+        pthread_mutex_lock(&time_lock);
+        if (last_update_time.tv_sec != -1 &&
+            timercmp(&last_update_time, &wup->time, >=)) {
+          pthread_mutex_unlock(&time_lock);
+          debug_print("[INFO] Ignoring a WorldUpdatePacket... \n");
+          Packet_free(&wup->header);
+          usleep(RECEIVER_SLEEP);
+          continue;
+        }
+
+        debug_print("WorldUpdatePacket contains %d vehicles besides mine \n",
+                    wup->num_vehicles - 1);
+        last_update_time = wup->time;
+        pthread_mutex_unlock(&time_lock);
+        char mask[WORLDSIZE];
+        for (int k = 0; k < WORLDSIZE; k++) mask[k] = UNTOUCHED;
+        for (int i = 0; i < wup->num_vehicles; i++) {
+          int new_position = -1;
+          int id_struct = addUser(lw->ids, WORLDSIZE, wup->updates[i].id,
+                                  &new_position, &(lw->users_online));
+          if (wup->updates[i].id == id) {
+            pthread_mutex_lock(&lw->vehicles[0]->mutex);
+            //fprintf(stderr,"x: %f y: %f theta: %f tf: %f rf: %f \n",wup->updates[i].x, wup->updates[i].y,wup->updates[i].theta,wup->updates[i].translational_force,wup->updates[i].rotational_force);
+            Vehicle_setXYTheta(lw->vehicles[0], wup->updates[i].x,
+                               wup->updates[i].y, wup->updates[i].theta);
+            Vehicle_setForcesUpdate(lw->vehicles[0],
+                                    wup->updates[i].translational_force,
+                                    wup->updates[i].rotational_force);
+            World_manualUpdate(&world, lw->vehicles[0],
+                               wup->updates[i].client_update_time);
+            pthread_mutex_unlock(&lw->vehicles[0]->mutex);
+          } else if (id_struct == -1) {
+            if (new_position == -1) continue;
+            mask[new_position] = TOUCHED;
+            debug_print("New Vehicle with id %d and x: %f y: %f z: %f \n",
+                    wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
+                    wup->updates[i].theta);
             Image* img = getVehicleTexture(socket_tcp, wup->updates[i].id);
             if (img == NULL) continue;
             Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
             Vehicle_init(new_vehicle, &world, wup->updates[i].id, img);
-            lw->vehicles[id_struct] = new_vehicle;
+            lw->vehicles[new_position] = new_vehicle;
+            pthread_mutex_lock(&lw->vehicles[new_position]->mutex);
+            Vehicle_setXYTheta(lw->vehicles[new_position], wup->updates[i].x,
+                               wup->updates[i].y, wup->updates[i].theta);
+            Vehicle_setForcesUpdate(lw->vehicles[new_position],
+                                    wup->updates[i].translational_force,
+                                    wup->updates[i].rotational_force);
+            pthread_mutex_unlock(&lw->vehicles[new_position]->mutex);
+            World_addVehicle(&world, new_vehicle);
+            lw->has_vehicle[new_position] = 1;
+            lw->vehicle_login_time[new_position] =
+                wup->updates[i].client_creation_time;
+          } else {
+            mask[id_struct] = TOUCHED;
+            if (timercmp(&wup->updates[i].client_creation_time,
+                         &lw->vehicle_login_time[id_struct], !=)) {
+              debug_print("[WARNING] Forcing refresh for client with id %d",
+                          wup->updates[i].id);
+              if (lw->has_vehicle[id_struct]) {
+                Image* im = lw->vehicles[id_struct]->texture;
+                World_detachVehicle(&world, lw->vehicles[id_struct]);
+                Vehicle_destroy(lw->vehicles[id_struct]);
+                if (im != NULL) Image_free(im);
+                free(lw->vehicles[id_struct]);
+              }
+              Image* img = getVehicleTexture(socket_tcp, wup->updates[i].id);
+              if (img == NULL) continue;
+              Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
+              Vehicle_init(new_vehicle, &world, wup->updates[i].id, img);
+              lw->vehicles[id_struct] = new_vehicle;
+              pthread_mutex_lock(&lw->vehicles[id_struct]->mutex);
+              Vehicle_setXYTheta(lw->vehicles[id_struct], wup->updates[i].x,
+                                 wup->updates[i].y, wup->updates[i].theta);
+              Vehicle_setForcesUpdate(lw->vehicles[id_struct],
+                                      wup->updates[i].translational_force,
+                                      wup->updates[i].rotational_force);
+              World_manualUpdate(&world, lw->vehicles[id_struct],
+                                 wup->updates[i].client_update_time);
+              pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
+              World_addVehicle(&world, new_vehicle);
+              lw->has_vehicle[id_struct] = 1;
+              lw->vehicle_login_time[id_struct] =
+                  wup->updates[i].client_creation_time;
+              continue;
+            }
+            debug_print(
+                    "Updating Vehicle with id %d and x: %f y: %f z: %f \n",
+                    wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
+                    wup->updates[i].theta);
             pthread_mutex_lock(&lw->vehicles[id_struct]->mutex);
             Vehicle_setXYTheta(lw->vehicles[id_struct], wup->updates[i].x,
                                wup->updates[i].y, wup->updates[i].theta);
@@ -282,51 +401,46 @@ void* UDPReceiver(void* args) {
             World_manualUpdate(&world, lw->vehicles[id_struct],
                                wup->updates[i].client_update_time);
             pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
-            World_addVehicle(&world, new_vehicle);
-            lw->has_vehicle[id_struct] = 1;
-            lw->vehicle_login_time[id_struct] =
-                wup->updates[i].client_creation_time;
-            continue;
           }
-          fprintf(stdout,
-                  "Updating Vehicle with id %d and x: %f y: %f z: %f \n",
-                  wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
-                  wup->updates[i].theta);
-          pthread_mutex_lock(&lw->vehicles[id_struct]->mutex);
-          Vehicle_setXYTheta(lw->vehicles[id_struct], wup->updates[i].x,
-                             wup->updates[i].y, wup->updates[i].theta);
-          Vehicle_setForcesUpdate(lw->vehicles[id_struct],
-                                  wup->updates[i].translational_force,
-                                  wup->updates[i].rotational_force);
-          World_manualUpdate(&world, lw->vehicles[id_struct],
-                             wup->updates[i].client_update_time);
-          pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
         }
-      }
-      for (int i = 0; i < WORLDSIZE; i++) {
-        if (mask[i] == 1) continue;
-        if (i == 0) continue;
+        for (int i = 0; i < WORLDSIZE; i++) {
+          if (mask[i] == TOUCHED) continue;
+          if (i == 0) continue;
 
-        if (lw->ids[i] == id) continue;
-        if (mask[i] == NO_ACCESS && lw->ids[i] != -1) {
-          fprintf(stdout, "[WorldUpdate] Removing Vehicles with ID %d \n",
-                  lw->ids[i]);
-          lw->users_online = lw->users_online - 1;
-          if (!lw->has_vehicle[i]) continue;
-          Image* im = lw->vehicles[i]->texture;
-          World_detachVehicle(&world, lw->vehicles[i]);
-          if (im != NULL) Image_free(im);
-          Vehicle_destroy(lw->vehicles[i]);
-          lw->ids[i] = -1;
-          free(lw->vehicles[i]);
-          lw->has_vehicle[i] = 0;
+          if (lw->ids[i] == id) continue;
+          if (mask[i] == UNTOUCHED && lw->ids[i] != -1) {
+            debug_print("[WorldUpdate] Removing Vehicles with ID %d \n",
+                    lw->ids[i]);
+            lw->users_online = lw->users_online - 1;
+            if (!lw->has_vehicle[i]) continue;
+            Image* im = lw->vehicles[i]->texture;
+            World_detachVehicle(&world, lw->vehicles[i]);
+            if (im != NULL) Image_free(im);
+            Vehicle_destroy(lw->vehicles[i]);
+            lw->ids[i] = -1;
+            free(lw->vehicles[i]);
+            lw->has_vehicle[i] = 0;
+          }
         }
+        Packet_free(&wup->header);
+        break;
+      }
+      default: {
+        debug_print(
+                "[UDP_Receiver] Found an unknown udp packet. Terminating the "
+                "client now... \n");
+        sendGoodbye(socket_desc, socket_udp, id, messaging_enabled, username,
+                    udp_server);
+        connectivity = 0;
+        exchange_update = 0;
+        WorldViewer_exit(-1);
       }
     }
     usleep(RECEIVER_SLEEP);
   }
   pthread_exit(NULL);
 }
+
 int main(int argc, char** argv) {
   if (argc < 3) {
     printf("usage: %s <player texture> <port_number> \n", argv[1]);
@@ -418,10 +532,8 @@ int main(int argc, char** argv) {
   // UDP Init
   uint16_t port_number_udp =
       htons((uint16_t)UDPPORT);  // we use network byte order
-  int socket_udp = socket(AF_INET, SOCK_DGRAM, 0);
+  socket_udp = socket(AF_INET, SOCK_DGRAM, 0);
   ERROR_HELPER(socket_desc, "Can't create an UDP socket");
-  struct sockaddr_in udp_server = {
-      0};  // some fields are required to be filled with 0
   udp_server.sin_addr.s_addr = ip_addr;
   udp_server.sin_family = AF_INET;
   udp_server.sin_port = port_number_udp;
@@ -438,10 +550,15 @@ int main(int argc, char** argv) {
   PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_sender");
   ret = pthread_create(&UDP_receiver, NULL, UDPReceiver, &udp_args);
   PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_receiver");
-
+  // Create message-sender thread
+  pthread_t message_sender;
+  ret = pthread_create(&message_sender, NULL, messageSender, &udp_args);
+  PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_receiver");
 // Disconnect from server if required by macro
 SKIP:
-  if (SINGLEPLAYER) sendGoodbye(socket_desc, id);
+  if (SINGLEPLAYER)
+    sendGoodbye(socket_desc, socket_udp, id, messaging_enabled, username,
+                udp_server);
   WorldViewer_runGlobal(&world, vehicle, backgroud_track, &argc, argv);
 
   // Waiting threads to end and cleaning resources
@@ -453,12 +570,15 @@ SKIP:
     PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_sender failed");
     ret = pthread_join(UDP_receiver, NULL);
     PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_receiver failed");
+    ret = pthread_join(message_sender, NULL);
+    PTHREAD_ERROR_HELPER(ret, "pthread_join on thread message_sender failed");
     ret = close(socket_udp);
     ERROR_HELPER(ret, "Failed to close UDP socket");
   }
 
   fprintf(stdout, "[Main] Cleaning up... \n");
-  sendGoodbye(socket_desc, id);
+  sendGoodbye(socket_desc, socket_udp, id, messaging_enabled, username,
+              udp_server);
 
   // Clean resources
   pthread_mutex_destroy(&time_lock);
