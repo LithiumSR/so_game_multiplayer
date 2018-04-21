@@ -40,31 +40,42 @@ void AudioContext_init(AudioContext *ac, char *filename, char loop) {
 }
 
 void AudioContext_startTrackLoop(AudioContext *ac) {
+  if (ac==NULL) return;
   alSourcei(ac->source, AL_LOOPING, AL_TRUE);
   alSourcePlay(ac->source);
 }
 
 void AudioContext_startTrackNoLoop(AudioContext *ac) {
+  if (ac==NULL) return;
   alSourcePlay(ac->source);
 }
 
 void AudioContext_startTrack(AudioContext *ac) {
+  if (ac==NULL) return;
   if (ac->loop)
     AudioContext_startTrackLoop(ac);
   else
     AudioContext_startTrack(ac);
 }
 
-void AudioContext_pauseTrack(AudioContext *ac) { alSourcePause(ac->source); }
+void AudioContext_pauseTrack(AudioContext *ac) {
+  if (ac == NULL) return;
+  alSourcePause(ac->source);
+}
 
-void AudioContext_stopTrack(AudioContext *ac) { alSourceStop(ac->source); }
+void AudioContext_stopTrack(AudioContext *ac) {
+  if (ac == NULL) return;
+  alSourceStop(ac->source);
+}
 
 void AudioContext_setVolume(AudioContext *ac, float volume) {
+  if (ac == NULL) return;
   alSourcef(ac->source, AL_GAIN, volume);
   ac->volume = volume;
 }
 
 void AudioContext_free(AudioContext *ac) {
+  if (ac == NULL) return;
   AudioContext_stopTrack(ac);
   alDeleteSources(1, &ac->source);
   alDeleteBuffers(1, &ac->buffer);
