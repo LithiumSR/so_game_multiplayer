@@ -159,6 +159,13 @@ int UDPHandler(int socket_udp, char* buf_rcv, struct sockaddr_in client_addr) {
     }
     case (ChatMessage): {
       MessagePacket* mp = (MessagePacket*)Packet_deserialize(buf_rcv, ph->size);
+      pthread_mutex_lock(&users_mutex);
+      ClientListItem* user = ClientList_find_by_id(users, mp->message.id);
+      if (user == NULL || !user->inside_chat) {
+        pthread_mutex_unlock(&users_mutex);
+        return 0;
+      }
+      pthread_mutex_unlock(&users_mutex);
       MessageListItem* mli = (MessageListItem*)malloc(sizeof(MessageListItem));
       strncpy(mli->sender, mp->message.sender, USERNAME_LEN);
       strncpy(mli->text, mp->message.text, TEXT_LEN);
@@ -179,49 +186,125 @@ int UDPHandler(int socket_udp, char* buf_rcv, struct sockaddr_in client_addr) {
 int TCPHandler(int socket_desc, char* buf_rcv, Image* texture_map,
                Image* elevation_map, int id, int* isActive) {
   PacketHeader* header = (PacketHeader*)buf_rcv;
-  if (header->type == GetId) {
-    char buf_send[BUFFERSIZE];
-    IdPacket* response = (IdPacket*)malloc(sizeof(IdPacket));
-    PacketHeader ph;
-    ph.type = GetId;
-    response->header = ph;
-    response->id = id;
-    int msg_len = Packet_serialize(buf_send, &(response->header));
-    debug_print("[Send ID] bytes written in the buffer: %d\n", msg_len);
-    int ret = 0;
-    int bytes_sent = 0;
-    while (bytes_sent < msg_len) {
-      ret = send(socket_desc, buf_send + bytes_sent, msg_len - bytes_sent, 0);
-      if (ret == -1 && errno == EINTR) continue;
-      ERROR_HELPER(ret, "Can't assign ID");
-      if (ret == 0) break;
-      bytes_sent += ret;
-    }
-    Packet_free(&(response->header));
-    debug_print("[Send ID] Sent %d bytes \n", bytes_sent);
-    return 0;
-  } else if (header->type == GetTexture) {
-    char buf_send[BUFFERSIZE];
-    ImagePacket* image_request = (ImagePacket*)buf_rcv;
-    if (image_request->id >= 0) {
-      if (image_request->id == 0)
-        debug_print(
-            "[WARNING] Received GetTexture with id 0 which is highly "
-            "unlikeable \n");
+  switch (header->type) {
+    case (GetId): {
       char buf_send[BUFFERSIZE];
-      ImagePacket* image_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
-      PacketHeader im_head;
-      im_head.type = PostTexture;
+      IdPacket* response = (IdPacket*)malloc(sizeof(IdPacket));
+      PacketHeader ph;
+      ph.type = GetId;
+      response->header = ph;
+      response->id = id;
+      int msg_len = Packet_serialize(buf_send, &(response->header));
+      debug_print("[Send ID] bytes written in the buffer: %d\n", msg_len);
+      int ret = 0;
+      int bytes_sent = 0;
+      while (bytes_sent < msg_len) {
+        ret = send(socket_desc, buf_send + bytes_sent, msg_len - bytes_sent, 0);
+        if (ret == -1 && errno == EINTR) continue;
+        ERROR_HELPER(ret, "Can't assign ID");
+        if (ret == 0) break;
+        bytes_sent += ret;
+      }
+      Packet_free(&(response->header));
+      debug_print("[Send ID] Sent %d bytes \n", bytes_sent);
+      return 0;
+    }
+    case (ChatMessage): {
+      char buf_send[BUFFERSIZE];
+      MessagePacket* deserialized_packet =
+          (MessagePacket*)Packet_deserialize(buf_rcv, header->size);
+      char result = 0;
       pthread_mutex_lock(&users_mutex);
-      ClientListItem* el = ClientList_find_by_id(users, image_request->id);
+      ClientListItem* client =
+          ClientList_find_by_id(users, deserialized_packet->message.id);
+      if (client == NULL || deserialized_packet->message.type != Hello) {
+        Packet_free(&deserialized_packet->header);
+        pthread_mutex_unlock(&users_mutex);
+        return -1;
+      }
+      if (client->inside_chat)
+        result = -1;
+      else {
+        strncpy(client->username, deserialized_packet->message.sender,
+                USERNAME_LEN);
+        result = deserialized_packet->message.id;
+        client->inside_chat = 1;
+      }
+      pthread_mutex_unlock(&users_mutex);
+      IdPacket* response = (IdPacket*)malloc(sizeof(IdPacket));
+      PacketHeader ph;
+      ph.type = GetId;
+      response->header = ph;
+      response->id = result;
+      int msg_len = Packet_serialize(buf_send, &(response->header));
+      debug_print("[Get username] bytes written in the buffer: %d\n", msg_len);
+      int ret = 0;
+      int bytes_sent = 0;
+      while (bytes_sent < msg_len) {
+        ret = send(socket_desc, buf_send + bytes_sent, msg_len - bytes_sent, 0);
+        if (ret == -1 && errno == EINTR) continue;
+        ERROR_HELPER(ret, "Can't send username response");
+        if (ret == 0) break;
+        bytes_sent += ret;
+      }
+      Packet_free(&(response->header));
+      Packet_free(&(deserialized_packet->header));
+      if (result != -1) {
+        pthread_mutex_lock(&messages_mutex);
+        MessageListItem* mli =
+            (MessageListItem*)malloc(sizeof(MessageListItem));
+        mli->id = deserialized_packet->message.id;
+        strncpy(mli->sender, deserialized_packet->message.sender, USERNAME_LEN);
+        mli->type = Hello;
+        time(&mli->time);
+        MessageList_insert(messages, mli);
+        pthread_mutex_unlock(&messages_mutex);
+      }
+      return 0;
+    }
+    case (GetTexture): {
+      char buf_send[BUFFERSIZE];
+      ImagePacket* image_request = (ImagePacket*)buf_rcv;
+      if (image_request->id >= 0) {
+        if (image_request->id == 0)
+          debug_print(
+              "[WARNING] Received GetTexture with id 0 which is highly "
+              "unlikeable \n");
+        char buf_send[BUFFERSIZE];
+        ImagePacket* image_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
+        PacketHeader im_head;
+        im_head.type = PostTexture;
+        pthread_mutex_lock(&users_mutex);
+        ClientListItem* el = ClientList_find_by_id(users, image_request->id);
 
-      if (el == NULL && !el->inside_world) {
-        PacketHeader pheader;
-        pheader.type = PostDisconnect;
-        IdPacket* id_pckt = (IdPacket*)malloc(sizeof(IdPacket));
-        id_pckt->header = pheader;
-        int msg_len = Packet_serialize(buf_send, &id_pckt->header);
-        id_pckt->id = -1;
+        if (el == NULL && !el->inside_world) {
+          PacketHeader pheader;
+          pheader.type = PostDisconnect;
+          IdPacket* id_pckt = (IdPacket*)malloc(sizeof(IdPacket));
+          id_pckt->header = pheader;
+          int msg_len = Packet_serialize(buf_send, &id_pckt->header);
+          id_pckt->id = -1;
+          int bytes_sent = 0;
+          int ret = 0;
+          while (bytes_sent < msg_len) {
+            ret = send(socket_desc, buf_send + bytes_sent, msg_len - bytes_sent,
+                       0);
+            if (ret == -1 && errno == EINTR) continue;
+            ERROR_HELPER(ret, "Can't send map texture over TCP");
+            bytes_sent += ret;
+          }
+          free(id_pckt);
+          free(image_packet);
+          pthread_mutex_unlock(&users_mutex);
+          return -1;
+        }
+        pthread_mutex_unlock(&users_mutex);
+        image_packet->id = image_request->id;
+        image_packet->image = el->v_texture;
+        image_packet->header = im_head;
+        int msg_len = Packet_serialize(buf_send, &image_packet->header);
+        debug_print("[Send Vehicle Texture] bytes written in the buffer: %d\n",
+                    msg_len);
         int bytes_sent = 0;
         int ret = 0;
         while (bytes_sent < msg_len) {
@@ -231,17 +314,18 @@ int TCPHandler(int socket_desc, char* buf_rcv, Image* texture_map,
           ERROR_HELPER(ret, "Can't send map texture over TCP");
           bytes_sent += ret;
         }
-        free(id_pckt);
+
         free(image_packet);
-        pthread_mutex_unlock(&users_mutex);
-        return -1;
+        debug_print("[Send Vehicle Texture] Sent %d bytes \n", bytes_sent);
+        return 0;
       }
-      pthread_mutex_unlock(&users_mutex);
-      image_packet->id = image_request->id;
-      image_packet->image = el->v_texture;
+      ImagePacket* image_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
+      PacketHeader im_head;
+      im_head.type = PostTexture;
+      image_packet->image = texture_map;
       image_packet->header = im_head;
       int msg_len = Packet_serialize(buf_send, &image_packet->header);
-      debug_print("[Send Vehicle Texture] bytes written in the buffer: %d\n",
+      debug_print("[Send Map Texture] bytes written in the buffer: %d\n",
                   msg_len);
       int bytes_sent = 0;
       int ret = 0;
@@ -249,122 +333,104 @@ int TCPHandler(int socket_desc, char* buf_rcv, Image* texture_map,
         ret = send(socket_desc, buf_send + bytes_sent, msg_len - bytes_sent, 0);
         if (ret == -1 && errno == EINTR) continue;
         ERROR_HELPER(ret, "Can't send map texture over TCP");
+        if (ret == 0) break;
+        bytes_sent += ret;
+      }
+      free(image_packet);
+      debug_print("[Send Map Texture] Sent %d bytes \n", bytes_sent);
+      return 0;
+    }
+
+    case (GetElevation): {
+      char buf_send[BUFFERSIZE];
+      ImagePacket* image_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
+      PacketHeader im_head;
+      im_head.type = PostElevation;
+      image_packet->image = elevation_map;
+      image_packet->header = im_head;
+      int msg_len = Packet_serialize(buf_send, &image_packet->header);
+      printf("[Send Map Elevation] bytes written in the buffer: %d\n", msg_len);
+      int bytes_sent = 0;
+      int ret = 0;
+      while (bytes_sent < msg_len) {
+        ret = send(socket_desc, buf_send + bytes_sent, msg_len - bytes_sent, 0);
+        if (ret == -1 && errno == EINTR) continue;
+        ERROR_HELPER(ret, "Can't send map elevation over TCP");
+        if (ret == 0) break;
         bytes_sent += ret;
       }
 
       free(image_packet);
-      debug_print("[Send Vehicle Texture] Sent %d bytes \n", bytes_sent);
+      debug_print("[Send Map Elevation] Sent %d bytes \n", bytes_sent);
       return 0;
     }
-    ImagePacket* image_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
-    PacketHeader im_head;
-    im_head.type = PostTexture;
-    image_packet->image = texture_map;
-    image_packet->header = im_head;
-    int msg_len = Packet_serialize(buf_send, &image_packet->header);
-    debug_print("[Send Map Texture] bytes written in the buffer: %d\n",
-                msg_len);
-    int bytes_sent = 0;
-    int ret = 0;
-    while (bytes_sent < msg_len) {
-      ret = send(socket_desc, buf_send + bytes_sent, msg_len - bytes_sent, 0);
-      if (ret == -1 && errno == EINTR) continue;
-      ERROR_HELPER(ret, "Can't send map texture over TCP");
-      if (ret == 0) break;
-      bytes_sent += ret;
+    case (GetAudioInfo): {
+      char buf_send[BUFFERSIZE];
+      AudioInfoPacket* response = (AudioInfoPacket*)malloc(sizeof(IdPacket));
+      PacketHeader ph;
+      ph.type = PostAudioInfo;
+      response->header = ph;
+      response->track_number = BACKGROUND_TRACK;
+      response->loop = LOOP_BACKGROUND_TRACK;
+      response->type = Track;
+      int msg_len = Packet_serialize(buf_send, &(response->header));
+      debug_print("[Send ID] bytes written in the buffer: %d\n", msg_len);
+      int ret = 0;
+      int bytes_sent = 0;
+      while (bytes_sent < msg_len) {
+        ret = send(socket_desc, buf_send + bytes_sent, msg_len - bytes_sent, 0);
+        if (ret == -1 && errno == EINTR) continue;
+        ERROR_HELPER(ret, "Can't assign ID");
+        if (ret == 0) break;
+        bytes_sent += ret;
+      }
+      Packet_free(&(response->header));
+      debug_print("[Send ID] Sent %d bytes \n", bytes_sent);
+      return 0;
     }
-    free(image_packet);
-    debug_print("[Send Map Texture] Sent %d bytes \n", bytes_sent);
-    return 0;
-  }
+    case (PostTexture): {
+      ImagePacket* deserialized_packet =
+          (ImagePacket*)Packet_deserialize(buf_rcv, header->size);
+      Image* user_texture = deserialized_packet->image;
+      pthread_mutex_lock(&users_mutex);
+      ClientListItem* user =
+          ClientList_find_by_id(users, deserialized_packet->id);
+      ClientList_print(users);
+      fflush(stdout);
 
-  else if (header->type == GetElevation) {
-    char buf_send[BUFFERSIZE];
-    ImagePacket* image_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
-    PacketHeader im_head;
-    im_head.type = PostElevation;
-    image_packet->image = elevation_map;
-    image_packet->header = im_head;
-    int msg_len = Packet_serialize(buf_send, &image_packet->header);
-    printf("[Send Map Elevation] bytes written in the buffer: %d\n", msg_len);
-    int bytes_sent = 0;
-    int ret = 0;
-    while (bytes_sent < msg_len) {
-      ret = send(socket_desc, buf_send + bytes_sent, msg_len - bytes_sent, 0);
-      if (ret == -1 && errno == EINTR) continue;
-      ERROR_HELPER(ret, "Can't send map elevation over TCP");
-      if (ret == 0) break;
-      bytes_sent += ret;
-    }
-
-    free(image_packet);
-    debug_print("[Send Map Elevation] Sent %d bytes \n", bytes_sent);
-    return 0;
-  } else if (header->type == GetAudioInfo) {
-    char buf_send[BUFFERSIZE];
-    AudioInfoPacket* response = (AudioInfoPacket*)malloc(sizeof(IdPacket));
-    PacketHeader ph;
-    ph.type = PostAudioInfo;
-    response->header = ph;
-    response->track_number = BACKGROUND_TRACK;
-    response->loop = LOOP_BACKGROUND_TRACK;
-    response->type = Track;
-    int msg_len = Packet_serialize(buf_send, &(response->header));
-    debug_print("[Send ID] bytes written in the buffer: %d\n", msg_len);
-    int ret = 0;
-    int bytes_sent = 0;
-    while (bytes_sent < msg_len) {
-      ret = send(socket_desc, buf_send + bytes_sent, msg_len - bytes_sent, 0);
-      if (ret == -1 && errno == EINTR) continue;
-      ERROR_HELPER(ret, "Can't assign ID");
-      if (ret == 0) break;
-      bytes_sent += ret;
-    }
-    Packet_free(&(response->header));
-    debug_print("[Send ID] Sent %d bytes \n", bytes_sent);
-    return 0;
-  } else if (header->type == PostTexture) {
-    ImagePacket* deserialized_packet =
-        (ImagePacket*)Packet_deserialize(buf_rcv, header->size);
-    Image* user_texture = deserialized_packet->image;
-    pthread_mutex_lock(&users_mutex);
-    ClientListItem* user =
-        ClientList_find_by_id(users, deserialized_packet->id);
-    ClientList_print(users);
-    fflush(stdout);
-
-    if (user == NULL) {
-      debug_print("[Set Texture] User not found \n");
+      if (user == NULL) {
+        debug_print("[Set Texture] User not found \n");
+        pthread_mutex_unlock(&users_mutex);
+        Packet_free(&(deserialized_packet->header));
+        return -1;
+      }
+      if (user->inside_world) {
+        pthread_mutex_unlock(&users_mutex);
+        Packet_free(&(deserialized_packet->header));
+        return 0;
+      }
+      user->v_texture = user_texture;
+      Vehicle* vehicle = (Vehicle*)malloc(sizeof(Vehicle));
+      Vehicle_init(vehicle, &server_world, id, user->v_texture);
+      user->vehicle = vehicle;
+      user->inside_world = 1;
+      World_addVehicle(&server_world, vehicle);
       pthread_mutex_unlock(&users_mutex);
-      Packet_free(&(deserialized_packet->header));
+      debug_print("[Set Texture] Vehicle texture applied to user with id %d \n",
+                  id);
+      free(deserialized_packet);
+      return 0;
+    }
+    case (PostDisconnect): {
+      debug_print("[Notify Disconnect] User disconnect...");
+      *isActive = 0;
+      return 0;
+    }
+    default: {
+      *isActive = 0;
+      printf("[TCP Handler] Unknown packet. Cleaning resources...\n");
       return -1;
     }
-    if (user->inside_world) {
-      pthread_mutex_unlock(&users_mutex);
-      Packet_free(&(deserialized_packet->header));
-      return 0;
-    }
-    user->v_texture = user_texture;
-    Vehicle* vehicle = (Vehicle*)malloc(sizeof(Vehicle));
-    Vehicle_init(vehicle, &server_world, id, user->v_texture);
-    user->vehicle = vehicle;
-    user->inside_world = 1;
-    World_addVehicle(&server_world, vehicle);
-    pthread_mutex_unlock(&users_mutex);
-    debug_print("[Set Texture] Vehicle texture applied to user with id %d \n",
-                id);
-    free(deserialized_packet);
-    return 0;
-  } else if (header->type == PostDisconnect) {
-    debug_print("[Notify Disconnect] User disconnect...");
-    *isActive = 0;
-    return 0;
-  }
-
-  else {
-    *isActive = 0;
-    printf("[TCP Handler] Unknown packet. Cleaning resources...\n");
-    return -1;
   }
 }
 
@@ -380,6 +446,7 @@ void* TCPFlow(void* args) {
   user->user_addr_tcp = tcp_args->client_addr;
   user->is_udp_addr_ready = 0;
   user->inside_world = 0;
+  user->inside_chat = 0;
   user->v_texture = NULL;
   user->vehicle = NULL;
   user->afk_counter = 0;
@@ -430,6 +497,9 @@ EXIT:
   if (el == NULL) goto END;
   ClientListItem* del = ClientList_detach(users, el);
   if (del == NULL) goto END;
+  pthread_mutex_lock(&messages_mutex);
+  MessageList_addDisconnectMessage(messages, del);
+  pthread_mutex_unlock(&messages_mutex);
   if (!del->inside_world) goto END;
   World_detachVehicle(&server_world, del->vehicle);
   Vehicle_destroy(del->vehicle);
@@ -769,6 +839,9 @@ void* garbageCollector(void* args) {
         sendDisconnect(socket_udp, tmp->user_addr_udp);
         ClientListItem* del = ClientList_detach(users, tmp);
         if (del == NULL) continue;
+        pthread_mutex_lock(&messages_mutex);
+        MessageList_addDisconnectMessage(messages, del);
+        pthread_mutex_unlock(&messages_mutex);
         if (!del->inside_world) goto SKIP;
         World_detachVehicle(&server_world, del->vehicle);
         Vehicle_destroy(del->vehicle);
@@ -791,6 +864,9 @@ void* garbageCollector(void* args) {
           sendDisconnect(socket_udp, tmp->user_addr_udp);
           ClientListItem* del = ClientList_detach(users, tmp);
           if (del == NULL) continue;
+          pthread_mutex_lock(&messages_mutex);
+          MessageList_addDisconnectMessage(messages, del);
+          pthread_mutex_unlock(&messages_mutex);
           if (!del->inside_world) goto SKIP2;
           World_detachVehicle(&server_world, del->vehicle);
           Vehicle_destroy(del->vehicle);
@@ -1014,7 +1090,6 @@ int main(int argc, char** argv) {
   // Delete list
   ClientList_destroy(users);
   MessageList_destroy(messages);
-  pthread_mutex_unlock(&users_mutex);
   pthread_mutex_destroy(&users_mutex);
   pthread_mutex_destroy(&messages_mutex);
   // Close descriptors
