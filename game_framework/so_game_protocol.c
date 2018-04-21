@@ -29,6 +29,14 @@ int Packet_serialize(char* dest, const PacketHeader* h) {
       dest_end += sizeof(MessagePacket);
       break;
     }
+    case ChatHistory: {
+      const MessageHistory* mh = (MessageHistory*)h;
+      memcpy(dest, mh, sizeof(MessageHistory));
+      dest_end += sizeof(MessageHistory);
+      memcpy(dest_end, mh->messages, mh->num_messages * sizeof(Message));
+      dest_end += mh->num_messages * sizeof(Message);
+      break;
+    }
     case PostTexture:
     case PostElevation: {
       printf("cast\n");
@@ -91,10 +99,18 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
       return (PacketHeader*)audio_packet;
     }
     case ChatMessage: {
-      MessagePacket* mp =
-          (MessagePacket*)malloc(sizeof(MessagePacket));
+      MessagePacket* mp = (MessagePacket*)malloc(sizeof(MessagePacket));
       memcpy(mp, buffer, sizeof(MessagePacket));
       return (PacketHeader*)mp;
+    }
+    case ChatHistory: {
+      MessageHistory* mh = (MessageHistory*)malloc(sizeof(MessageHistory));
+      memcpy(mh, buffer, sizeof(MessageHistory));
+      // we get the number of messages
+      mh->messages = (Message*)malloc(mh->num_messages * sizeof(Message));
+      buffer += sizeof(MessageHistory);
+      memcpy(mh->messages, buffer, mh->num_messages * sizeof(Message));
+      return (PacketHeader*)mh;
     }
     case PostTexture:
     case PostElevation: {
@@ -153,6 +169,12 @@ void Packet_free(PacketHeader* h) {
     case GetAudioInfo:
     case PostAudioInfo: {
       free(h);
+      return;
+    }
+    case ChatHistory: {
+      MessageHistory* mh = (MessageHistory*)h;
+      if (mh->num_messages) free(mh->messages);
+      free(mh);
       return;
     }
     case WorldUpdate: {

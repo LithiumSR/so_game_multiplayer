@@ -17,7 +17,8 @@ typedef enum {
   PostDisconnect = 0x8,
   GetAudioInfo = 0x9,
   PostAudioInfo = 0x10,
-  ChatMessage = 0x11
+  ChatMessage = 0x11,
+  ChatHistory = 0x12
 } Type;
 
 #ifdef _USE_SERVER_SIDE_FOG_
@@ -74,6 +75,7 @@ typedef struct {
   int id;
   char sender[USERNAME_LEN];
   char text[TEXT_LEN];
+  time_t time;  // Used only by server to save the time the message was received
 } Message;
 
 typedef struct {
@@ -82,7 +84,8 @@ typedef struct {
 } MessagePacket;
 
 typedef struct {
-  int number_messages;
+  PacketHeader header;
+  int num_messages;
   Message* messages;
 } MessageHistory;
 
