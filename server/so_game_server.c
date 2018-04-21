@@ -15,6 +15,7 @@
 #include "../client/client_op.h"
 #include "../common/common.h"
 #include "../game_framework/client_list.h"
+#include "../game_framework/message_list.h"
 #include "../game_framework/so_game_protocol.h"
 #include "../game_framework/vehicle.h"
 #define RECEIVER_SLEEP 50 * 1000
@@ -22,12 +23,14 @@
 #define _USE_SERVER_SIDE_FOG_
 #endif
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t users_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t messages_mutex = PTHREAD_MUTEX_INITIALIZER;
 int connectivity = 1;
 int exchange_update = 1;
 int clean_garbage = 1;
 int has_users = 0;
 ClientListHead *users;
+MessageListHead *messages;
 uint16_t port_number_no;
 int server_tcp = -1;
 int server_udp;
@@ -84,7 +87,7 @@ int UDPHandler(int socket_udp, char *buf_rcv, struct sockaddr_in client_addr) {
     case (VehicleUpdate): {
       VehicleUpdatePacket *vup =
           (VehicleUpdatePacket *)Packet_deserialize(buf_rcv, ph->size);
-      pthread_mutex_lock(&mutex);
+      pthread_mutex_lock(&users_mutex);
       ClientListItem *client = ClientList_find_by_id(users, vup->id);
       if (client == NULL) {
         debug_print(
@@ -93,7 +96,7 @@ int UDPHandler(int socket_udp, char *buf_rcv, struct sockaddr_in client_addr) {
             vup->id);
         Packet_free(&vup->header);
         sendDisconnect(socket_udp, client_addr);
-        pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&users_mutex);
         return -1;
       }
       if (!(client->last_update_time.tv_sec == -1 ||
@@ -134,8 +137,21 @@ int UDPHandler(int socket_udp, char *buf_rcv, struct sockaddr_in client_addr) {
               "from id %d... \n",
               ph->size, vup->id);
     END:
-      pthread_mutex_unlock(&mutex);
+      pthread_mutex_unlock(&users_mutex);
       Packet_free(&vup->header);
+      return 0;
+    }
+    case (ChatMessage): {
+      MessagePacket* mp = (MessagePacket*)Packet_deserialize(buf_rcv, ph->size);
+      MessageListItem* mli = (MessageListItem*)malloc(sizeof(MessageListItem));
+      strncpy(mli->sender, mp->message.sender, USERNAME_LEN);
+      strncpy(mli->text, mp->message.text, TEXT_LEN);
+      mli->id = mp->message.id;
+      time(&mli->time);
+      pthread_mutex_lock(&messages_mutex);
+      MessageList_insert(messages, mli);
+      Packet_free(&mp->header);
+      pthread_mutex_unlock(&messages_mutex);
       return 0;
     }
     default:
@@ -179,11 +195,11 @@ int TCPHandler(int socket_desc, char *buf_rcv, Image *texture_map,
       ImagePacket *image_packet = (ImagePacket *)malloc(sizeof(ImagePacket));
       PacketHeader im_head;
       im_head.type = PostTexture;
-      pthread_mutex_lock(&mutex);
+      pthread_mutex_lock(&users_mutex);
       ClientListItem *el = ClientList_find_by_id(users, image_request->id);
 
       if (el == NULL) {
-        pthread_mutex_unlock(&mutex);
+        pthread_mutex_unlock(&users_mutex);
         PacketHeader pheader;
         pheader.type = PostDisconnect;
         IdPacket *idPckt = (IdPacket *)malloc(sizeof(IdPacket));
@@ -205,7 +221,7 @@ int TCPHandler(int socket_desc, char *buf_rcv, Image *texture_map,
       }
 
       image_packet->image = el->v_texture;
-      pthread_mutex_unlock(&mutex);
+      pthread_mutex_unlock(&users_mutex);
       image_packet->header = im_head;
       int msg_len = Packet_serialize(buf_send, &image_packet->header);
       debug_print("[Send Vehicle Texture] bytes written in the buffer: %d\n",
@@ -297,7 +313,7 @@ int TCPHandler(int socket_desc, char *buf_rcv, Image *texture_map,
         (ImagePacket *)Packet_deserialize(buf_rcv, header->size);
     Image *user_texture = deserialized_packet->image;
 
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&users_mutex);
     ClientListItem *user =
         ClientList_find_by_id(users, deserialized_packet->id);
     ClientList_print(users);
@@ -305,11 +321,11 @@ int TCPHandler(int socket_desc, char *buf_rcv, Image *texture_map,
 
     if (user == NULL) {
       debug_print("[Set Texture] User not found \n");
-      pthread_mutex_unlock(&mutex);
+      pthread_mutex_unlock(&users_mutex);
       return -1;
     }
     user->v_texture = user_texture;
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&users_mutex);
     debug_print("[Set Texture] Vehicle texture applied to user with id %d \n",
                 id);
     free(deserialized_packet);
@@ -331,7 +347,7 @@ int TCPHandler(int socket_desc, char *buf_rcv, Image *texture_map,
 void *TCPFlow(void *args) {
   tcpArgs *tcp_args = (tcpArgs *)args;
   int sock_fd = tcp_args->client_desc;
-  pthread_mutex_lock(&mutex);
+  pthread_mutex_lock(&users_mutex);
   ClientListItem *user = malloc(sizeof(ClientListItem));
   user->v_texture = NULL;
   gettimeofday(&user->creation_time, NULL);
@@ -349,7 +365,7 @@ void *TCPFlow(void *args) {
   ClientList_insert(users, user);
   ClientList_print(users);
   has_users = 1;
-  pthread_mutex_unlock(&mutex);
+  pthread_mutex_unlock(&users_mutex);
   int ph_len = sizeof(PacketHeader);
   int isActive = 1;
   while (connectivity && isActive) {
@@ -382,7 +398,7 @@ void *TCPFlow(void *args) {
   }
 EXIT:
   printf("Freeing resources...");
-  pthread_mutex_lock(&mutex);
+  pthread_mutex_lock(&users_mutex);
   ClientListItem *el = ClientList_find_by_id(users, sock_fd);
   if (el == NULL) goto END;
   ClientListItem *del = ClientList_detach(users, el);
@@ -393,7 +409,7 @@ EXIT:
   free(del);
   ClientList_print(users);
 END:
-  pthread_mutex_unlock(&mutex);
+  pthread_mutex_unlock(&users_mutex);
   close(sock_fd);
   pthread_exit(NULL);
 }
@@ -430,6 +446,48 @@ void *UDPReceiver(void *args) {
   pthread_exit(NULL);
 }
 
+
+int sendMessages(int socket_udp) {
+  char buf_send[BUFFERSIZE];
+  pthread_mutex_lock(&messages_mutex);
+  int size = 0;
+  if (messages->size == 0) goto END;
+  PacketHeader ph;
+  ph.type = ChatHistory;
+  MessageHistory* mh = (MessageHistory*)malloc(sizeof(MessageHistory));
+  mh->header = ph;
+  mh->num_messages = messages->size;
+  mh->messages = (Message*)malloc(sizeof(Message) * mh->num_messages);
+  MessageListItem* mli = messages->first;
+  for (int i = 0; i < mh->num_messages; i++) {
+    strncpy(mh->messages[i].sender, mli->sender, USERNAME_LEN);
+    strncpy(mh->messages[i].text, mli->text, TEXT_LEN);
+    mh->messages[i].id = mli->id;
+    mh->messages[i].time = mli->time;
+    mli = mli->next;
+  }
+  size = Packet_serialize(buf_send, &mh->header);
+  if (size == 0 || size == -1) goto END;
+  pthread_mutex_lock(&users_mutex);
+  ClientListItem* client = users->first;
+  for (; client != NULL; client = client->next) {
+    if (!client->is_udp_addr_ready) continue;
+    int ret = sendto(socket_udp, buf_send, size, 0,
+                     (struct sockaddr*)&client->user_addr_udp,
+                     (socklen_t)sizeof(client->user_addr_udp));
+    if (ret < size)
+      debug_print(
+          "[MessageSender] Something went wrong when sending the packet over "
+          "UDP \n ");
+  }
+  pthread_mutex_unlock(&users_mutex);
+  Packet_free(&mh->header);
+  MessageList_removeAll(messages);
+END:
+  pthread_mutex_unlock(&messages_mutex);
+  return size;
+}
+
 // Send WorldUpdatePacket to every client that sent al least one
 // VehicleUpdatePacket
 #ifdef _USE_SERVER_SIDE_FOG_
@@ -440,7 +498,9 @@ void *UDPSender(void *args) {
       sleep(1);
       continue;
     }
-    pthread_mutex_lock(&mutex);
+    int bytes_sent = sendMessages(socket_udp);
+    debug_print("Messages sent - %d bytes", bytes_sent);
+    pthread_mutex_lock(&users_mutex);
     ClientListItem *client = users->first;
     client = users->first;
     struct timeval time;
@@ -533,7 +593,7 @@ void *UDPSender(void *args) {
       client = client->next;
     }
     fprintf(stdout, "[UDP_Send] WorldUpdatePacket sent to each client \n");
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&users_mutex);
     sleep(1);
   }
   pthread_exit(NULL);
@@ -548,14 +608,15 @@ void *UDPSender(void *args) {
       sleep(1);
       continue;
     }
+    int bytes_sent = sendMessages(socket_udp);
+    debug_print("Messages sent - %d bytes", bytes_sent);
     char buf_send[BUFFERSIZE];
-
     PacketHeader ph;
     ph.type = WorldUpdate;
     WorldUpdatePacket *wup =
         (WorldUpdatePacket *)malloc(sizeof(WorldUpdatePacket));
     wup->header = ph;
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&users_mutex);
     int n;
     ClientListItem *client = users->first;
     for (n = 0; client != NULL; client = client->next) {
@@ -567,7 +628,7 @@ void *UDPSender(void *args) {
             "about %d users \n",
             n);
     if (n == 0) {
-      pthread_mutex_unlock(&mutex);
+      pthread_mutex_unlock(&users_mutex);
       sleep(1);
       continue;
     }
@@ -596,7 +657,7 @@ void *UDPSender(void *args) {
 
     int size = Packet_serialize(buf_send, &wup->header);
     if (size == 0 || size == -1) {
-      pthread_mutex_unlock(&mutex);
+      pthread_mutex_unlock(&users_mutex);
       sleep(1);
       continue;
     }
@@ -614,7 +675,7 @@ void *UDPSender(void *args) {
     }
     Packet_free(&(wup->header));
     fprintf(stdout, "[UDP_Send] WorldUpdatePacket sent to each client \n");
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&users_mutex);
     sleep(1);
   }
   pthread_exit(NULL);
@@ -628,7 +689,7 @@ void *garbageCollector(void *args) {
   int socket_udp = *(int *)args;
   while (clean_garbage) {
     if (has_users == 0) goto END;
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&users_mutex);
     ClientListItem *client = users->first;
     long current_time = (long)time(NULL);
     int count = 0;
@@ -684,7 +745,7 @@ void *garbageCollector(void *args) {
     if (count > 0)
       fprintf(stdout, "[GC] Removed %d users from the client list \n", count);
   END:
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&users_mutex);
     sleep(10);
   }
   pthread_exit(NULL);
@@ -761,7 +822,9 @@ int main(int argc, char **argv) {
 
   // init List structure
   users = malloc(sizeof(ClientListHead));
+  messages = malloc(sizeof(MessageListHead));
   ClientList_init(users);
+  MessageList_init(messages);
   fprintf(stdout, "[Main] Initialized users list \n");
 
   // seting signal handlers
@@ -843,10 +906,11 @@ int main(int argc, char **argv) {
   debug_print("[Main] GC ended... \n");
   debug_print("[Main] Freeing resources... \n");
   // Delete list
-  pthread_mutex_lock(&mutex);
   ClientList_destroy(users);
-  pthread_mutex_unlock(&mutex);
-  pthread_mutex_destroy(&mutex);
+  MessageList_destroy(messages);
+  pthread_mutex_unlock(&users_mutex);
+  pthread_mutex_destroy(&users_mutex);
+  pthread_mutex_destroy(&messages_mutex);
   // Close descriptors
   ret = close(server_tcp);
   ERROR_HELPER(ret, "Failed close() on server_tcp socket");
