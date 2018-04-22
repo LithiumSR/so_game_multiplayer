@@ -149,15 +149,16 @@ int UDPHandler(int socket_udp, char *buf_rcv, struct sockaddr_in client_addr) {
     case (ChatMessage): {
       MessagePacket *mp =
           (MessagePacket *)Packet_deserialize(buf_rcv, ph->size);
+      MessageListItem *mli = (MessageListItem *)malloc(sizeof(MessageListItem));
       pthread_mutex_lock(&users_mutex);
       ClientListItem *user = ClientList_find_by_id(users, mp->message.id);
       if (user == NULL || !user->inside_chat) {
+        free(mli);
         pthread_mutex_unlock(&users_mutex);
         return 0;
       }
+      strncpy(mli->sender, user->username, USERNAME_LEN);
       pthread_mutex_unlock(&users_mutex);
-      MessageListItem *mli = (MessageListItem *)malloc(sizeof(MessageListItem));
-      strncpy(mli->sender, mp->message.sender, USERNAME_LEN);
       strncpy(mli->text, mp->message.text, TEXT_LEN);
       mli->id = mp->message.id;
       mli->type = mp->message.type;
@@ -199,15 +200,15 @@ int TCPHandler(int socket_desc, char *buf_rcv, Image *texture_map,
       debug_print("[Send ID] Sent %d bytes \n", bytes_sent);
       return 0;
     }
-    case (ChatMessage): {
+    case (ChatAuth): {
       char buf_send[BUFFERSIZE];
-      MessagePacket *deserialized_packet =
-          (MessagePacket *)Packet_deserialize(buf_rcv, header->size);
+      MessageAuth *deserialized_packet =
+          (MessageAuth *)Packet_deserialize(buf_rcv, header->size);
       char result = 0;
       pthread_mutex_lock(&users_mutex);
       ClientListItem *client =
-          ClientList_find_by_id(users, deserialized_packet->message.id);
-      if (client == NULL || deserialized_packet->message.type != Hello) {
+          ClientList_find_by_id(users, deserialized_packet->id);
+      if (client == NULL) {
         Packet_free(&deserialized_packet->header);
         pthread_mutex_unlock(&users_mutex);
         return -1;
@@ -215,9 +216,8 @@ int TCPHandler(int socket_desc, char *buf_rcv, Image *texture_map,
       if (client->inside_chat)
         result = -1;
       else {
-        strncpy(client->username, deserialized_packet->message.sender,
-                USERNAME_LEN);
-        result = deserialized_packet->message.id;
+        strncpy(client->username, deserialized_packet->username, USERNAME_LEN);
+        result = deserialized_packet->id;
         client->inside_chat = 1;
       }
       pthread_mutex_unlock(&users_mutex);
@@ -237,19 +237,19 @@ int TCPHandler(int socket_desc, char *buf_rcv, Image *texture_map,
         if (ret == 0) break;
         bytes_sent += ret;
       }
-      Packet_free(&(response->header));
-      Packet_free(&(deserialized_packet->header));
       if (result != -1) {
         pthread_mutex_lock(&messages_mutex);
         MessageListItem *mli =
             (MessageListItem *)malloc(sizeof(MessageListItem));
-        mli->id = deserialized_packet->message.id;
-        strncpy(mli->sender, deserialized_packet->message.sender, USERNAME_LEN);
+        mli->id = deserialized_packet->id;
+        strncpy(mli->sender, deserialized_packet->username, USERNAME_LEN);
         mli->type = Hello;
         time(&mli->time);
         MessageList_insert(messages, mli);
         pthread_mutex_unlock(&messages_mutex);
       }
+      Packet_free(&(response->header));
+      Packet_free(&(deserialized_packet->header));
       return 0;
     }
     case (GetTexture): {
@@ -533,7 +533,8 @@ int sendMessages(int socket_udp) {
   MessageHistory *mh = (MessageHistory *)malloc(sizeof(MessageHistory));
   mh->header = ph;
   mh->num_messages = messages->size;
-  mh->messages = (Message *)malloc(sizeof(Message) * mh->num_messages);
+  mh->messages =
+      (MessageBroadcast *)malloc(sizeof(MessageBroadcast) * mh->num_messages);
   MessageListItem *mli = messages->first;
   for (int i = 0; i < mh->num_messages; i++) {
     if (mli->type == Text) strncpy(mh->messages[i].text, mli->text, TEXT_LEN);
