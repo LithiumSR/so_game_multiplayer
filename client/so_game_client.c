@@ -22,7 +22,7 @@
 #define UNTOUCHED 0
 #define TOUCHED 1
 #define SENDER_SLEEP 200 * 1000
-#define RECEIVER_SLEEP 500 * 1000
+#define RECEIVER_SLEEP 50 * 1000
 #define MAX_FAILED_ATTEMPTS 20
 // world related variables
 int window;
@@ -173,7 +173,6 @@ USERNAME:
     mp->header = ph;
     mp->message.id = id;
     mp->message.type = Text;
-    strncpy(mp->message.sender, username, USERNAME_LEN);
     char* text = fgets(mp->message.text, TEXT_LEN, stdin);
     if (text == NULL ||
         (mp->message.text[0] == '\n' && mp->message.text[1] == '\0')) {
