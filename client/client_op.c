@@ -318,13 +318,12 @@ int sendGoodbye(int socket, int id) {
 int joinChat(int socket_desc, int id, char* username) {
   char buf_send[BUFFERSIZE];
   char buf_rcv[BUFFERSIZE];
-  MessagePacket* mp = (MessagePacket*)malloc(sizeof(MessagePacket));
+  MessageAuth* mp = (MessageAuth*)malloc(sizeof(MessageAuth));
   PacketHeader ph;
-  ph.type = ChatMessage;
-  mp->message.id = id;
+  ph.type = ChatAuth;
+  mp->id = id;
   mp->header = ph;
-  strncpy(mp->message.sender, username, USERNAME_LEN);
-  mp->message.type = Hello;
+  strncpy(mp->username, username, USERNAME_LEN);
   int size = Packet_serialize(buf_send, &(mp->header));
   int msg_len = 0;
   while (msg_len < size) {
