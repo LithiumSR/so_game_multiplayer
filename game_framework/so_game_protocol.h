@@ -15,7 +15,8 @@ typedef enum {
   GetAudioInfo = 0x9,
   PostAudioInfo = 0x10,
   ChatMessage = 0x11,
-  ChatHistory = 0x12
+  ChatHistory = 0x12,
+  ChatAuth = 0x13
 } Type;
 
 typedef enum { Effect = 0x1, Track = 0x2 } MusicType;
@@ -77,11 +78,18 @@ typedef struct {
 
 typedef struct {
   int id;
-  char sender[USERNAME_LEN];
   char text[TEXT_LEN];
   time_t time;  // Used only by server to save the time the message was received
   MessageType type;
 } Message;
+
+typedef struct {
+  int id;
+  char text[TEXT_LEN];
+  char sender[USERNAME_LEN];
+  time_t time;  // Used only by server to save the time the message was received
+  MessageType type;
+} MessageBroadcast;
 
 typedef struct {
   PacketHeader header;
@@ -91,7 +99,7 @@ typedef struct {
 typedef struct {
   PacketHeader header;
   int num_messages;
-  Message* messages;
+  MessageBroadcast* messages;
 } MessageHistory;
 
 // server world update, send by server (UDP)
@@ -101,6 +109,12 @@ typedef struct {
   struct timeval time;
   ClientUpdate* updates;
 } WorldUpdatePacket;
+
+typedef struct {
+  PacketHeader header;
+  char username[USERNAME_LEN];
+  int id;
+} MessageAuth;
 
 // Send info about a track that should be played by the client
 typedef struct {
