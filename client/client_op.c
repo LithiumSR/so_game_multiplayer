@@ -322,13 +322,12 @@ int sendGoodbye(int socket, int id) {
 int joinChat(int socket_desc, int id, char* username) {
   char buf_send[BUFFERSIZE];
   char buf_rcv[BUFFERSIZE];
-  MessagePacket* mp = (MessagePacket*)malloc(sizeof(MessagePacket));
+  MessageAuth* mp = (MessageAuth*)malloc(sizeof(MessageAuth));
   PacketHeader ph;
-  ph.type = ChatMessage;
-  mp->message.id = id;
+  ph.type = ChatAuth;
+  mp->id = id;
   mp->header = ph;
-  strncpy(mp->message.sender, username, USERNAME_LEN);
-  mp->message.type = Hello;
+  strncpy(mp->username, username, USERNAME_LEN);
   int size = Packet_serialize(buf_send, &(mp->header));
   int msg_len = 0;
   while (msg_len < size) {
@@ -341,7 +340,7 @@ int joinChat(int socket_desc, int id, char* username) {
 
   int ph_len = sizeof(PacketHeader);
   msg_len = 0;
-  int ret = 0;
+  int ret=0;
   while (msg_len < ph_len) {
     ret = recv(socket_desc, buf_rcv + msg_len, ph_len - msg_len, 0);
     if (ret == -1 && errno == EINTR) continue;
@@ -359,11 +358,9 @@ int joinChat(int socket_desc, int id, char* username) {
   }
   IdPacket* deserialized_packet =
       (IdPacket*)Packet_deserialize(buf_rcv, msg_len + ph_len);
-  int id_received = deserialized_packet->id;
+  int id_received= deserialized_packet->id;
   Packet_free(&deserialized_packet->header);
   Packet_free(&mp->header);
-  if (id != id_received)
-    return -1;
-  else
-    return 0;
+  if(id!=id_received) return -1;
+  else return 0;
 }
