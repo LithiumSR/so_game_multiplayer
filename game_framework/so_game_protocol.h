@@ -18,7 +18,8 @@ typedef enum {
   GetAudioInfo = 0x9,
   PostAudioInfo = 0x10,
   ChatMessage = 0x11,
-  ChatHistory = 0x12
+  ChatHistory = 0x12,
+  ChatAuth = 0x13
 } Type;
 
 #ifdef _USE_SERVER_SIDE_FOG_
@@ -75,25 +76,6 @@ typedef struct {
   struct timeval time;
 } VehicleUpdatePacket;
 
-typedef struct {
-  int id;
-  char sender[USERNAME_LEN];
-  char text[TEXT_LEN];
-  time_t time;  // Used only by server to save the time the message was received
-  MessageType type;
-} Message;
-
-typedef struct {
-  PacketHeader header;
-  Message message;
-} MessagePacket;
-
-typedef struct {
-  PacketHeader header;
-  int num_messages;
-  Message* messages;
-} MessageHistory;
-
 // block of the client updates, id of vehicle
 // x,y,theta (read from vehicle id) are position of vehicle
 // id is the id of the vehicle
@@ -113,6 +95,38 @@ typedef struct {
   Status status;
 } ClientStatusUpdate;
 #endif
+
+typedef struct {
+  int id;
+  char text[TEXT_LEN];
+  time_t time;  // Used only by server to save the time the message was received
+  MessageType type;
+} Message;
+
+typedef struct {
+  int id;
+  char text[TEXT_LEN];
+  char sender[USERNAME_LEN];
+  time_t time;  // Used only by server to save the time the message was received
+  MessageType type;
+} MessageBroadcast;
+
+typedef struct {
+  PacketHeader header;
+  Message message;
+} MessagePacket;
+
+typedef struct {
+  PacketHeader header;
+  int num_messages;
+  MessageBroadcast* messages;
+} MessageHistory;
+
+typedef struct {
+  PacketHeader header;
+  char username[USERNAME_LEN];
+  int id;
+} MessageAuth;
 
 // server world update, send by server (UDP)
 typedef struct {

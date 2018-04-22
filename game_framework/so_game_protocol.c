@@ -23,6 +23,12 @@ int Packet_serialize(char* dest, const PacketHeader* h) {
       dest_end += sizeof(AudioInfoPacket);
       break;
     }
+    case ChatAuth: {
+      const MessageAuth* mp = (MessageAuth*)h;
+      memcpy(dest, mp, sizeof(MessageAuth));
+      dest_end += sizeof(MessageAuth);
+      break;
+    }
     case ChatMessage: {
       const MessagePacket* mp = (MessagePacket*)h;
       memcpy(dest, mp, sizeof(MessagePacket));
@@ -33,8 +39,8 @@ int Packet_serialize(char* dest, const PacketHeader* h) {
       const MessageHistory* mh = (MessageHistory*)h;
       memcpy(dest, mh, sizeof(MessageHistory));
       dest_end += sizeof(MessageHistory);
-      memcpy(dest_end, mh->messages, mh->num_messages * sizeof(Message));
-      dest_end += mh->num_messages * sizeof(Message);
+      memcpy(dest_end, mh->messages, mh->num_messages * sizeof(MessageBroadcast));
+      dest_end += mh->num_messages * sizeof(MessageBroadcast);
       break;
     }
     case PostTexture:
@@ -98,6 +104,11 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
       memcpy(audio_packet, buffer, sizeof(AudioInfoPacket));
       return (PacketHeader*)audio_packet;
     }
+    case ChatAuth: {
+      MessageAuth* mp = (MessageAuth*)malloc(sizeof(MessageAuth));
+      memcpy(mp, buffer, sizeof(MessageAuth));
+      return (PacketHeader*)mp;
+    }
     case ChatMessage: {
       MessagePacket* mp = (MessagePacket*)malloc(sizeof(MessagePacket));
       memcpy(mp, buffer, sizeof(MessagePacket));
@@ -107,9 +118,9 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
       MessageHistory* mh = (MessageHistory*)malloc(sizeof(MessageHistory));
       memcpy(mh, buffer, sizeof(MessageHistory));
       // we get the number of messages
-      mh->messages = (Message*)malloc(mh->num_messages * sizeof(Message));
+      mh->messages = (MessageBroadcast*)malloc(mh->num_messages * sizeof(MessageBroadcast));
       buffer += sizeof(MessageHistory);
-      memcpy(mh->messages, buffer, mh->num_messages * sizeof(Message));
+      memcpy(mh->messages, buffer, mh->num_messages * sizeof(MessageBroadcast));
       return (PacketHeader*)mh;
     }
     case PostTexture:
@@ -165,6 +176,7 @@ void Packet_free(PacketHeader* h) {
     case GetTexture:
     case GetElevation:
     case VehicleUpdate:
+    case ChatAuth:
     case ChatMessage:
     case GetAudioInfo:
     case PostAudioInfo: {
