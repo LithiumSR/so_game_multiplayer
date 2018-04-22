@@ -145,7 +145,6 @@ USERNAME:
     mp->header = ph;
     mp->message.id = id;
     mp->message.type = Text;
-    strncpy(mp->message.sender, username, USERNAME_LEN);
     char* text = fgets(mp->message.text, TEXT_LEN, stdin);
     if (text == NULL ||
         (mp->message.text[0] == '\n' && mp->message.text[1] == '\0')) {
