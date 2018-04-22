@@ -18,7 +18,8 @@ typedef enum {
   GetAudioInfo = 0x9,
   PostAudioInfo = 0x10,
   ChatMessage = 0x11,
-  ChatHistory = 0x12
+  ChatHistory = 0x12,
+  ChatAuth = 0x13
 } Type;
 
 #ifdef _USE_SERVER_SIDE_FOG_
@@ -96,11 +97,18 @@ typedef struct {
 
 typedef struct {
   int id;
-  char sender[USERNAME_LEN];
   char text[TEXT_LEN];
   time_t time;  // Used only by server to save the time the message was received
   MessageType type;
 } Message;
+
+typedef struct {
+  int id;
+  char text[TEXT_LEN];
+  char sender[USERNAME_LEN];
+  time_t time;  // Used only by server to save the time the message was received
+  MessageType type;
+} MessageBroadcast;
 
 typedef struct {
   PacketHeader header;
@@ -110,8 +118,14 @@ typedef struct {
 typedef struct {
   PacketHeader header;
   int num_messages;
-  Message* messages;
+  MessageBroadcast* messages;
 } MessageHistory;
+
+typedef struct {
+  PacketHeader header;
+  char username[USERNAME_LEN];
+  int id;
+} MessageAuth;
 
 // server world update, send by server (UDP)
 typedef struct {
@@ -132,7 +146,7 @@ typedef struct {
   PacketHeader header;
   int track_number;
   char loop;
-  MusicType type; 
+  MusicType type;
 } AudioInfoPacket;
 
 // converts a well formed packet into a string in dest.
