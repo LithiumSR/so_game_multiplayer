@@ -85,6 +85,7 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
   switch (h->type) {
     case GetId:
     case GetTexture:
+    case PostDisconnect:
     case GetElevation: {
       IdPacket* id_packet = (IdPacket*)malloc(sizeof(IdPacket));
       memcpy(id_packet, buffer, sizeof(IdPacket));
@@ -117,7 +118,6 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
       return (PacketHeader*)mh;
     }
     case PostTexture:
-    case PostDisconnect:
     case PostElevation: {
       ImagePacket* img_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
       memcpy(img_packet, buffer, sizeof(ImagePacket));
