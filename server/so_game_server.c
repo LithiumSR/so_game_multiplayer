@@ -158,6 +158,7 @@ int UDPHandler(int socket_udp, char* buf_rcv, struct sockaddr_in client_addr) {
       MessageListItem* mli = (MessageListItem*)malloc(sizeof(MessageListItem));
       ClientListItem* user = ClientList_find_by_id(users, mp->message.id);
       if (user == NULL || !user->inside_chat) {
+        free(mli);
         pthread_mutex_unlock(&users_mutex);
         return 0;
       }
