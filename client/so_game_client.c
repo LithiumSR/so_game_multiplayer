@@ -40,6 +40,7 @@ uint16_t port_number_no;
 int socket_desc = -1;  // socket tcp
 int socket_udp = -1;   // socket udp
 struct timeval last_update_time;
+struct timeval start_time;
 pthread_mutex_t time_lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct localWorld {
@@ -123,7 +124,8 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
   gettimeofday(&current_time, NULL);
   pthread_mutex_lock(&time_lock);
   if (last_update_time.tv_sec == -1) offline_server_counter++;
-  if (offline_server_counter >= MAX_FAILED_ATTEMPTS) {
+  if (offline_server_counter >= MAX_FAILED_ATTEMPTS &&
+      current_time.tv_sec - start_time.tv_sec > MAX_TIME_WITHOUT_WORLDUPDATE) {
     connectivity = 0;
     exchange_update = 0;
     fprintf(stderr,
@@ -519,6 +521,7 @@ int main(int argc, char** argv) {
   udp_server.sin_family = AF_INET;
   udp_server.sin_port = port_number_udp;
   debug_print("[Main] Socket UDP created and ready to work \n");
+  gettimeofday(&start_time, NULL);  // Accounting
 
   // Create UDP Threads
   pthread_t UDP_sender, UDP_receiver;
