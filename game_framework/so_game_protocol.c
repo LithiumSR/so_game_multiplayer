@@ -10,6 +10,7 @@ int Packet_serialize(char* dest, const PacketHeader* h) {
     case PostDisconnect:
     case GetId:
     case GetTexture:
+    case PostDisconnect:
     case GetElevation: {
       const IdPacket* id_packet = (IdPacket*)h;
       memcpy(dest, id_packet, sizeof(IdPacket));
@@ -78,7 +79,6 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
       return (PacketHeader*)audio_packet;
     }
     case PostTexture:
-    case PostDisconnect:
     case PostElevation: {
       ImagePacket* img_packet = (ImagePacket*)malloc(sizeof(ImagePacket));
       memcpy(img_packet, buffer, sizeof(ImagePacket));
