@@ -54,7 +54,7 @@ void World_update(World* w) {
   float tr_decay = powf(1 - 0.001, exp);
   float rt_decay = powf(1 - 0.15, exp);
   if (tr_decay > 0.999) tr_decay = 0.999;
-  if (rt_decay > 0.7) rt_decay = 0.85;
+  if (rt_decay > 0.85) rt_decay = 0.85;
   sem_t sem = w->vehicles.sem;
   sem_wait(&sem);
   ListItem* item = w->vehicles.first;
@@ -100,7 +100,7 @@ void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time) {
   float tr_decay = powf(1 - 0.001, exp);
   float rt_decay = powf(1 - 0.15, exp);
   if (tr_decay > 0.999) tr_decay = 0.999;
-  if (rt_decay > 0.7) rt_decay = 0.85;
+  if (rt_decay > 0.85) rt_decay = 0.85;
   Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
   if (!Vehicle_update(v, delta * w->time_scale)) Vehicle_reset(v);
   Vehicle_setTime(v, current_time);
