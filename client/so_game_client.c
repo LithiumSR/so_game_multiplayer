@@ -41,7 +41,6 @@ AudioContext* backgroud_track = NULL;
 // flags and counters
 char connectivity = 1;
 char exchange_update = 1;
-char messaging_enabled = 0;
 int offline_server_counter = 0;
 // networking
 uint16_t port_number_no;
@@ -131,7 +130,6 @@ USERNAME:
   username[strcspn(username, "\n")] = 0;
   printf("Hello %s! You can now write your messages (MAX %d characters) \n",
          username, TEXT_LEN);
-  messaging_enabled = 1;
 
   // send hello message
   int ret = joinChat(socket_desc, id, username);
@@ -265,7 +263,6 @@ void* UDPReceiver(void* args) {
       case (ChatHistory): {
         MessageHistory* mh =
             (MessageHistory*)Packet_deserialize(buf_rcv, bytes_read);
-        if (!messaging_enabled) goto FREE;
         for (int i = 0; i < mh->num_messages; i++) {
           struct tm* info;
           info = localtime(&mh->messages[i].time);
@@ -295,7 +292,6 @@ void* UDPReceiver(void* args) {
             }
           }
         }
-      FREE:
         Packet_free(&mh->header);
         break;
       }
