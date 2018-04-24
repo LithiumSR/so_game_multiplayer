@@ -33,6 +33,7 @@ char connectivity = 1;
 char exchange_update = 1;
 int socket_desc;  // socket tcp
 struct timeval last_update_time;
+struct timeval start_time;
 int offline_server_counter = 0;
 AudioContext* backgroud_track = NULL;
 pthread_mutex_t time_lock;
@@ -117,7 +118,8 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
   gettimeofday(&current_time, NULL);
   pthread_mutex_lock(&time_lock);
   if (last_update_time.tv_sec == -1) offline_server_counter++;
-  if (offline_server_counter >= MAX_FAILED_ATTEMPTS) {
+  if (offline_server_counter >= MAX_FAILED_ATTEMPTS &&
+      current_time.tv_sec - start_time.tv_sec > MAX_TIME_WITHOUT_WORLDUPDATE) {
     connectivity = 0;
     exchange_update = 0;
     fprintf(stdout,
@@ -419,6 +421,8 @@ int main(int argc, char** argv) {
   udp_args.server_addr = udp_server;
   udp_args.socket_udp = socket_udp;
   udp_args.lw = local_world;
+  gettimeofday(&start_time, NULL);  // Accounting
+
   ret = pthread_create(&UDP_sender, NULL, UDPSender, &udp_args);
   PTHREAD_ERROR_HELPER(ret, "[MAIN] pthread_create on thread UDP_sender");
   ret = pthread_create(&UDP_receiver, NULL, UDPReceiver, &udp_args);
