@@ -10,7 +10,6 @@ int Packet_serialize(char* dest, const PacketHeader* h) {
     case PostDisconnect:
     case GetId:
     case GetTexture:
-    case PostDisconnect:
     case GetElevation: {
       const IdPacket* id_packet = (IdPacket*)h;
       memcpy(dest, id_packet, sizeof(IdPacket));
@@ -64,6 +63,7 @@ int Packet_serialize(char* dest, const PacketHeader* h) {
 PacketHeader* Packet_deserialize(const char* buffer, int size) {
   const PacketHeader* h = (PacketHeader*)buffer;
   switch (h->type) {
+    case PostDisconnect:
     case GetId:
     case GetTexture:
     case GetElevation: {
