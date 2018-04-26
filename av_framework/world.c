@@ -50,7 +50,7 @@ void World_update(World* w) {
   struct timeval dt;
   timersub(&current_time, &w->last_update, &dt);
   float delta = dt.tv_sec + 1e-6 * dt.tv_usec;
-  float exp = delta / (30000*1e-6);
+  float exp = delta / (30000 * 1e-6);
   float tr_decay = powf(1 - 0.001, exp);
   float rt_decay = powf(1 - 0.15, exp);
   sem_t sem = w->vehicles.sem;
@@ -78,7 +78,19 @@ void World_update(World* w) {
         v->temp_x = v->x;
         v->temp_y = v->y;
       }
-      Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
+      if (v->manual_updated) {
+        // printf("scheduled update \n");
+        struct timeval dt_manual;
+        timersub(&current_time, &v->world_update_time, &dt_manual);
+        float exp_manual = delta / (30000 * 1e-6);
+        float tr_decay_manual = powf(1 - 0.001, exp_manual);
+        float rt_decay_manual = powf(1 - 0.15, exp_manual);
+        Vehicle_decayForcesUpdate(v, tr_decay_manual, rt_decay_manual);
+        v->manual_updated = 0;
+      } else {
+        // printf("manual updated\n");
+        Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
+      }
     }
     Vehicle_setTime(v, current_time);
     pthread_mutex_unlock(&v->mutex);
@@ -94,12 +106,13 @@ void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time) {
   struct timeval dt;
   timersub(&current_time, &update_time, &dt);
   float delta = dt.tv_sec + 1e-6 * dt.tv_usec;
-  float exp = delta / (30000*1e-6);
+  float exp = delta / (30000 * 1e-6);
   float tr_decay = powf(1 - 0.001, exp);
   float rt_decay = powf(1 - 0.15, exp);
-  Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
   if (!Vehicle_update(v, delta * w->time_scale)) Vehicle_reset(v);
+  Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
   Vehicle_setTime(v, current_time);
+  v->manual_updated = 1;
 }
 
 Vehicle* World_getVehicle(World* w, int vehicle_id) {
