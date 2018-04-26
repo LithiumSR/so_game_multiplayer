@@ -1,9 +1,9 @@
 #pragma once
+#include <pthread.h>
 #include <semaphore.h>
 #include "../av_framework/image.h"
 #include "../av_framework/surface.h"
 #include "linked_list.h"
-#include <pthread.h>
 struct World;
 struct Vehicle;
 typedef void (*VehicleDtor)(struct Vehicle* v);
@@ -26,7 +26,7 @@ typedef struct Vehicle {
       theta;  // position and orientation of the vehicle, on the surface
 
   // dont' touch these
-  char is_new;
+  char is_new, manual_updated;
   float temp_x, temp_y;
   float prev_x, prev_y, prev_z,
       prev_theta;  // orientation of the vehicle, on the surface

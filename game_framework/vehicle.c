@@ -84,6 +84,7 @@ void Vehicle_init(Vehicle* v, World* w, int id, Image* texture) {
   v->translational_force_update_intention = 0;
   v->rotational_force_update_intention = 0;
   v->is_new = 1;
+  v->manual_updated = 1;
   v->temp_x = v->x;
   v->temp_y = v->y;
   gettimeofday(&v->world_update_time, NULL);
