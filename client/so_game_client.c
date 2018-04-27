@@ -34,7 +34,6 @@ char exchange_update = 1;
 int socket_desc;  // socket tcp
 struct timeval last_update_time;
 struct timeval start_time;
-int offline_server_counter = 0;
 AudioContext* backgroud_track = NULL;
 pthread_mutex_t time_lock;
 
@@ -117,12 +116,11 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
   struct timeval current_time;
   gettimeofday(&current_time, NULL);
   pthread_mutex_lock(&time_lock);
-  if (last_update_time.tv_sec == -1) offline_server_counter++;
-  if (offline_server_counter >= MAX_FAILED_ATTEMPTS &&
+  if (last_update_time.tv_sec == -1 &&
       current_time.tv_sec - start_time.tv_sec > MAX_TIME_WITHOUT_WORLDUPDATE) {
     connectivity = 0;
     exchange_update = 0;
-    fprintf(stdout,
+    fprintf(stderr,
             "[WARNING] Server is not avaiable. Terminating the client now...");
     WorldViewer_exit(0);
   } else if (last_update_time.tv_sec != -1 &&
@@ -130,11 +128,10 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
                  MAX_TIME_WITHOUT_WORLDUPDATE) {
     connectivity = 0;
     exchange_update = 0;
-    fprintf(stdout,
+    fprintf(stderr,
             "[WARNING] Server is not avaiable. Terminating the client now...");
     WorldViewer_exit(0);
-  } else if (last_update_time.tv_sec != -1)
-    offline_server_counter = 0;
+  }
   pthread_mutex_unlock(&time_lock);
   if (bytes_sent < 0) return -1;
   return 0;
