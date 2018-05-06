@@ -197,25 +197,32 @@ int main(int argc, char const* argv[]) {
   strncpy(mp_pckt->message.text, text, TEXT_LEN);
   mp_pckt->message.id = 10;
   mp_pckt->message.type = Text;
+  time(&mp_pckt->message.time);
+  struct tm* info;
+  info = localtime(&mp_pckt->message.time);
   printf(
       "message packet "
-      "with:\ntype\t%d\nsize\t%d\nid\t%d\nmessageType\t%d\ntext\t%s\n",
+      "with:\ntype\t%d\nsize\t%d\nid\t%d\nmessageType\t%d\ntext\t%s\ntime:\t%d:"
+      "%d\n",
       mp_pckt->header.type, mp_pckt->header.size, mp_pckt->message.id,
-      mp_pckt->message.type, mp_pckt->message.text);
+      mp_pckt->message.type, mp_pckt->message.text, info->tm_hour,
+      info->tm_min);
   printf("serialize\n");
   char message_buffer[1000000];
   int message_size = Packet_serialize(message_buffer, &mp_pckt->header);
   printf("deserialize\n");
   MessagePacket* deserialized_message_packet =
       (MessagePacket*)Packet_deserialize(message_buffer, message_size);
+  info = localtime(&deserialized_message_packet->message.time);
   printf(
       "deserialized message packet "
-      "with:\ntype\t%d\nsize\t%d\nid\t%d\nmessageType\t%d\ntext\t%s\n",
+      "with:\ntype\t%d\nsize\t%d\nid\t%d\nmessageType\t%d\ntext\t%s\ntime:\t%d:"
+      "%d\n",
       deserialized_message_packet->header.type,
       deserialized_message_packet->header.size,
       deserialized_message_packet->message.id,
       deserialized_message_packet->message.type,
-      deserialized_message_packet->message.text);
+      deserialized_message_packet->message.text, info->tm_hour, info->tm_min);
   Packet_free(&deserialized_packet->header);
   Packet_free(&mp_pckt->header);
 
@@ -259,29 +266,34 @@ int main(int argc, char const* argv[]) {
   strncpy(messages->text, text, TEXT_LEN);
   messages->id = 10;
   messages->type = Text;
+  time(&messages->time);
+  info = localtime(&messages->time);
   history_pckt->messages = messages;
+
   printf(
       "MessageHistory packet "
       "with:\ntype\t%d\nsize\t%d\nnum_messages\t%d\nusername\t%s\ntext\t%"
-      "s\nmessageType\t%d\n",
+      "s\nmessageType\t%d\ntime\t%d:%d\n",
       history_pckt->header.type, history_pckt->header.size,
       history_pckt->num_messages, history_pckt->messages->sender,
-      history_pckt->messages->text, history_pckt->messages->type);
+      history_pckt->messages->text, history_pckt->messages->type, info->tm_hour,
+      info->tm_min);
   printf("serialize\n");
   int history_size = Packet_serialize(message_buffer, &history_pckt->header);
   printf("deserialize\n");
   MessageHistory* deserialized_history_packet =
       (MessageHistory*)Packet_deserialize(message_buffer, history_size);
+  info = localtime(&deserialized_history_packet->messages->time);
   printf(
       "MessageHistory packet "
       "with:\ntype\t%d\nsize\t%d\nnum_messages\t%d\nusername\t%s\ntext\t%"
-      "s\nmessageType\t%d\n",
+      "s\nmessageType\t%d\ntime\t%d:%d\n",
       deserialized_history_packet->header.type,
       deserialized_history_packet->header.size,
       deserialized_history_packet->num_messages,
       deserialized_history_packet->messages->sender,
       deserialized_history_packet->messages->text,
-      deserialized_history_packet->messages->type);
+      deserialized_history_packet->messages->type, info->tm_hour, info->tm_min);
   Packet_free(&deserialized_history_packet->header);
   Packet_free(&history_pckt->header);
   return 0;
