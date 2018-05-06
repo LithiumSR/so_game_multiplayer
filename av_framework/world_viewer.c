@@ -123,7 +123,7 @@ void idle(void) {
     _WorldViewer_exit();
   else {
     pthread_mutex_lock(&audio_list_mutex);
-    AudioList_cleanExpiredItem(audio_list);
+    AudioList_cleanExpiredItems(audio_list);
     pthread_mutex_unlock(&audio_list_mutex);
   }
   glutPostRedisplay();
@@ -452,6 +452,7 @@ void WorldViewer_createAudio() {
 }
 
 void WorldViewer_addAudioTrack(AudioContext *ac) {
+  if (ac == NULL) return;
   pthread_mutex_lock(&audio_list_mutex);
   AudioListItem *item = (AudioListItem *)malloc(sizeof(AudioListItem));
   item->audio_context = ac;

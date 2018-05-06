@@ -32,26 +32,28 @@ int AudioContext_openDevice(void) {
 
 void AudioContext_closeDevice(void) { alutExit(); }
 
-void AudioContext_init(AudioContext *ac, char *filename, char loop) {
+int AudioContext_init(AudioContext *ac, char *filename, char loop) {
+  if (access(filename, F_OK | R_OK) == -1) return -1;
   ac->buffer = setupBuffer(filename);
   ac->source = setupSource(ac->buffer);
   ac->volume = DEFAULT_VOLUME;
   ac->loop = loop;
+  return 0;
 }
 
 void AudioContext_startTrackLoop(AudioContext *ac) {
-  if (ac==NULL) return;
+  if (ac == NULL) return;
   alSourcei(ac->source, AL_LOOPING, AL_TRUE);
   alSourcePlay(ac->source);
 }
 
 void AudioContext_startTrackNoLoop(AudioContext *ac) {
-  if (ac==NULL) return;
+  if (ac == NULL) return;
   alSourcePlay(ac->source);
 }
 
 void AudioContext_startTrack(AudioContext *ac) {
-  if (ac==NULL) return;
+  if (ac == NULL) return;
   if (ac->loop)
     AudioContext_startTrackLoop(ac);
   else
