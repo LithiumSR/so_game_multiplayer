@@ -197,7 +197,7 @@ int main(int argc, char const* argv[]) {
       (MessagePacket*)Packet_deserialize(message_buffer, message_size);
   info = localtime(&deserialized_message_packet->message.time);
   printf(
-      "deserialized message packet "
+      "deserialized Message packet "
       "with:\ntype\t%d\nsize\t%d\nid\t%d\nmessageType\t%d\ntext\t%s\ntime:\t%d:"
       "%d\n",
       deserialized_message_packet->header.type,
@@ -227,7 +227,7 @@ int main(int argc, char const* argv[]) {
   MessageAuth* deserialized_auth_packet =
       (MessageAuth*)Packet_deserialize(message_buffer, auth_size);
   printf(
-      "deserialized message packet "
+      "deserialized MessageAuth packet "
       "with:\ntype\t%d\nsize\t%d\nid\t%d\nusername\t%s\n",
       deserialized_auth_packet->header.type,
       deserialized_auth_packet->header.size, deserialized_auth_packet->id,
@@ -267,7 +267,7 @@ int main(int argc, char const* argv[]) {
       (MessageHistory*)Packet_deserialize(message_buffer, history_size);
   info = localtime(&deserialized_history_packet->messages->time);
   printf(
-      "MessageHistory packet "
+      "deserialized MessageHistory packet "
       "with:\ntype\t%d\nsize\t%d\nnum_messages\t%d\nusername\t%s\ntext\t%"
       "s\nmessageType\t%d\ntime\t%d:%d\n",
       deserialized_history_packet->header.type,
