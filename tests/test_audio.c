@@ -35,7 +35,7 @@ int main(int argc, char const* argv[]) {
     AudioContext_stopTrack(ac);
     printf("Done\n");
     printf("Cleaning resources... ");
-    AudioList_cleanExpiredItem(head);
+    AudioList_cleanExpiredItems(head);
     AudioList_destroy(head);
     AudioContext_closeDevice();
     printf("Done\n");
