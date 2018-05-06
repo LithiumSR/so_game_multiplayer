@@ -295,7 +295,8 @@ AudioContext* getAudioContext(int socket_desc) {
   debug_print("[GetAudioContext] Loading %s file...\n", filename);
   AudioContext_openDevice();
   AudioContext* ac = (AudioContext*)malloc(sizeof(AudioContext));
-  AudioContext_init(ac, filename, loop);
+  int res = AudioContext_init(ac, filename, loop);
+  if (res == -1) return NULL;
   return ac;
 }
 
@@ -320,7 +321,6 @@ int sendGoodbye(int socket, int id) {
   return 0;
 }
 
-
 int joinChat(int socket_desc, int id, char* username) {
   char buf_send[BUFFERSIZE];
   char buf_rcv[BUFFERSIZE];
@@ -342,7 +342,7 @@ int joinChat(int socket_desc, int id, char* username) {
 
   int ph_len = sizeof(PacketHeader);
   msg_len = 0;
-  int ret=0;
+  int ret = 0;
   while (msg_len < ph_len) {
     ret = recv(socket_desc, buf_rcv + msg_len, ph_len - msg_len, 0);
     if (ret == -1 && errno == EINTR) continue;
@@ -360,9 +360,11 @@ int joinChat(int socket_desc, int id, char* username) {
   }
   IdPacket* deserialized_packet =
       (IdPacket*)Packet_deserialize(buf_rcv, msg_len + ph_len);
-  int id_received= deserialized_packet->id;
+  int id_received = deserialized_packet->id;
   Packet_free(&deserialized_packet->header);
   Packet_free(&mp->header);
-  if(id!=id_received) return -1;
-  else return 0;
+  if (id != id_received)
+    return -1;
+  else
+    return 0;
 }

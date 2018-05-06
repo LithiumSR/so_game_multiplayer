@@ -453,6 +453,7 @@ void WorldViewer_createAudio() {
 }
 
 void WorldViewer_addAudioTrack(AudioContext *ac) {
+  if (ac == NULL) return NULL;
   pthread_mutex_lock(&audio_list_mutex);
   AudioListItem *item = (AudioListItem *)malloc(sizeof(AudioListItem));
   item->audio_context = ac;
