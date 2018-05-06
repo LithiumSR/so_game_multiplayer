@@ -17,7 +17,7 @@ int main(int argc, char const* argv[]) {
     printf("Done.\n");
     printf("Creating audio context and adding it to the list... ");
     AudioContext* ac = (AudioContext*)malloc(sizeof(AudioContext));
-    int res = AudioContext_init(ac,"./resources/sounds/trac3k2.wav",1);
+    int res = AudioContext_init(ac,"./resources/sounds/track2.wav",1);
     if (res== -1) {
         printf("Error!\nFile does not exist or you don't have read permission \n");
         return -1;
