@@ -32,3 +32,4 @@ void MessageList_print(MessageListHead* users);
 void MessageList_removeAll(MessageListHead* users);
 MessageListItem* MessageList_addDisconnectMessage(MessageListHead* head,
                                                   ClientListItem* user);
+void MessageList_print(MessageListHead* messages);
