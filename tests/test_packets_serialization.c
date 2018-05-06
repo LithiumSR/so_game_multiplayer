@@ -223,7 +223,7 @@ int main(int argc, char const* argv[]) {
       deserialized_message_packet->message.id,
       deserialized_message_packet->message.type,
       deserialized_message_packet->message.text, info->tm_hour, info->tm_min);
-  Packet_free(&deserialized_packet->header);
+  Packet_free(&deserialized_message_packet->header);
   Packet_free(&mp_pckt->header);
 
   printf("\n\nallocate a MessageAuth packet \n");
@@ -296,5 +296,34 @@ int main(int argc, char const* argv[]) {
       deserialized_history_packet->messages->type, info->tm_hour, info->tm_min);
   Packet_free(&deserialized_history_packet->header);
   Packet_free(&history_pckt->header);
+
+  // Audio
+  printf("\n\nallocate an AudioInfoPacket \n");
+  PacketHeader audio_header;
+  audio_header.type = PostAudioInfo;
+  AudioInfoPacket* audio_packet =
+      (AudioInfoPacket*)malloc(sizeof(AudioInfoPacket));
+  audio_packet->header = audio_header;
+  audio_packet->track_number = 1;
+  audio_packet->loop = 1;
+  printf(
+      "audio packet "
+      "with:\ntype\t%d\nsize\t%d\ntrack_number\t%d\nloop\t%d\n",
+      audio_packet->header.type, audio_packet->header.size,
+      audio_packet->track_number, audio_packet->loop);
+  printf("serialize\n");
+  char audio_buffer[1000000];
+  int audio_size = Packet_serialize(audio_buffer, &audio_packet->header);
+  printf("deserialize\n");
+  AudioInfoPacket* deserialized_audio_packet =
+      (AudioInfoPacket*)Packet_deserialize(audio_buffer, audio_size);
+  printf(
+      "deserialized audio packet "
+      "with:\ntype\t%d\nsize\t%d\ntrack_number\t%d\nloop\t%d\n",
+      deserialized_audio_packet->header.type,
+      deserialized_audio_packet->header.size,
+      deserialized_audio_packet->track_number, deserialized_audio_packet->loop);
+  Packet_free(&deserialized_audio_packet->header);
+  Packet_free(&audio_packet->header);
   return 0;
 }
