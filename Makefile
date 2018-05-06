@@ -9,7 +9,8 @@ BINS=libso_game.a\
      so_game_client\
 	test_packets_serialization\
 	test_client_list\
-	test_audio
+	test_audio\
+	test_message_list
 
 OBJS = av_framework/vec3.o\
        av_framework/surface.o\
@@ -64,4 +65,7 @@ test_client_list: tests/test_client_list.c libso_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^  $(LIBS)
 
 test_audio: tests/test_audio.c libso_game.a
+	$(CC) $(CCOPTS) -Ofast -o $@ $^  $(LIBS)
+
+test_message_list: tests/test_message_list.c libso_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^  $(LIBS)
