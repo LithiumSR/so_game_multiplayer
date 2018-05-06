@@ -28,7 +28,7 @@ AudioListItem* AudioList_insert(AudioListHead* head, AudioListItem* item) {
   item->next = track;
   head->first = item;
   head->size++;
-  return track;
+  return item;
 }
 
 AudioListItem* AudioList_detach(AudioListHead* head, AudioListItem* item) {
@@ -73,11 +73,11 @@ void AudioList_setVolume(AudioListHead* head, float volume) {
   }
 }
 
-void AudioList_cleanExpiredItem(AudioListHead* head) {
+void AudioList_cleanExpiredItems(AudioListHead* head) {
   if (head == NULL) return;
   AudioListItem* track = head->first;
   while (track != NULL) {
-    AudioListItem* tmp=track;
+    AudioListItem* tmp = track;
     track = track->next;
     ALenum state;
     if (tmp->audio_context != NULL) {
@@ -85,10 +85,9 @@ void AudioList_cleanExpiredItem(AudioListHead* head) {
       if (state != AL_STOPPED) continue;
     }
     AudioListItem* dt = AudioList_detach(head, tmp);
-    if (dt != NULL) {
-      AudioContext_free(tmp->audio_context);
-      free(tmp);
+    if (dt == tmp) {
+      AudioContext_free(dt->audio_context);
+      free(dt);
     }
-
   }
 }
