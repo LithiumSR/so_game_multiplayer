@@ -4,6 +4,9 @@
 #include <string.h>
 #include <unistd.h>
 #include "../game_framework/so_game_protocol.h"
+#if SERVER_SIDE_POSITION_CHECK == 1
+#define _USE_SERVER_SIDE_FOG_
+#endif
 
 int main(int argc, char const* argv[]) {
   // id packet
@@ -49,7 +52,7 @@ int main(int argc, char const* argv[]) {
 
   printf("loading an image\n");
   Image* im;
-  im = Image_load("./images/test.pgm");
+  im = Image_load("./resources/images/test.pgm");
   printf("loaded\n");
 
   image_packet->header = im_head;
@@ -88,14 +91,25 @@ int main(int argc, char const* argv[]) {
   update_block->x = 4.4;
   update_block->y = 6.4;
   update_block->theta = 90;
-
+#ifdef _USE_SERVER_SIDE_FOG_
+  ClientStatusUpdate* status_update_block =
+      (ClientStatusUpdate*)malloc(sizeof(ClientStatusUpdate));
+  status_update_block->id = 10;
+  status_update_block->status = Online;
+#endif
   WorldUpdatePacket* world_packet =
       (WorldUpdatePacket*)malloc(sizeof(WorldUpdatePacket));
   PacketHeader w_head;
   w_head.type = WorldUpdate;
-
   world_packet->header = w_head;
   world_packet->num_update_vehicles = 1;
+#ifdef _USE_SERVER_SIDE_FOG_
+  world_packet->num_status_vehicles = 1;
+  world_packet->status_updates = status_update_block;
+  printf("status_update_block:\nid\t\t%d\nstatus\t\t%d\n",
+         world_packet->status_updates->id,
+         world_packet->status_updates->status);
+#endif
   world_packet->updates = update_block;
 
   printf("world_packet with:\ntype\t%d\nsize\t%d\nnum_v\t%d\n",
@@ -122,7 +136,11 @@ int main(int argc, char const* argv[]) {
          deserialized_wu_packet->updates->id,
          deserialized_wu_packet->updates->x, deserialized_wu_packet->updates->y,
          deserialized_wu_packet->updates->theta);
-
+#ifdef _USE_SERVER_SIDE_FOG_
+  printf("status_update_block:\nid\t\t%d\nstatus\t\t%d\n",
+         deserialized_wu_packet->status_updates->id,
+         deserialized_wu_packet->status_updates->status);
+#endif
   Packet_free(&world_packet->header);
   Packet_free(&deserialized_wu_packet->header);
   printf("done\n");
@@ -169,5 +187,114 @@ int main(int argc, char const* argv[]) {
   Packet_free(&deserialized_vehicle_packet->header);
   printf("done\n");
 
+  // chat
+  printf("\n\nallocate a MessagePacket \n");
+  PacketHeader message_header;
+  message_header.type = ChatMessage;
+  MessagePacket* mp_pckt = (MessagePacket*)malloc(sizeof(MessagePacket));
+  mp_pckt->header = message_header;
+  char* text = "Hello World";
+  strncpy(mp_pckt->message.text, text, TEXT_LEN);
+  mp_pckt->message.id = 10;
+  mp_pckt->message.type = Text;
+  time(&mp_pckt->message.time);
+  struct tm* info;
+  info = localtime(&mp_pckt->message.time);
+  printf(
+      "message packet "
+      "with:\ntype\t%d\nsize\t%d\nid\t%d\nmessageType\t%d\ntext\t%s\ntime:\t%d:"
+      "%d\n",
+      mp_pckt->header.type, mp_pckt->header.size, mp_pckt->message.id,
+      mp_pckt->message.type, mp_pckt->message.text, info->tm_hour,
+      info->tm_min);
+  printf("serialize\n");
+  char message_buffer[1000000];
+  int message_size = Packet_serialize(message_buffer, &mp_pckt->header);
+  printf("deserialize\n");
+  MessagePacket* deserialized_message_packet =
+      (MessagePacket*)Packet_deserialize(message_buffer, message_size);
+  info = localtime(&deserialized_message_packet->message.time);
+  printf(
+      "deserialized message packet "
+      "with:\ntype\t%d\nsize\t%d\nid\t%d\nmessageType\t%d\ntext\t%s\ntime:\t%d:"
+      "%d\n",
+      deserialized_message_packet->header.type,
+      deserialized_message_packet->header.size,
+      deserialized_message_packet->message.id,
+      deserialized_message_packet->message.type,
+      deserialized_message_packet->message.text, info->tm_hour, info->tm_min);
+  Packet_free(&deserialized_packet->header);
+  Packet_free(&mp_pckt->header);
+
+  printf("\n\nallocate a MessageAuth packet \n");
+  PacketHeader auth_header;
+  auth_header.type = ChatAuth;
+  MessageAuth* auth_pckt = (MessageAuth*)malloc(sizeof(MessageAuth));
+  auth_pckt->header = auth_header;
+  char* username = "username_test";
+  strncpy(auth_pckt->username, username, USERNAME_LEN);
+  auth_pckt->id = 10;
+  printf(
+      "messageAuth packet "
+      "with:\ntype\t%d\nsize\t%d\nid\t%d\nusername\t%s\n",
+      auth_pckt->header.type, auth_pckt->header.size, auth_pckt->id,
+      auth_pckt->username);
+  printf("serialize\n");
+  int auth_size = Packet_serialize(message_buffer, &auth_pckt->header);
+  printf("deserialize\n");
+  MessageAuth* deserialized_auth_packet =
+      (MessageAuth*)Packet_deserialize(message_buffer, auth_size);
+  printf(
+      "deserialized message packet "
+      "with:\ntype\t%d\nsize\t%d\nid\t%d\nusername\t%s\n",
+      deserialized_auth_packet->header.type,
+      deserialized_auth_packet->header.size, deserialized_auth_packet->id,
+      deserialized_auth_packet->username);
+  Packet_free(&deserialized_auth_packet->header);
+  Packet_free(&auth_pckt->header);
+
+  printf("\n\nallocate a MessageHistory packet \n");
+  PacketHeader history_header;
+  history_header.type = ChatHistory;
+  MessageHistory* history_pckt =
+      (MessageHistory*)malloc(sizeof(MessageHistory));
+  history_pckt->header = history_header;
+  history_pckt->num_messages = 1;
+  MessageBroadcast* messages = (MessageBroadcast*)malloc(
+      sizeof(MessageBroadcast) * history_pckt->num_messages);
+  strncpy(messages->sender, username, USERNAME_LEN);
+  strncpy(messages->text, text, TEXT_LEN);
+  messages->id = 10;
+  messages->type = Text;
+  time(&messages->time);
+  info = localtime(&messages->time);
+  history_pckt->messages = messages;
+
+  printf(
+      "MessageHistory packet "
+      "with:\ntype\t%d\nsize\t%d\nnum_messages\t%d\nusername\t%s\ntext\t%"
+      "s\nmessageType\t%d\ntime\t%d:%d\n",
+      history_pckt->header.type, history_pckt->header.size,
+      history_pckt->num_messages, history_pckt->messages->sender,
+      history_pckt->messages->text, history_pckt->messages->type, info->tm_hour,
+      info->tm_min);
+  printf("serialize\n");
+  int history_size = Packet_serialize(message_buffer, &history_pckt->header);
+  printf("deserialize\n");
+  MessageHistory* deserialized_history_packet =
+      (MessageHistory*)Packet_deserialize(message_buffer, history_size);
+  info = localtime(&deserialized_history_packet->messages->time);
+  printf(
+      "MessageHistory packet "
+      "with:\ntype\t%d\nsize\t%d\nnum_messages\t%d\nusername\t%s\ntext\t%"
+      "s\nmessageType\t%d\ntime\t%d:%d\n",
+      deserialized_history_packet->header.type,
+      deserialized_history_packet->header.size,
+      deserialized_history_packet->num_messages,
+      deserialized_history_packet->messages->sender,
+      deserialized_history_packet->messages->text,
+      deserialized_history_packet->messages->type, info->tm_hour, info->tm_min);
+  Packet_free(&deserialized_history_packet->header);
+  Packet_free(&history_pckt->header);
   return 0;
 }
