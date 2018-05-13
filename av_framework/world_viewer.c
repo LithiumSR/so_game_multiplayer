@@ -417,7 +417,7 @@ void WorldViewer_runGlobal(World *world, Vehicle *self, AudioContext *audio,
   // initialize GL
   glutInit(argc_ptr, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-  glutCreateWindow("main");
+  glutCreateWindow("so_game");
 
   // set the callbacks
   glutDisplayFunc(display);
