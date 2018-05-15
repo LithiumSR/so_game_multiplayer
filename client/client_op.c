@@ -42,7 +42,7 @@ int getID(int socket_desc) {
   while (msg_len < ph_len) {
     ret = recv(socket_desc, buf_rcv + msg_len, ph_len - msg_len, 0);
     if (ret == -1 && errno == EINTR) continue;
-    ERROR_HELPER(msg_len, "Cannot read from socket");
+    ERROR_HELPER(ret, "Cannot read from socket");
     msg_len += ret;
   }
   PacketHeader* header = (PacketHeader*)buf_rcv;
