@@ -395,6 +395,11 @@ int TCPHandler(int socket_desc, char *buf_rcv, Image *texture_map,
         pthread_mutex_unlock(&users_mutex);
         return -1;
       }
+      if (user->v_texture != NULL) {
+        pthread_mutex_unlock(&users_mutex);
+        Packet_free(&(deserialized_packet->header));
+        return 0;
+      }
       user->v_texture = user_texture;
       pthread_mutex_unlock(&users_mutex);
       debug_print("[Set Texture] Vehicle texture applied to user with id %d \n",
@@ -585,7 +590,7 @@ void *UDPSender(void *args) {
     gettimeofday(&time, NULL);
     while (client != NULL) {
       char buf_send[BUFFERSIZE];
-      if (client->is_udp_addr_ready != 1) {
+      if (client->is_udp_addr_ready != 1 || client->v_texture == NULL) {
         client = client->next;
         continue;
       }
@@ -597,8 +602,9 @@ void *UDPSender(void *args) {
       int n = 0;
       ClientListItem *tmp = users->first;
       while (tmp != NULL) {
-        if (tmp->is_udp_addr_ready && (abs(tmp->x - client->x) <= HIDE_RANGE &&
-                                       abs(tmp->y - client->y) <= HIDE_RANGE)) {
+        if (tmp->is_udp_addr_ready && tmp->v_texture != NULL &&
+            (abs(tmp->x - client->x) <= HIDE_RANGE &&
+             abs(tmp->y - client->y) <= HIDE_RANGE)) {
           n++;
         }
         tmp = tmp->next;
@@ -615,7 +621,7 @@ void *UDPSender(void *args) {
       ClientList_print(users);
       int k = 0;
       for (int i = 0; tmp != NULL; i++) {
-        if (!(tmp->is_udp_addr_ready &&
+        if (!(tmp->is_udp_addr_ready && tmp->v_texture != NULL &&
               (abs(tmp->x - client->x) <= HIDE_RANGE &&
                abs(tmp->y - client->y) <= HIDE_RANGE))) {
           tmp = tmp->next;
@@ -643,7 +649,7 @@ void *UDPSender(void *args) {
       while (tmp != NULL) {
         ClientStatusUpdate *csu = &wup->status_updates[k];
         csu->id = tmp->id;
-        if (tmp->is_udp_addr_ready)
+        if (tmp->is_udp_addr_ready && tmp->v_texture != NULL)
           csu->status = Online;
         else
           csu->status = Connecting;
@@ -698,7 +704,7 @@ void *UDPSender(void *args) {
     int n;
     ClientListItem *client = users->first;
     for (n = 0; client != NULL; client = client->next) {
-      if (client->is_udp_addr_ready) n++;
+      if (client->is_udp_addr_ready && client->v_texture != NULL) n++;
     }
     wup->num_update_vehicles = n;
     fprintf(stdout,
@@ -714,7 +720,7 @@ void *UDPSender(void *args) {
     client = users->first;
     gettimeofday(&wup->time, NULL);
     for (int i = 0; client != NULL; i++) {
-      if (!(client->is_udp_addr_ready)) {
+      if (client->is_udp_addr_ready == 0 || client->v_texture == NULL) {
         client = client->next;
         continue;
       }
