@@ -506,10 +506,10 @@ EXIT:
   free(del->vehicle);
   Image* user_texture = del->v_texture;
   if (user_texture != NULL) Image_free(user_texture);
-  if (users->size == 0) has_users = 0;
   free(del);
   ClientList_print(users);
 END:
+  if (users->size == 0) has_users = 0;
   pthread_mutex_unlock(&users_mutex);
   close(sock_fd);
   pthread_exit(NULL);
@@ -557,7 +557,8 @@ int sendMessages(int socket_udp) {
   MessageHistory* mh = (MessageHistory*)malloc(sizeof(MessageHistory));
   mh->header = ph;
   mh->num_messages = messages->size;
-  mh->messages = (MessageBroadcast*)malloc(sizeof(MessageBroadcast) * mh->num_messages);
+  mh->messages =
+      (MessageBroadcast*)malloc(sizeof(MessageBroadcast) * mh->num_messages);
   MessageListItem* mli = messages->first;
   for (int i = 0; i < mh->num_messages; i++) {
     if (mli->type == Text) {
@@ -849,8 +850,8 @@ void* garbageCollector(void* args) {
         Image* user_texture = del->v_texture;
         if (user_texture != NULL) Image_free(user_texture);
         count++;
-        if (users->size == 0) has_users = 0;
       SKIP:
+        if (users->size == 0) has_users = 0;
         close(del->id);
         free(del);
       } else if (client->is_udp_addr_ready == 1 &&
@@ -874,8 +875,8 @@ void* garbageCollector(void* args) {
           Image* user_texture = del->v_texture;
           if (user_texture != NULL) Image_free(user_texture);
           count++;
-          if (users->size == 0) has_users = 0;
         SKIP2:
+          if (users->size == 0) has_users = 0;
           close(del->id);
           free(del);
         } else {
