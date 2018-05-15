@@ -187,7 +187,7 @@ int TCPHandler(int socket_desc, char* buf_rcv, Image* texture_map,
       pthread_mutex_lock(&mutex);
       ClientListItem* el = ClientList_find_by_id(users, image_request->id);
 
-      if (el == NULL && !el->inside_world) {
+      if (el == NULL) {
         pthread_mutex_unlock(&mutex);
         PacketHeader pheader;
         pheader.type = PostDisconnect;
