@@ -409,9 +409,9 @@ EXIT:
   // free(del->vehicle);
   Image* user_texture = del->v_texture;
   if (user_texture != NULL) Image_free(user_texture);
-  if (users->size == 0) has_users = 0;
   free(del);
 END:
+  if (users->size == 0) has_users = 0;
   ClientList_print(users);
   pthread_mutex_unlock(&mutex);
   close(sock_fd);
@@ -589,8 +589,8 @@ void* garbageCollector(void* args) {
         Image* user_texture = del->v_texture;
         if (user_texture != NULL) Image_free(user_texture);
         count++;
-        if (users->size == 0) has_users = 0;
       SKIP:
+        if (users->size == 0) has_users = 0;
         close(del->id);
         free(del);
       } else if (client->is_udp_addr_ready == 1 &&
@@ -611,8 +611,8 @@ void* garbageCollector(void* args) {
           Image* user_texture = del->v_texture;
           if (user_texture != NULL) Image_free(user_texture);
           count++;
-          if (users->size == 0) has_users = 0;
         SKIP2:
+          if (users->size == 0) has_users = 0;
           close(del->id);
           free(del);
         } else {
