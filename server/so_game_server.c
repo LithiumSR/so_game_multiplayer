@@ -222,8 +222,7 @@ int TCPHandler(int socket_desc, char* buf_rcv, Image* texture_map,
       if (client->inside_chat)
         result = -1;
       else {
-        strncpy(client->username, deserialized_packet->username,
-                USERNAME_LEN);
+        strncpy(client->username, deserialized_packet->username, USERNAME_LEN);
         result = deserialized_packet->id;
         client->inside_chat = 1;
       }
@@ -274,7 +273,7 @@ int TCPHandler(int socket_desc, char* buf_rcv, Image* texture_map,
         pthread_mutex_lock(&users_mutex);
         ClientListItem* el = ClientList_find_by_id(users, image_request->id);
 
-        if (el == NULL && !el->inside_world) {
+        if (el == NULL) {
           pthread_mutex_unlock(&users_mutex);
           PacketHeader pheader;
           pheader.type = PostDisconnect;
@@ -555,7 +554,8 @@ int sendMessages(int socket_udp) {
   MessageHistory* mh = (MessageHistory*)malloc(sizeof(MessageHistory));
   mh->header = ph;
   mh->num_messages = messages->size;
-  mh->messages = (MessageBroadcast*)malloc(sizeof(MessageBroadcast) * mh->num_messages);
+  mh->messages =
+      (MessageBroadcast*)malloc(sizeof(MessageBroadcast) * mh->num_messages);
   MessageListItem* mli = messages->first;
   for (int i = 0; i < mh->num_messages; i++) {
     if (mli->type == Text) strncpy(mh->messages[i].text, mli->text, TEXT_LEN);
