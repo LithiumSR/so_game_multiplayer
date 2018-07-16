@@ -1,6 +1,7 @@
 #include "audio_context.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include "../common/common.h"
 #define DEFAULT_VOLUME 1;
@@ -39,6 +40,9 @@ int AudioContext_init(AudioContext *ac, char *filename, char loop) {
   ac->volume = DEFAULT_VOLUME;
   ac->loop = loop;
   ac->cflags = AC_DISPOSABLE;
+  int len= strlen(filename);
+  ac->filename = (char*)malloc(sizeof(char)*len);
+  strncpy(ac->filename,filename,len);
   return 0;
 }
 
@@ -87,5 +91,6 @@ void AudioContext_free(AudioContext *ac) {
   AudioContext_stopTrack(ac);
   alDeleteSources(1, &ac->source);
   alDeleteBuffers(1, &ac->buffer);
+  free(ac->filename);
   free(ac);
 }

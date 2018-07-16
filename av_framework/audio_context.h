@@ -15,6 +15,7 @@ typedef struct AudioContext {
   float volume;
   char loop;
   CleanupFlag cflags;
+  char* filename;
 } AudioContext;
 
 int AudioContext_openDevice(void);
