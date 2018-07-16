@@ -9,4 +9,3 @@ script:
   - ./test_packets_serialization
   - ./test_message_list
   - ./test_client_list
-  - ./test_audio
