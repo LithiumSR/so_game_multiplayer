@@ -5,7 +5,11 @@ sudo: true
 script:
   - sudo apt-get install freeglut3-dev 
   - sudo apt-get install libalut-dev
+  - sed -i 's/SERVER_SIDE_POSITION_CHECK 0/SERVER_SIDE_POSITION_CHECK 1/g' ./common/common.h
   - make
-  - ./test_packets_serialization
   - ./test_message_list
   - ./test_client_list
+  - ./test_packets_serialization
+  - sed -i 's/SERVER_SIDE_POSITION_CHECK 1/SERVER_SIDE_POSITION_CHECK 0/g' ./common/common.h
+  - make
+  - ./test_packets_serialization
