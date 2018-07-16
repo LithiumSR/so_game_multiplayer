@@ -77,6 +77,10 @@ void AudioList_cleanExpiredItems(AudioListHead* head) {
   if (head == NULL) return;
   AudioListItem* track = head->first;
   while (track != NULL) {
+    if (track->audio_context!=NULL && track->audio_context->cflags==AC_PERSISTENT) {
+      track = track->next;
+      continue;
+    }
     AudioListItem* tmp = track;
     track = track->next;
     ALenum state;
