@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 void AudioList_init(AudioListHead* head) {
@@ -9,7 +10,7 @@ void AudioList_init(AudioListHead* head) {
   head->size = 0;
 }
 
-AudioListItem* AudioList_find_by_context(AudioListHead* head,
+AudioListItem* AudioList_findByContext(AudioListHead* head,
                                          AudioContext* ac) {
   if (head == NULL) return NULL;
   AudioListItem* tmp = head->first;
@@ -65,7 +66,7 @@ void AudioList_destroy(AudioListHead* head) {
 }
 
 AudioListItem* AudioList_findByFilename(AudioListHead* head, char* filename) {
-  if (head == NULL) return;
+  if (head == NULL) return NULL;
   AudioListItem* track = head->first;
   while (track != NULL) {
     if(track->audio_context!=NULL && strcmp(track->audio_context->filename,filename)==0) return track;
