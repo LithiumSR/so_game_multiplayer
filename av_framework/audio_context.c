@@ -38,6 +38,7 @@ int AudioContext_init(AudioContext *ac, char *filename, char loop) {
   ac->source = setupSource(ac->buffer);
   ac->volume = DEFAULT_VOLUME;
   ac->loop = loop;
+  ac->cflags = AC_DISPOSABLE;
   return 0;
 }
 
@@ -45,6 +46,11 @@ void AudioContext_startTrackLoop(AudioContext *ac) {
   if (ac == NULL) return;
   alSourcei(ac->source, AL_LOOPING, AL_TRUE);
   alSourcePlay(ac->source);
+}
+
+void AudioContext_setCleanupFlag(AudioContext *ac, CleanupFlag flag) {
+  if (ac==NULL) return;
+  ac->cflags=flag;
 }
 
 void AudioContext_startTrackNoLoop(AudioContext *ac) {
