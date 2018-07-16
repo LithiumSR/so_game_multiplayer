@@ -64,6 +64,16 @@ void AudioList_destroy(AudioListHead* head) {
   free(head);
 }
 
+AudioListItem* AudioList_findByFilename(AudioListHead* head, char* filename) {
+  if (head == NULL) return;
+  AudioListItem* track = head->first;
+  while (track != NULL) {
+    if(track->audio_context!=NULL && strcmp(track->audio_context->filename,filename)==0) return track;
+    track = track->next;
+  }
+  return NULL;
+}
+
 void AudioList_setVolume(AudioListHead* head, float volume) {
   if (head == NULL) return;
   AudioListItem* track = head->first;
