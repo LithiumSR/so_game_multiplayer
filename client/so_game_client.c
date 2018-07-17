@@ -95,9 +95,11 @@ void handleSignal(int signal) {
   }
 }
 
-int addUser(int ids[], int size, int id, int *position, int *users_online) {
+//This method returns the index of the user in the array. If it returns -1 and existing_index is != -1 it means that the user was already in the array in the 
+//position 'existing_index'. If the method returns -1 and existing_index==-1 it means that the world is full and no space can be found to save the new user.
+int addUser(int ids[], int size, int id, int* existing_index, int* users_online) {
   if (*users_online == WORLDSIZE) {
-    *position = -1;
+    *existing_index = -1;
     return -1;
   }
   int ret = hasUser(ids, WORLDSIZE, id);
@@ -106,7 +108,7 @@ int addUser(int ids[], int size, int id, int *position, int *users_online) {
     if (ids[i] == -1) {
       ids[i] = id;
       *users_online += 1;
-      *position = i;
+      *existing_index = i;
       break;
     }
   }
