@@ -57,6 +57,15 @@ typedef struct listenArgs {
   int socket_tcp;
 } udpArgs;
 
+int hasUser(int ids[], int size, int id) {
+  for (int i = 0; i < size; i++) {
+    if (ids[i] == id) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 void handleSignal(int signal) {
   // Find out which signal we're handling
   switch (signal) {
