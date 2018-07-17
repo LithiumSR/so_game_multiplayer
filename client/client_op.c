@@ -296,6 +296,7 @@ AudioContext* getAudioContext(int socket_desc) {
   AudioContext* ac = (AudioContext*)malloc(sizeof(AudioContext));
   int res = AudioContext_init(ac, filename, loop);
   if (res == -1) return NULL;
+  AudioContext_setCleanupFlag(ac,AC_PERSISTENT);
   return ac;
 }
 
