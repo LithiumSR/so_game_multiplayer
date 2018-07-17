@@ -35,16 +35,20 @@ int main(int argc, char const* argv[]) {
     return -1;
   }
   if (cil2 == u1) printf("OK \n ");
-  printf("Removing elements with id 2... \n");
+  printf("Removing elements with id 2...");
   ClientList_detach(test, cil2);
+  printf("Done.\n");
   ClientList_print(test);
-  printf("Removing elements with id 1... \n");
+  printf("Removing elements with id 1...");
   ClientList_detach(test, cil);
+  printf("Done.\n");
   ClientList_print(test);
-  printf("Readding elements previously removed... \n");
+  printf("Readding elements previously removed...");
   ClientList_insert(test, u1);
   ClientList_insert(test, u2);
-  printf("Destroying resources for good... \n");
+  printf("Done.\n");
+  printf("Destroying resources for good...");
   ClientList_destroy(test);
+  printf("Done.\n");
   fflush(stdout);
 }

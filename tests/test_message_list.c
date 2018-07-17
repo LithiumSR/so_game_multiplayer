@@ -14,7 +14,7 @@ int main(int argc, char const* argv[]) {
   printf("Creating message list...");
   MessageListHead* list = (MessageListHead*)malloc(sizeof(MessageListHead));
   MessageList_init(list);
-  printf("Done\n.");
+  printf("Done.\n");
   printf("Adding message 1 to list...");
   MessageListItem* el = (MessageListItem*)malloc(sizeof(MessageListItem));
   el->id = 10;
