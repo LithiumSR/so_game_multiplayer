@@ -93,7 +93,7 @@ int UDPHandler(int socket_udp, char *buf_rcv, struct sockaddr_in client_addr) {
       VehicleUpdatePacket *vup =
           (VehicleUpdatePacket *)Packet_deserialize(buf_rcv, ph->size);
       pthread_mutex_lock(&users_mutex);
-      ClientListItem *client = ClientList_find_by_id(users, vup->id);
+      ClientListItem *client = ClientList_findByID(users, vup->id);
       if (client == NULL) {
         debug_print(
             "[UDP_Handler] Can't find the user with id %d to apply the update "
@@ -151,7 +151,7 @@ int UDPHandler(int socket_udp, char *buf_rcv, struct sockaddr_in client_addr) {
           (MessagePacket *)Packet_deserialize(buf_rcv, ph->size);
       MessageListItem *mli = (MessageListItem *)malloc(sizeof(MessageListItem));
       pthread_mutex_lock(&users_mutex);
-      ClientListItem *user = ClientList_find_by_id(users, mp->message.id);
+      ClientListItem *user = ClientList_findByID(users, mp->message.id);
       if (user == NULL || !user->inside_chat) {
         free(mli);
         pthread_mutex_unlock(&users_mutex);
@@ -207,7 +207,7 @@ int TCPHandler(int socket_desc, char *buf_rcv, Image *texture_map,
       char result = 0;
       pthread_mutex_lock(&users_mutex);
       ClientListItem *client =
-          ClientList_find_by_id(users, deserialized_packet->id);
+          ClientList_findByID(users, deserialized_packet->id);
       if (client == NULL) {
         Packet_free(&deserialized_packet->header);
         pthread_mutex_unlock(&users_mutex);
@@ -265,7 +265,7 @@ int TCPHandler(int socket_desc, char *buf_rcv, Image *texture_map,
         PacketHeader im_head;
         im_head.type = PostTexture;
         pthread_mutex_lock(&users_mutex);
-        ClientListItem *el = ClientList_find_by_id(users, image_request->id);
+        ClientListItem *el = ClientList_findByID(users, image_request->id);
 
         if (el == NULL) {
           pthread_mutex_unlock(&users_mutex);
@@ -386,7 +386,7 @@ int TCPHandler(int socket_desc, char *buf_rcv, Image *texture_map,
 
       pthread_mutex_lock(&users_mutex);
       ClientListItem *user =
-          ClientList_find_by_id(users, deserialized_packet->id);
+          ClientList_findByID(users, deserialized_packet->id);
       ClientList_print(users);
       fflush(stdout);
 
@@ -478,7 +478,7 @@ void *TCPFlow(void *args) {
 EXIT:
   printf("Freeing resources...");
   pthread_mutex_lock(&users_mutex);
-  ClientListItem *el = ClientList_find_by_id(users, sock_fd);
+  ClientListItem *el = ClientList_findByID(users, sock_fd);
   if (el == NULL) goto END;
   ClientListItem *del = ClientList_detach(users, el);
   if (del == NULL) goto END;
