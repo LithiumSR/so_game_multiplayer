@@ -14,8 +14,9 @@ typedef struct AudioListHead {
 } AudioListHead;
 
 void AudioList_init(AudioListHead* head);
-AudioListItem* AudioList_find_by_context(AudioListHead* head, AudioContext* ac);
+AudioListItem* AudioList_findByContext(AudioListHead* head, AudioContext* ac);
 AudioListItem* AudioList_find(AudioListHead* head, AudioListItem* item);
+AudioListItem* AudioList_findByFilename(AudioListHead* head, char* filename);
 AudioListItem* AudioList_insert(AudioListHead* head, AudioListItem* item);
 AudioListItem* AudioList_detach(AudioListHead* head, AudioListItem* item);
 void AudioList_destroy(AudioListHead* head);
