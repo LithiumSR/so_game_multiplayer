@@ -9,7 +9,7 @@ void ClientList_init(ClientListHead* head) {
   head->size = 0;
 }
 
-ClientListItem* ClientList_find_by_id(ClientListHead* head, int id) {
+ClientListItem* ClientList_findByID(ClientListHead* head, int id) {
   if (head == NULL) return NULL;
   ClientListItem* tmp = head->first;
   while (tmp != NULL) {

@@ -26,7 +26,7 @@ typedef struct ClientListHead {
 } ClientListHead;
 
 void ClientList_init(ClientListHead* head);
-ClientListItem* ClientList_find_by_id(ClientListHead* head, int id);
+ClientListItem* ClientList_findByID(ClientListHead* head, int id);
 ClientListItem* ClientList_find(ClientListHead* head, ClientListItem* item);
 ClientListItem* ClientList_insert(ClientListHead* head, ClientListItem* item);
 ClientListItem* ClientList_detach(ClientListHead* head, ClientListItem* item);
