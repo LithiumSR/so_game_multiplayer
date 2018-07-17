@@ -4,14 +4,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-void ClientList_init(ClientListHead *head) {
+void ClientList_init(ClientListHead* head) {
   head->first = NULL;
   head->size = 0;
 }
 
-ClientListItem *ClientList_find_by_id(ClientListHead *head, int id) {
+ClientListItem* ClientList_findByID(ClientListHead* head, int id) {
   if (head == NULL) return NULL;
-  ClientListItem *tmp = head->first;
+  ClientListItem* tmp = head->first;
   while (tmp != NULL) {
     if (tmp->id == id)
       return tmp;
@@ -21,18 +21,18 @@ ClientListItem *ClientList_find_by_id(ClientListHead *head, int id) {
   return NULL;
 }
 
-ClientListItem *ClientList_insert(ClientListHead *head, ClientListItem *item) {
+ClientListItem* ClientList_insert(ClientListHead* head, ClientListItem* item) {
   if (head == NULL) return NULL;
-  ClientListItem *client = head->first;
+  ClientListItem* client = head->first;
   item->next = client;
   head->first = item;
   head->size++;
   return item;
 }
 
-ClientListItem *ClientList_detach(ClientListHead *head, ClientListItem *item) {
+ClientListItem* ClientList_detach(ClientListHead* head, ClientListItem* item) {
   if (head == NULL) return NULL;
-  ClientListItem *client = head->first;
+  ClientListItem* client = head->first;
   if (client == item) {
     head->first = client->next;
     head->size--;
@@ -49,22 +49,21 @@ ClientListItem *ClientList_detach(ClientListHead *head, ClientListItem *item) {
   return NULL;
 }
 
-void ClientList_destroy(ClientListHead *users) {
+void ClientList_destroy(ClientListHead* users) {
   if (users == NULL) return;
-  ClientListItem *user = users->first;
+  ClientListItem* user = users->first;
   while (user != NULL) {
-    ClientListItem *tmp = ClientList_detach(users, user);
+    ClientListItem* tmp = ClientList_detach(users, user);
     user = user->next;
-    if (tmp->v_texture != NULL) Image_free(tmp->v_texture);
     close(tmp->id);
     free(tmp);
   }
   free(users);
 }
 
-void ClientList_print(ClientListHead *users) {
+void ClientList_print(ClientListHead* users) {
   if (users == NULL) return;
-  ClientListItem *user = users->first;
+  ClientListItem* user = users->first;
   int i = 0;
   printf("List elements: [");
   while (i < users->size) {
