@@ -4,11 +4,18 @@
 #include <AL/alut.h>
 #include "../game_framework/so_game_protocol.h"
 
+typedef enum {
+  AC_PERSISTENT = 0x1,
+  AC_DISPOSABLE = 0x2,
+} CleanupFlag;
+
 typedef struct AudioContext {
   ALuint buffer;
   ALuint source;
   float volume;
   char loop;
+  CleanupFlag cflags;
+  char* filename;
 } AudioContext;
 
 int AudioContext_openDevice(void);
@@ -19,3 +26,4 @@ void AudioContext_stopTrack(AudioContext *ac);
 void AudioContext_free(AudioContext *ac);
 void AudioContext_setVolume(AudioContext *ac, float volume);
 void AudioContext_pauseTrack(AudioContext *ac);
+void AudioContext_setCleanupFlag(AudioContext *ac, CleanupFlag flag);
