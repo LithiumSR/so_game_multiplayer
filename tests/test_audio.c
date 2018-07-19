@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include "../av_framework/audio_context.h"
 #include "../av_framework/audio_list.h"
-#include "../game_framework/so_game_protocol.h"
+#include "../game_framework/protogame_protocol.h"
 
 int main(int argc, char const* argv[]) {
   printf("Opening audio device... ");

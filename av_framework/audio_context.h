@@ -2,7 +2,7 @@
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <AL/alut.h>
-#include "../game_framework/so_game_protocol.h"
+#include "../game_framework/protogame_protocol.h"
 
 typedef enum {
   AC_PERSISTENT = 0x1,
