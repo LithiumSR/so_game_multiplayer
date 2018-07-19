@@ -4,9 +4,9 @@ CC=gcc -std=gnu99
 AR=ar
 
 
-BINS=libso_game.a\
-     so_game_server\
-     so_game_client\
+BINS=libproto_game.a\
+     protogame_server\
+     protogame_client\
 	test_packets_serialization\
 	test_client_list\
 	test_audio\
@@ -21,14 +21,14 @@ OBJS = av_framework/vec3.o\
        av_framework/audio_context.o\
        game_framework/linked_list.o\
        game_framework/vehicle.o\
-       game_framework/so_game_protocol.o\
+       game_framework/protogame_protocol.o\
        game_framework/client_list.o\
 	   game_framework/message_list.o\
        client/client_op.o\
        
 HEADERS=av_framework/image.h\
 	game_framework/linked_list.h\
-	game_framework/so_game_protocol.h\
+	game_framework/protogame_protocol.h\
 	game_framework/vehicle.h\
 	game_framework/client_list.h\
 	game_framework/message_list.o\
@@ -48,26 +48,26 @@ HEADERS=av_framework/image.h\
 
 all:	$(BINS)
 
-libso_game.a: $(OBJS)
+libproto_game.a: $(OBJS)
 	$(AR) -rcs $@ $^
 	$(RM) $(OBJS)
 
-so_game_client: client/so_game_client.c libso_game.a
+protogame_client: client/protogame_client.c libproto_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
 
-so_game_server: server/so_game_server.c libso_game.a
+protogame_server: server/protogame_server.c libproto_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^ $(LIBS)
 
-test_packets_serialization: tests/test_packets_serialization.c libso_game.a
+test_packets_serialization: tests/test_packets_serialization.c libproto_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^  $(LIBS)
 
-test_client_list: tests/test_client_list.c libso_game.a
+test_client_list: tests/test_client_list.c libproto_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^  $(LIBS)
 
-test_audio: tests/test_audio.c libso_game.a
+test_audio: tests/test_audio.c libproto_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^  $(LIBS)
 
-test_message_list: tests/test_message_list.c libso_game.a
+test_message_list: tests/test_message_list.c libproto_game.a
 	$(CC) $(CCOPTS) -Ofast -o $@ $^  $(LIBS)
 
 

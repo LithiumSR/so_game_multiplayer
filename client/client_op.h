@@ -1,6 +1,6 @@
 #pragma once
 #include "../av_framework/audio_context.h"
-#include "../game_framework/so_game_protocol.h"
+#include "../game_framework/protogame_protocol.h"
 // converts a well formed packet into a string in dest.
 // returns the written bytes
 // h is the packet to write
