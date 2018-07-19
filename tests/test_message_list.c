@@ -4,7 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include "../game_framework/message_list.h"
-#include "../game_framework/so_game_protocol.h"
+#include "../game_framework/protogame_protocol.h"
 
 #if SERVER_SIDE_POSITION_CHECK == 1
 #define _USE_SERVER_SIDE_FOG_

@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include "../common/common.h"
 #include "../game_framework/client_list.h"
-#include "../game_framework/so_game_protocol.h"
+#include "../game_framework/protogame_protocol.h"
 int main(int argc, char const* argv[]) {
   printf("Starting client list tests...");
   ClientListHead* test = (ClientListHead*)malloc(sizeof(ClientListHead));
