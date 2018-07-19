@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "../game_framework/so_game_protocol.h"
+#include "../game_framework/protogame_protocol.h"
 #include "../av_framework/audio_context.h"
 #include "../av_framework/audio_list.h"
 
