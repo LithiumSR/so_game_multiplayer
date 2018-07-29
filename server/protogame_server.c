@@ -16,7 +16,7 @@
 #include "../common/common.h"
 #include "../game_framework/client_list.h"
 #include "../game_framework/message_list.h"
-#include "../game_framework/so_game_protocol.h"
+#include "../game_framework/protogame_protocol.h"
 #include "../game_framework/vehicle.h"
 #define RECEIVER_SLEEP 50 * 1000
 #define WORLD_LOOP_SLEEP 70 * 1000
