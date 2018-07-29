@@ -16,7 +16,7 @@
 #include "../av_framework/world.h"
 #include "../av_framework/world_viewer.h"
 #include "../common/common.h"
-#include "../game_framework/so_game_protocol.h"
+#include "../game_framework/protogame_protocol.h"
 #include "../game_framework/vehicle.h"
 #include "client_op.h"
 #define UNTOUCHED 0

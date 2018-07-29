@@ -1,4 +1,4 @@
-#include "so_game_protocol.h"
+#include "protogame_protocol.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
