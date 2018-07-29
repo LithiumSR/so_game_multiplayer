@@ -251,7 +251,7 @@ int TCPHandler(int socket_desc, char* buf_rcv, Image* texture_map,
     return 0;
   } else if (header->type == GetAudioInfo) {
     char buf_send[BUFFERSIZE];
-    AudioInfoPacket* response = (AudioInfoPacket*)malloc(sizeof(IdPacket));
+    AudioInfoPacket* response = (AudioInfoPacket*)malloc(sizeof(AudioInfoPacket));
     PacketHeader ph;
     ph.type = PostAudioInfo;
     response->header = ph;
