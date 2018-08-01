@@ -20,7 +20,7 @@ typedef enum {
   ChatMessage = 0x11,
   ChatHistory = 0x12,
   ChatAuth = 0x13
-} Type;
+} PacketType;
 
 #ifdef _USE_SERVER_SIDE_FOG_
 typedef enum {
@@ -32,7 +32,7 @@ typedef enum {
 #endif
 
 typedef struct {
-  Type type;
+  PacketType type;
   int size;
 } PacketHeader;
 
