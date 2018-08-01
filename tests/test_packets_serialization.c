@@ -232,7 +232,7 @@ int main(int argc, char const* argv[]) {
   printf("\n\nallocate a MessageAuth packet \n");
   PacketHeader auth_header;
   auth_header.type = ChatAuth;
-  MessageAuth* auth_pckt = (MessageAuth*)malloc(sizeof(MessageAuth));
+  MessageAuthPacket* auth_pckt = (MessageAuthPacket*)malloc(sizeof(MessageAuthPacket));
   auth_pckt->header = auth_header;
   char* username = "username_test";
   strncpy(auth_pckt->username, username, USERNAME_LEN);
@@ -245,8 +245,8 @@ int main(int argc, char const* argv[]) {
   printf("serialize\n");
   int auth_size = Packet_serialize(message_buffer, &auth_pckt->header);
   printf("deserialize\n");
-  MessageAuth* deserialized_auth_packet =
-      (MessageAuth*)Packet_deserialize(message_buffer, auth_size);
+  MessageAuthPacket* deserialized_auth_packet =
+      (MessageAuthPacket*)Packet_deserialize(message_buffer, auth_size);
   printf(
       "deserialized messageAuth packet "
       "with:\ntype\t%d\nsize\t%d\nid\t%d\nusername\t%s\n",
@@ -263,8 +263,8 @@ int main(int argc, char const* argv[]) {
   printf("\n\nallocate a MessageHistory packet \n");
   PacketHeader history_header;
   history_header.type = ChatHistory;
-  MessageHistory* history_pckt =
-      (MessageHistory*)malloc(sizeof(MessageHistory));
+  MessageHistoryPacket* history_pckt =
+      (MessageHistoryPacket*)malloc(sizeof(MessageHistoryPacket));
   history_pckt->header = history_header;
   history_pckt->num_messages = 1;
   MessageBroadcast* messages = (MessageBroadcast*)malloc(
@@ -288,8 +288,8 @@ int main(int argc, char const* argv[]) {
   printf("serialize\n");
   int history_size = Packet_serialize(message_buffer, &history_pckt->header);
   printf("deserialize\n");
-  MessageHistory* deserialized_history_packet =
-      (MessageHistory*)Packet_deserialize(message_buffer, history_size);
+  MessageHistoryPacket* deserialized_history_packet =
+      (MessageHistoryPacket*)Packet_deserialize(message_buffer, history_size);
   info_des = localtime(&deserialized_history_packet->messages->time);
   printf(
       "deserialized MessageHistory packet "
