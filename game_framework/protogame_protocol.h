@@ -5,7 +5,7 @@
 #if SERVER_SIDE_POSITION_CHECK == 1
 #define _USE_SERVER_SIDE_FOG_
 #endif
-// ia brief desription required
+// These are the types of action that are covered by the protocol
 typedef enum {
   GetId = 0x1,
   GetTexture = 0x2,
