@@ -2,7 +2,7 @@
 #include <time.h>
 #include "../common/common.h"
 #include "vehicle.h"
-// ia brief desription required
+// These are the types of action that are covered by the protocol
 typedef enum {
   GetId = 0x1,
   GetTexture = 0x2,
@@ -17,14 +17,14 @@ typedef enum {
   ChatMessage = 0x11,
   ChatHistory = 0x12,
   ChatAuth = 0x13
-} Type;
+} PacketType;
 
 typedef enum { Effect = 0x1, Track = 0x2 } MusicType;
 
 typedef enum { Hello = 0x1, Goodbye = 0x2, Text = 0x3 } MessageType;
 
 typedef struct {
-  Type type;
+  PacketType type;
   int size;
 } PacketHeader;
 

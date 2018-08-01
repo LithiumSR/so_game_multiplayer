@@ -589,7 +589,7 @@ SKIP:
     ret = close(socket_udp);
     ERROR_HELPER(ret, "Failed to close UDP socket");
   }
-  // world cleanup
+  // images cleanup
   Image_free(surface_elevation);
   Image_free(surface_texture);
   Image_free(my_texture);
