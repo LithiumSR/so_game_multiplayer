@@ -1,7 +1,7 @@
 #pragma once
 #include <time.h>
 #include "vehicle.h"
-// ia brief desription required
+// These are the types of action that are covered by the protocol
 typedef enum {
   GetId = 0x1,
   GetTexture = 0x2,
@@ -13,10 +13,10 @@ typedef enum {
   PostDisconnect = 0x8,
   GetAudioInfo = 0x9,
   PostAudioInfo = 0x10
-} Type;
+} PacketType;
 
 typedef struct {
-  Type type;
+  PacketType type;
   int size;
 } PacketHeader;
 
