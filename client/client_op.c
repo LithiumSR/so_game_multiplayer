@@ -325,7 +325,7 @@ int sendGoodbye(int socket, int id) {
 int joinChat(int socket_desc, int id, char* username) {
   char buf_send[BUFFERSIZE];
   char buf_rcv[BUFFERSIZE];
-  MessageAuth* mp = (MessageAuth*)malloc(sizeof(MessageAuth));
+  MessageAuthPacket* mp = (MessageAuthPacket*)malloc(sizeof(MessageAuthPacket));
   PacketHeader ph;
   ph.type = ChatAuth;
   mp->id = id;

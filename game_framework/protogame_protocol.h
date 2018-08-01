@@ -120,13 +120,13 @@ typedef struct {
   PacketHeader header;
   int num_messages;
   MessageBroadcast* messages;
-} MessageHistory;
+} MessageHistoryPacket;
 
 typedef struct {
   PacketHeader header;
   char username[USERNAME_LEN];
   int id;
-} MessageAuth;
+} MessageAuthPacket;
 
 // server world update, send by server (UDP)
 typedef struct {
