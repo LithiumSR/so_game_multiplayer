@@ -252,8 +252,8 @@ void* UDPReceiver(void* args) {
         WorldViewer_exit(0);
       }
       case (ChatHistory): {
-        MessageHistory* mh =
-            (MessageHistory*)Packet_deserialize(buf_rcv, bytes_read);
+        MessageHistoryPacket* mh =
+            (MessageHistoryPacket*)Packet_deserialize(buf_rcv, bytes_read);
         for (int i = 0; i < mh->num_messages; i++) {
           struct tm* info;
           info = localtime(&mh->messages[i].time);

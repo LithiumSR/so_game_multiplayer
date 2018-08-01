@@ -100,7 +100,7 @@ typedef struct {
   PacketHeader header;
   int num_messages;
   MessageBroadcast* messages;
-} MessageHistory;
+} MessageHistoryPacket;
 
 // server world update, send by server (UDP)
 typedef struct {
@@ -114,7 +114,7 @@ typedef struct {
   PacketHeader header;
   char username[USERNAME_LEN];
   int id;
-} MessageAuth;
+} MessageAuthPacket;
 
 // Send info about a track that should be played by the client
 typedef struct {
