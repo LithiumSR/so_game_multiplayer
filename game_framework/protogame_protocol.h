@@ -121,6 +121,7 @@ typedef struct {
   PacketHeader header;
   int track_number;
   char loop;
+  MusicType type;
 } AudioInfoPacket;
 
 // converts a well formed packet into a string in dest.
