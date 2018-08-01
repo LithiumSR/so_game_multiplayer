@@ -24,9 +24,9 @@ int Packet_serialize(char* dest, const PacketHeader* h) {
       break;
     }
     case ChatAuth: {
-      const MessageAuth* mp = (MessageAuth*)h;
-      memcpy(dest, mp, sizeof(MessageAuth));
-      dest_end += sizeof(MessageAuth);
+      const MessageAuthPacket* mp = (MessageAuthPacket*)h;
+      memcpy(dest, mp, sizeof(MessageAuthPacket));
+      dest_end += sizeof(MessageAuthPacket);
       break;
     }
     case ChatMessage: {
@@ -36,9 +36,9 @@ int Packet_serialize(char* dest, const PacketHeader* h) {
       break;
     }
     case ChatHistory: {
-      const MessageHistory* mh = (MessageHistory*)h;
-      memcpy(dest, mh, sizeof(MessageHistory));
-      dest_end += sizeof(MessageHistory);
+      const MessageHistoryPacket* mh = (MessageHistoryPacket*)h;
+      memcpy(dest, mh, sizeof(MessageHistoryPacket));
+      dest_end += sizeof(MessageHistoryPacket);
       memcpy(dest_end, mh->messages, mh->num_messages * sizeof(MessageBroadcast));
       dest_end += mh->num_messages * sizeof(MessageBroadcast);
       break;
@@ -105,8 +105,8 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
       return (PacketHeader*)audio_packet;
     }
     case ChatAuth: {
-      MessageAuth* mp = (MessageAuth*)malloc(sizeof(MessageAuth));
-      memcpy(mp, buffer, sizeof(MessageAuth));
+      MessageAuthPacket* mp = (MessageAuthPacket*)malloc(sizeof(MessageAuthPacket));
+      memcpy(mp, buffer, sizeof(MessageAuthPacket));
       return (PacketHeader*)mp;
     }
     case ChatMessage: {
@@ -115,11 +115,11 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
       return (PacketHeader*)mp;
     }
     case ChatHistory: {
-      MessageHistory* mh = (MessageHistory*)malloc(sizeof(MessageHistory));
-      memcpy(mh, buffer, sizeof(MessageHistory));
+      MessageHistoryPacket* mh = (MessageHistoryPacket*)malloc(sizeof(MessageHistoryPacket));
+      memcpy(mh, buffer, sizeof(MessageHistoryPacket));
       // we get the number of messages
       mh->messages = (MessageBroadcast*)malloc(mh->num_messages * sizeof(MessageBroadcast));
-      buffer += sizeof(MessageHistory);
+      buffer += sizeof(MessageHistoryPacket);
       memcpy(mh->messages, buffer, mh->num_messages * sizeof(MessageBroadcast));
       return (PacketHeader*)mh;
     }
@@ -184,7 +184,7 @@ void Packet_free(PacketHeader* h) {
       return;
     }
     case ChatHistory: {
-      MessageHistory* mh = (MessageHistory*)h;
+      MessageHistoryPacket* mh = (MessageHistoryPacket*)h;
       if (mh->num_messages) free(mh->messages);
       free(mh);
       return;

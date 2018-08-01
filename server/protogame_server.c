@@ -202,8 +202,8 @@ int TCPHandler(int socket_desc, char *buf_rcv, Image *texture_map,
     }
     case (ChatAuth): {
       char buf_send[BUFFERSIZE];
-      MessageAuth *deserialized_packet =
-          (MessageAuth *)Packet_deserialize(buf_rcv, header->size);
+      MessageAuthPacket *deserialized_packet =
+          (MessageAuthPacket *)Packet_deserialize(buf_rcv, header->size);
       char result = 0;
       pthread_mutex_lock(&users_mutex);
       ClientListItem *client =
@@ -535,7 +535,7 @@ int sendMessages(int socket_udp) {
   if (messages->size == 0) goto END;
   PacketHeader ph;
   ph.type = ChatHistory;
-  MessageHistory *mh = (MessageHistory *)malloc(sizeof(MessageHistory));
+  MessageHistoryPacket *mh = (MessageHistoryPacket *)malloc(sizeof(MessageHistoryPacket));
   mh->header = ph;
   mh->num_messages = messages->size;
   mh->messages =
