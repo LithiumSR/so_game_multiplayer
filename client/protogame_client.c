@@ -24,9 +24,8 @@
 #define SENDER_SLEEP 200 * 1000
 #define RECEIVER_SLEEP 50 * 1000
 #define MAX_FAILED_ATTEMPTS 20
-// world related variables
+// client related variables
 int window;
-World world;
 Vehicle* vehicle;  // The vehicle
 int id;
 char username[32];
@@ -43,6 +42,7 @@ struct timeval start_time;
 pthread_mutex_t time_lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct localWorld {
+  World world;
   int ids[WORLDSIZE];
   int users_online;
   char has_vehicle[WORLDSIZE];
@@ -319,7 +319,7 @@ void* UDPReceiver(void* args) {
             Vehicle_setForcesUpdate(lw->vehicles[0],
                                     wup->updates[i].translational_force,
                                     wup->updates[i].rotational_force);
-            World_manualUpdate(&world, lw->vehicles[0],
+            World_manualUpdate(&lw->world, lw->vehicles[0],
                                wup->updates[i].client_update_time);
             pthread_mutex_unlock(&lw->vehicles[0]->mutex);
           } else if (id_struct == -1) {
@@ -331,7 +331,7 @@ void* UDPReceiver(void* args) {
             Image* img = getVehicleTexture(socket_tcp, wup->updates[i].id);
             if (img == NULL) continue;
             Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
-            Vehicle_init(new_vehicle, &world, wup->updates[i].id, img);
+            Vehicle_init(new_vehicle, &lw->world, wup->updates[i].id, img);
             lw->vehicles[new_position] = new_vehicle;
             pthread_mutex_lock(&lw->vehicles[new_position]->mutex);
             Vehicle_setXYTheta(lw->vehicles[new_position], wup->updates[i].x,
@@ -340,7 +340,7 @@ void* UDPReceiver(void* args) {
                                     wup->updates[i].translational_force,
                                     wup->updates[i].rotational_force);
             pthread_mutex_unlock(&lw->vehicles[new_position]->mutex);
-            World_addVehicle(&world, new_vehicle);
+            World_addVehicle(&lw->world, new_vehicle);
             lw->has_vehicle[new_position] = 1;
             lw->vehicle_login_time[new_position] =
                 wup->updates[i].client_creation_time;
@@ -352,7 +352,7 @@ void* UDPReceiver(void* args) {
                           wup->updates[i].id);
               if (lw->has_vehicle[id_struct]) {
                 Image* im = lw->vehicles[id_struct]->texture;
-                World_detachVehicle(&world, lw->vehicles[id_struct]);
+                World_detachVehicle(&lw->world, lw->vehicles[id_struct]);
                 Vehicle_destroy(lw->vehicles[id_struct]);
                 if (im != NULL) Image_free(im);
                 free(lw->vehicles[id_struct]);
@@ -360,7 +360,7 @@ void* UDPReceiver(void* args) {
               Image* img = getVehicleTexture(socket_tcp, wup->updates[i].id);
               if (img == NULL) continue;
               Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
-              Vehicle_init(new_vehicle, &world, wup->updates[i].id, img);
+              Vehicle_init(new_vehicle, &lw->world, wup->updates[i].id, img);
               lw->vehicles[id_struct] = new_vehicle;
               pthread_mutex_lock(&lw->vehicles[id_struct]->mutex);
               Vehicle_setXYTheta(lw->vehicles[id_struct], wup->updates[i].x,
@@ -368,10 +368,10 @@ void* UDPReceiver(void* args) {
               Vehicle_setForcesUpdate(lw->vehicles[id_struct],
                                       wup->updates[i].translational_force,
                                       wup->updates[i].rotational_force);
-              World_manualUpdate(&world, lw->vehicles[id_struct],
+              World_manualUpdate(&lw->world, lw->vehicles[id_struct],
                                  wup->updates[i].client_update_time);
               pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
-              World_addVehicle(&world, new_vehicle);
+              World_addVehicle(&lw->world, new_vehicle);
               lw->has_vehicle[id_struct] = 1;
               lw->vehicle_login_time[id_struct] =
                   wup->updates[i].client_creation_time;
@@ -386,7 +386,7 @@ void* UDPReceiver(void* args) {
             Vehicle_setForcesUpdate(lw->vehicles[id_struct],
                                     wup->updates[i].translational_force,
                                     wup->updates[i].rotational_force);
-            World_manualUpdate(&world, lw->vehicles[id_struct],
+            World_manualUpdate(&lw->world, lw->vehicles[id_struct],
                                wup->updates[i].client_update_time);
             pthread_mutex_unlock(&lw->vehicles[id_struct]->mutex);
           }
@@ -402,7 +402,7 @@ void* UDPReceiver(void* args) {
             lw->users_online = lw->users_online - 1;
             if (!lw->has_vehicle[i]) continue;
             Image* im = lw->vehicles[i]->texture;
-            World_detachVehicle(&world, lw->vehicles[i]);
+            World_detachVehicle(&lw->world, lw->vehicles[i]);
             if (im != NULL) Image_free(im);
             Vehicle_destroy(lw->vehicles[i]);
             lw->ids[i] = -1;
@@ -509,10 +509,10 @@ int main(int argc, char** argv) {
     fprintf(stdout, "[Main] Received track number \n");
   }
   // create Vehicle
-  World_init(&world, surface_elevation, surface_texture, 0.5, 0.5, 0.5);
+  World_init(&local_world->world, surface_elevation, surface_texture, 0.5, 0.5, 0.5);
   vehicle = (Vehicle*)malloc(sizeof(Vehicle));
-  Vehicle_init(vehicle, &world, id, my_texture);
-  World_addVehicle(&world, vehicle);
+  Vehicle_init(vehicle, &local_world->world, id, my_texture);
+  World_addVehicle(&local_world->world, vehicle);
   local_world->vehicles[0] = vehicle;
   local_world->has_vehicle[0] = 1;
   if (SINGLEPLAYER) goto SKIP;
@@ -546,7 +546,7 @@ int main(int argc, char** argv) {
 // Disconnect from server if required by macro
 SKIP:
   if (SINGLEPLAYER) sendGoodbye(socket_desc, id);
-  WorldViewer_runGlobal(&world, vehicle, backgroud_track, &argc, argv);
+  WorldViewer_runGlobal(&local_world->world, vehicle, backgroud_track, &argc, argv);
 
   // Waiting threads to end and cleaning resources
   debug_print("[Main] Disabling and joining on UDP and TCP threads \n");
@@ -574,13 +574,14 @@ SKIP:
     local_world->users_online--;
     if (!local_world->has_vehicle[i]) continue;
     Image* im = local_world->vehicles[i]->texture;
-    World_detachVehicle(&world, local_world->vehicles[i]);
+    World_detachVehicle(&local_world->world, local_world->vehicles[i]);
     if (im != NULL) Image_free(im);
     Vehicle_destroy(local_world->vehicles[i]);
     free(local_world->vehicles[i]);
   }
 
   free(local_world->vehicles);
+  World_destroy(&local_world->world);
   free(local_world);
   ret = close(socket_desc);
   ERROR_HELPER(ret, "Failed to close TCP socket");
@@ -589,7 +590,6 @@ SKIP:
     ERROR_HELPER(ret, "Failed to close UDP socket");
   }
   // world cleanup
-  World_destroy(&world);
   Image_free(surface_elevation);
   Image_free(surface_texture);
   Image_free(my_texture);
