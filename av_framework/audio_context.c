@@ -1,6 +1,7 @@
 #include "audio_context.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include "../common/common.h"
 #define DEFAULT_VOLUME 1;
@@ -32,28 +33,44 @@ int AudioContext_openDevice(void) {
 
 void AudioContext_closeDevice(void) { alutExit(); }
 
-int AudioContext_init(AudioContext *ac, char *filename, char loop) {
-  if (access(filename,F_OK|R_OK) == -1) return -1;
+int AudioContext_init(AudioContext *ac, char *filename, char loop, CleanupFlag flag) {
+  if (access(filename, F_OK | R_OK) == -1) return -1;
   ac->buffer = setupBuffer(filename);
   ac->source = setupSource(ac->buffer);
   ac->volume = DEFAULT_VOLUME;
   ac->loop = loop;
+  ac->cflags = flag;
+  int len= strlen(filename);
+  ac->filename = (char*)malloc(sizeof(char)*len);
+  strncpy(ac->filename,filename,len);
   return 0;
 }
 
+ALenum AudioContext_getState(AudioContext *ac) {
+  if (ac == NULL) return -1;
+  ALenum state;
+  alGetSourcei(ac->source, AL_SOURCE_STATE, &state);
+  return state;
+}
+
 void AudioContext_startTrackLoop(AudioContext *ac) {
-  if (ac==NULL) return;
+  if (ac == NULL) return;
   alSourcei(ac->source, AL_LOOPING, AL_TRUE);
   alSourcePlay(ac->source);
 }
 
-void AudioContext_startTrackNoLoop(AudioContext *ac) {
+void AudioContext_setCleanupFlag(AudioContext *ac, CleanupFlag flag) {
   if (ac==NULL) return;
+  ac->cflags=flag;
+}
+
+void AudioContext_startTrackNoLoop(AudioContext *ac) {
+  if (ac == NULL) return;
   alSourcePlay(ac->source);
 }
 
 void AudioContext_startTrack(AudioContext *ac) {
-  if (ac==NULL) return;
+  if (ac == NULL) return;
   if (ac->loop)
     AudioContext_startTrackLoop(ac);
   else
@@ -81,5 +98,6 @@ void AudioContext_free(AudioContext *ac) {
   AudioContext_stopTrack(ac);
   alDeleteSources(1, &ac->source);
   alDeleteBuffers(1, &ac->buffer);
+  free(ac->filename);
   free(ac);
 }
