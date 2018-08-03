@@ -46,6 +46,26 @@ int AudioContext_init(AudioContext *ac, char *filename, char loop) {
   return 0;
 }
 
+int AudioContext_init(AudioContext *ac, char *filename, char loop, CleanupFlag flag) {
+  if (access(filename, F_OK | R_OK) == -1) return -1;
+  ac->buffer = setupBuffer(filename);
+  ac->source = setupSource(ac->buffer);
+  ac->volume = DEFAULT_VOLUME;
+  ac->loop = loop;
+  ac->cflags = flag;
+  int len= strlen(filename);
+  ac->filename = (char*)malloc(sizeof(char)*len);
+  strncpy(ac->filename,filename,len);
+  return 0;
+}
+
+Alenum AudioContext_getState(AudioContext *ac) {
+  if (ac == NULL) return -1;
+  ALenum state;
+  alGetSourcei(ac->source, AL_SOURCE_STATE, &state);
+  return state;
+}
+
 void AudioContext_startTrackLoop(AudioContext *ac) {
   if (ac == NULL) return;
   alSourcei(ac->source, AL_LOOPING, AL_TRUE);
