@@ -27,4 +27,4 @@ void AudioContext_free(AudioContext *ac);
 void AudioContext_setVolume(AudioContext *ac, float volume);
 void AudioContext_pauseTrack(AudioContext *ac);
 void AudioContext_setCleanupFlag(AudioContext *ac, CleanupFlag flag);
-ALenum AudioContext_getStatus(AudioContext *ac);
+ALenum AudioContext_getState(AudioContext *ac);
