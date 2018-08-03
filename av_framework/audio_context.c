@@ -33,19 +33,6 @@ int AudioContext_openDevice(void) {
 
 void AudioContext_closeDevice(void) { alutExit(); }
 
-int AudioContext_init(AudioContext *ac, char *filename, char loop) {
-  if (access(filename, F_OK | R_OK) == -1) return -1;
-  ac->buffer = setupBuffer(filename);
-  ac->source = setupSource(ac->buffer);
-  ac->volume = DEFAULT_VOLUME;
-  ac->loop = loop;
-  ac->cflags = AC_DISPOSABLE;
-  int len= strlen(filename);
-  ac->filename = (char*)malloc(sizeof(char)*len);
-  strncpy(ac->filename,filename,len);
-  return 0;
-}
-
 int AudioContext_init(AudioContext *ac, char *filename, char loop, CleanupFlag flag) {
   if (access(filename, F_OK | R_OK) == -1) return -1;
   ac->buffer = setupBuffer(filename);
@@ -59,7 +46,7 @@ int AudioContext_init(AudioContext *ac, char *filename, char loop, CleanupFlag f
   return 0;
 }
 
-Alenum AudioContext_getState(AudioContext *ac) {
+ALenum AudioContext_getState(AudioContext *ac) {
   if (ac == NULL) return -1;
   ALenum state;
   alGetSourcei(ac->source, AL_SOURCE_STATE, &state);

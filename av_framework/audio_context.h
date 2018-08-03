@@ -20,7 +20,6 @@ typedef struct AudioContext {
 
 int AudioContext_openDevice(void);
 void AudioContext_closeDevice(void);
-int AudioContext_init(AudioContext *ac, char *filename, char loop);
 int AudioContext_init(AudioContext *ac, char *filename, char loop, CleanupFlag flag);
 void AudioContext_startTrack(AudioContext *ac);
 void AudioContext_stopTrack(AudioContext *ac);
