@@ -2,13 +2,14 @@
 #include <GL/glut.h>
 #include <assert.h>
 #include <math.h>
+#include <pthread.h>
 #include <semaphore.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
+#include "../common/common.h"
 #include "../game_framework/vehicle.h"
 #include "image.h"
-#include "pthread.h"
 #include "surface.h"
 
 void World_destroy(World* w) {
@@ -26,9 +27,18 @@ void World_destroy(World* w) {
   sem_destroy(&sem);
 }
 
+int World_isCollisionsDisabled(World* w) {
+  return w->disable_collisions;
+}
+
+void World_disableVehicleCollisions(World* w){
+  w->disable_collisions = 1;
+}
+
 int World_init(World* w, Image* surface_elevation, Image* surface_texture,
                float x_step, float y_step, float z_step) {
   List_init(&w->vehicles);
+  w->disable_collisions = 0;
   Image* float_image = Image_convert(surface_elevation, FLOATMONO);
 
   if (!float_image) return 0;
@@ -43,42 +53,55 @@ int World_init(World* w, Image* surface_elevation, Image* surface_texture,
   return 1;
 }
 
+void world_fixCollisions(World* w, Vehicle* v){
+  //v mutex is already locked
+  ListItem* item2 = w->vehicles.first;
+      char flag = 0;
+      while (item2) {
+        Vehicle* v2 = (Vehicle*)item2;
+        if (v2 == v) goto END;
+        pthread_mutex_lock(&v2->mutex);
+        Vehicle_fixCollisions(v, v2);
+        pthread_mutex_unlock(&v2->mutex);
+      END:
+        item2 = item2->next;
+      }
+      if (!flag) {
+        v->is_new = 0;
+        v->temp_x = v->x;
+        v->temp_y = v->y;
+      }
+}
+
 void World_update(World* w) {
   struct timeval current_time;
   gettimeofday(&current_time, 0);
-
   struct timeval dt;
   timersub(&current_time, &w->last_update, &dt);
   float delta = dt.tv_sec + 1e-6 * dt.tv_usec;
-  float exp = delta / (30 * 1000);
+  float exp = delta / (30000 * 1e-6);
   float tr_decay = powf(1 - 0.001, exp);
-  float rt_decay = powf(1 - 0.25, exp);
-  if (tr_decay > 0.999) tr_decay = 0.999;
-  if (rt_decay > 0.7) rt_decay = 0.75;
+  float rt_decay = powf(1 - 0.15, exp);
   sem_t sem = w->vehicles.sem;
   sem_wait(&sem);
   ListItem* item = w->vehicles.first;
   while (item) {
     Vehicle* v = (Vehicle*)item;
     pthread_mutex_lock(&v->mutex);
-    Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
     if (!Vehicle_update(v, delta * w->time_scale)) {
       Vehicle_reset(v);
     } else {
-      ListItem* item2 = w->vehicles.first;
-      char flag = 0;
-      while (item2) {
-        Vehicle* v2 = (Vehicle*)item2;
-        if (v2 == v) goto END;
-        pthread_mutex_lock(&v2->mutex);
-        Vehicle_fixCollisions(v,v2);
-        pthread_mutex_unlock(&v2->mutex);
-        END: item2 = item2->next;
-      }
-      if (!flag) {
-        v->is_new = 0;
-        v->temp_x = v->x;
-        v->temp_y = v->y;
+      world_fixCollisions(w,v);
+      if (v->manual_updated) {
+        struct timeval dt_manual;
+        timersub(&current_time, &v->world_update_time, &dt_manual);
+        float exp_manual = delta / (30000 * 1e-6);
+        float tr_decay_manual = powf(1 - 0.001, exp_manual);
+        float rt_decay_manual = powf(1 - 0.15, exp_manual);
+        Vehicle_decayForcesUpdate(v, tr_decay_manual, rt_decay_manual);
+        v->manual_updated = 0;
+      } else {
+        Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
       }
     }
     Vehicle_setTime(v, current_time);
@@ -95,14 +118,14 @@ void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time) {
   struct timeval dt;
   timersub(&current_time, &update_time, &dt);
   float delta = dt.tv_sec + 1e-6 * dt.tv_usec;
-  float exp = delta / (30 * 1000);
+  float exp = delta / (30000 * 1e-6);
   float tr_decay = powf(1 - 0.001, exp);
-  float rt_decay = powf(1 - 0.25, exp);
-  if (tr_decay > 0.999) tr_decay = 0.999;
-  if (rt_decay > 0.7) rt_decay = 0.75;
-  Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
+  float rt_decay = powf(1 - 0.15, exp);
   if (!Vehicle_update(v, delta * w->time_scale)) Vehicle_reset(v);
+  world_fixCollisions(w,v);
+  Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
   Vehicle_setTime(v, current_time);
+  v->manual_updated = 1;
 }
 
 Vehicle* World_getVehicle(World* w, int vehicle_id) {
@@ -129,3 +152,4 @@ Vehicle* World_addVehicle(World* w, Vehicle* v) {
 Vehicle* World_detachVehicle(World* w, Vehicle* v) {
   return (Vehicle*)List_detach(&w->vehicles, (ListItem*)v);
 }
+  
