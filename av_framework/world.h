@@ -13,6 +13,7 @@ typedef struct World {
   float dt;
   struct timeval last_update;
   float time_scale;
+  char disable_collisions;
 } World;
 
 int World_init(World* w, Image* surface_elevation, Image* surface_texture,
@@ -31,3 +32,5 @@ Vehicle* World_addVehicle(World* w, Vehicle* v);
 Vehicle* World_detachVehicle(World* w, Vehicle* v);
 
 void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time);
+
+void World_disableVehicleCollisions(World* w);
