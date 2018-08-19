@@ -3,7 +3,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "../av_framework/world.h"
+#include "world.h"
 #include "../common/common.h"
 #include "pthread.h"
 int Vehicle_update(Vehicle* v, float dt) {

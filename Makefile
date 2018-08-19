@@ -15,13 +15,13 @@ OBJS = av_framework/vec3.o\
        av_framework/surface.o\
        av_framework/image.o\
        av_framework/audio_list.o\
-       av_framework/world.o\
        av_framework/world_viewer.o\
        av_framework/audio_context.o\
        game_framework/linked_list.o\
        game_framework/vehicle.o\
        game_framework/protogame_protocol.o\
        game_framework/client_list.o\
+	   game_framework/world.o\
        client/client_op.o\
        
 HEADERS=av_framework/image.h\
@@ -29,10 +29,10 @@ HEADERS=av_framework/image.h\
 	game_framework/protogame_protocol.h\
 	game_framework/vehicle.h\
 	game_framework/client_list.h\
+	game_framework/world.h\
 	av_framework/surface.h\
 	av_framework/vec3.h\
 	av_framework/audio_list.h\
-	av_framework/world.h\
 	av_framework/world_viewer.h\
 	av_framework/audio_context.h\
 	common/common.h\
