@@ -1,7 +1,7 @@
 #pragma once
 #include "../game_framework/vehicle.h"
 #include "audio_context.h"
-#include "world.h"
+#include "../game_framework/world.h"
 // call this to start the visualization of the stuff.
 // This will block the program, and terminate when pressing esc on the viewport
 void WorldViewer_runGlobal(World *world, Vehicle *self, AudioContext *ac,
