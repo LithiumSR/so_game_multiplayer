@@ -59,16 +59,15 @@ int World_init(World* w, Image* surface_elevation, Image* surface_texture,
 
 void world_fixCollisions(World* w, Vehicle* v){
   //v mutex is already locked
+  if (World_isCollisionsDisabled(w)) return;
   ListItem* item2 = w->vehicles.first;
       char flag = 0;
-      while (item2) {
+  for(;item2!=NULL;item2=item2->next) {
         Vehicle* v2 = (Vehicle*)item2;
-        if (v2 == v) goto END;
+        if (v2 == v || v2->id == v->id) continue;
         pthread_mutex_lock(&v2->mutex);
         Vehicle_fixCollisions(v, v2);
         pthread_mutex_unlock(&v2->mutex);
-      END:
-        item2 = item2->next;
       }
       if (!flag) {
         v->is_new = 0;
@@ -78,7 +77,6 @@ void world_fixCollisions(World* w, Vehicle* v){
 }
 
 void World_update(World* w) {
-  pthread_mutex_lock(&w->update_mutex);
   struct timeval current_time;
   gettimeofday(&current_time, 0);
   struct timeval dt;
@@ -108,14 +106,13 @@ void World_update(World* w) {
       } else {
         Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
       }
-    }
     Vehicle_setTime(v, current_time);
     pthread_mutex_unlock(&v->mutex);
     item = item->next;
   }
   sem_post(&sem);
   w->last_update = current_time;
-  pthread_mutex_unlock(&w->update_mutex);
+}
 }
 
 void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time) {
@@ -129,7 +126,6 @@ void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time) {
   float tr_decay = powf(1 - 0.001, exp);
   float rt_decay = powf(1 - 0.15, exp);
   if (!Vehicle_update(v, delta * w->time_scale)) Vehicle_reset(v);
-  world_fixCollisions(w,v);
   Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
   Vehicle_setTime(v, current_time);
   v->manual_updated = 1;
