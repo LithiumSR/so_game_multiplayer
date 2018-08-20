@@ -57,7 +57,7 @@ int World_init(World* w, Image* surface_elevation, Image* surface_texture,
   return 1;
 }
 
-void world_fixCollisions(World* w, Vehicle* v){
+void World_fixCollisions(World* w, Vehicle* v){
   //v mutex is already locked
   if (World_isCollisionsDisabled(w)) return;
   ListItem* item2 = w->vehicles.first;
@@ -94,7 +94,7 @@ void World_update(World* w) {
     if (!Vehicle_update(v, delta * w->time_scale)) {
       Vehicle_reset(v);
     } else {
-      world_fixCollisions(w,v);
+      World_fixCollisions(w,v);
       if (v->manual_updated) {
         struct timeval dt_manual;
         timersub(&current_time, &v->world_update_time, &dt_manual);
