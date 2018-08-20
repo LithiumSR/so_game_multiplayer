@@ -106,13 +106,13 @@ void World_update(World* w) {
       } else {
         Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
       }
+    }
     Vehicle_setTime(v, current_time);
     pthread_mutex_unlock(&v->mutex);
     item = item->next;
   }
   sem_post(&sem);
   w->last_update = current_time;
-}
 }
 
 void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time) {
