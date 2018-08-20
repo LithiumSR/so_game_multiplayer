@@ -156,6 +156,7 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
 #ifdef _USE_SERVER_SIDE_FOG_
       memcpy(world_packet->status_updates, buffer,
              world_packet->num_status_vehicles * sizeof(ClientStatusUpdate));
+      buffer += world_packet->num_status_vehicles * sizeof(ClientStatusUpdate);
 #endif
       return (PacketHeader*)world_packet;
     }
