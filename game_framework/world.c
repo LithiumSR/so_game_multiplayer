@@ -22,10 +22,8 @@ void World_destroy(World* w) {
   while (item) {
     Vehicle* v = (Vehicle*)item;
     Vehicle_destroy(v);
-    ListItem* tmp = item;
     item = item->next;
     free(v);
-    free(tmp);
   }
   sem_post(&(sem));
   sem_destroy(&sem);
@@ -66,12 +64,9 @@ void world_fixCollisions(World* w, Vehicle* v){
       while (item2) {
         Vehicle* v2 = (Vehicle*)item2;
         if (v2 == v) goto END;
-        printf("lockcollision1\n");
         pthread_mutex_lock(&v2->mutex);
-        printf("lockcollision1post\n");
         Vehicle_fixCollisions(v, v2);
         pthread_mutex_unlock(&v2->mutex);
-        printf("unlockcollision1\n");
       END:
         item2 = item2->next;
       }
