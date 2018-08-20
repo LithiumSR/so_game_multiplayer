@@ -23,6 +23,13 @@ typedef enum { Effect = 0x1, Track = 0x2 } MusicType;
 
 typedef enum { Hello = 0x1, Goodbye = 0x2, Text = 0x3 } MessageType;
 
+typedef enum {
+  Online = 0x1,
+  Offline = 0x2,
+  Connecting = 0x3,
+  Dropped = 0x4
+} Status;
+
 typedef struct {
   PacketType type;
   int size;
@@ -76,6 +83,12 @@ typedef struct {
   struct timeval client_update_time, client_creation_time;
 } ClientUpdate;
 
+//contains client's status
+typedef struct {
+  int id;
+  Status status;
+} ClientStatusUpdate;
+
 typedef struct {
   int id;
   char text[TEXT_LEN];
@@ -105,9 +118,11 @@ typedef struct {
 // server world update, send by server (UDP)
 typedef struct {
   PacketHeader header;
-  int num_vehicles;
+  int num_update_vehicles;
+  int num_status_vehicles;
   struct timeval time;
   ClientUpdate* updates;
+  ClientStatusUpdate* status_updates;
 } WorldUpdatePacket;
 
 typedef struct {

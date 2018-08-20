@@ -62,8 +62,12 @@ int Packet_serialize(char* dest, const PacketHeader* h) {
       memcpy(dest, world_packet, sizeof(WorldUpdatePacket));
       dest_end += sizeof(WorldUpdatePacket);
       memcpy(dest_end, world_packet->updates,
-             world_packet->num_vehicles * sizeof(ClientUpdate));
-      dest_end += world_packet->num_vehicles * sizeof(ClientUpdate);
+             world_packet->num_update_vehicles * sizeof(ClientUpdate));
+      dest_end += world_packet->num_update_vehicles * sizeof(ClientUpdate);
+      memcpy(dest_end, world_packet->status_updates,
+             world_packet->num_status_vehicles * sizeof(ClientStatusUpdate));
+      dest_end +=
+          world_packet->num_status_vehicles * sizeof(ClientStatusUpdate);
       break;
     }
     case VehicleUpdate: {
@@ -136,11 +140,17 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
           (WorldUpdatePacket*)malloc(sizeof(WorldUpdatePacket));
       memcpy(world_packet, buffer, sizeof(WorldUpdatePacket));
       // we get the number of clients
-      world_packet->updates = (ClientUpdate*)malloc(world_packet->num_vehicles *
+      world_packet->updates = (ClientUpdate*)malloc(world_packet->num_update_vehicles *
                                                     sizeof(ClientUpdate));
+      world_packet->status_updates = (ClientStatusUpdate*)malloc(
+          world_packet->num_status_vehicles * sizeof(ClientStatusUpdate));
       buffer += sizeof(WorldUpdatePacket);
       memcpy(world_packet->updates, buffer,
-             world_packet->num_vehicles * sizeof(ClientUpdate));
+             world_packet->num_update_vehicles * sizeof(ClientUpdate));
+      buffer += world_packet->num_update_vehicles * sizeof(ClientUpdate);
+      memcpy(world_packet->status_updates, buffer,
+             world_packet->num_status_vehicles * sizeof(ClientStatusUpdate));
+      buffer += world_packet->num_status_vehicles * sizeof(ClientStatusUpdate);
       return (PacketHeader*)world_packet;
     }
     case VehicleUpdate: {
@@ -175,7 +185,8 @@ void Packet_free(PacketHeader* h) {
     }
     case WorldUpdate: {
       WorldUpdatePacket* world_packet = (WorldUpdatePacket*)h;
-      if (world_packet->num_vehicles) free(world_packet->updates);
+      if (world_packet->num_update_vehicles) free(world_packet->updates);
+      if (world_packet->num_status_vehicles) free(world_packet->status_updates);
       free(world_packet);
       return;
     }
