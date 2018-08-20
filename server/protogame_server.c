@@ -650,7 +650,7 @@ void* UDPSender(void* args) {
         free(wup);
         continue;
       }
-      wup->num_vehicles = n;
+      wup->num_update_vehicles = n;
       wup->updates = (ClientUpdate*)malloc(sizeof(ClientUpdate) * n);
       wup->time = time;
       tmp = users->first;
@@ -681,6 +681,22 @@ void* UDPSender(void* args) {
         tmp = tmp->next;
         k++;
       }
+      wup->status_updates =
+          (ClientStatusUpdate*)malloc(sizeof(ClientStatusUpdate) * users->size);
+      wup->num_status_vehicles = users->size;
+      tmp = users->first;
+      k = 0;
+      while (tmp != NULL) {
+        ClientStatusUpdate* csu = &wup->status_updates[k];
+        csu->id = tmp->id;
+        printf("%d\n",csu->id);
+        if (tmp->is_udp_addr_ready && tmp->inside_world)
+          csu->status = Online;
+        else
+          csu->status = Connecting;
+        tmp = tmp->next;
+        k++;
+      }
       int size = Packet_serialize(buf_send, &wup->header);
       if (size == 0 || size == -1) goto END;
       int ret = sendto(socket_udp, buf_send, size, 0,
@@ -690,7 +706,7 @@ void* UDPSender(void* args) {
           "[UDP_Send] Sent WorldUpdate of %d bytes to client with id %d \n",
           ret, client->id);
       debug_print("Difference lenght check - wup: %d client found:%d \n",
-                  wup->num_vehicles, n);
+                  wup->num_update_vehicles, n);
     END:
       Packet_free(&(wup->header));
       client = client->next;
