@@ -327,7 +327,7 @@ void* UDPReceiver(void* args) {
         for (int i = 0; i < wup->num_status_vehicles; i++) {
           int ret = hasUser(lw->ids, WORLDSIZE, wup->status_updates[i].id);
           if (ret == -1) continue;
-          if (wup->status_updates[i].status == Online) mask[i] = 1;
+          if (wup->status_updates[i].status == Online) mask[ret] = 1;
         }
 #endif
 
@@ -483,7 +483,7 @@ void* UDPReceiver(void* args) {
             lw->has_vehicle[i] = 0;
             lw->is_disabled[i] = 0;
           } else if (mask[i] != NO_ACCESS && lw->ids[i] != -1 &&
-                     updated[i] == NO_ACCESS) {
+                     updated[i] == NO_ACCESS && !lw->is_disabled[i]) {
             debug_print("[INFO] Temporary disabling a vehicle %d \n",
                         lw->ids[i]);
             lw->is_disabled[i] = 1;
