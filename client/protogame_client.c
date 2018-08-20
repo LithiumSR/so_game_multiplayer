@@ -124,11 +124,9 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
   int bytes_sent =
       sendto(socket_udp, buf_send, size, 0,
              (const struct sockaddr*)&server_addr, (socklen_t)serverlen);
-  /**
   debug_print(
       "[UDP_Sender] Sent a VehicleUpdatePacket of %d bytes with tf:%f rf:%f \n",
       bytes_sent, vup->translational_force, vup->rotational_force);
-  **/
   Packet_free(&(vup->header));
   struct timeval current_time;
   gettimeofday(&current_time, NULL);
@@ -300,11 +298,9 @@ void* UDPReceiver(void* args) {
           Packet_free(&wup->header);
           usleep(RECEIVER_SLEEP);
           continue;
-        }
-        /**
+        }    
         debug_print("WorldUpdatePacket contains %d vehicles besides mine \n",
                     wup->num_update_vehicles - 1);
-        **/
         last_update_time = wup->time;
         pthread_mutex_unlock(&time_lock);
         char mask[WORLDSIZE];
@@ -317,7 +313,7 @@ void* UDPReceiver(void* args) {
         for (int i = 0; i < wup->num_status_vehicles; i++) {
           int ret = hasUser(lw->ids, WORLDSIZE, wup->status_updates[i].id);
           if (ret == -1) continue;
-          if (wup->status_updates[i].status == Online) {
+          if (wup->status_updates[i].status == Online && CACHE_TEXTURE) {
             mask[ret] = TOUCHED;
           }
         }
