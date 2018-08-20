@@ -14,6 +14,7 @@ typedef struct World {
   struct timeval last_update;
   float time_scale;
   char disable_collisions;
+  pthread_mutex_t update_mutex;
 } World;
 
 int World_init(World* w, Image* surface_elevation, Image* surface_texture,
