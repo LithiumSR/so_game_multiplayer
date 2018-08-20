@@ -13,6 +13,8 @@
 #include "../av_framework/surface.h"
 
 void World_destroy(World* w) {
+  int ret = pthread_mutex_destroy(&(w->update_mutex));
+  if (ret == -1) debug_print("World's mutex wasn't successfully destroyed");
   Surface_destroy(&w->ground);
   sem_t sem = w->vehicles.sem;
   sem_wait(&(sem));
@@ -20,8 +22,10 @@ void World_destroy(World* w) {
   while (item) {
     Vehicle* v = (Vehicle*)item;
     Vehicle_destroy(v);
+    ListItem* tmp = item;
     item = item->next;
     free(v);
+    free(tmp);
   }
   sem_post(&(sem));
   sem_destroy(&sem);
@@ -37,6 +41,8 @@ void World_disableVehicleCollisions(World* w){
 
 int World_init(World* w, Image* surface_elevation, Image* surface_texture,
                float x_step, float y_step, float z_step) {
+  int ret = pthread_mutex_init(&(w->update_mutex), NULL);
+  if (ret == -1) debug_print("Mutex init for world was not successfuf");
   List_init(&w->vehicles);
   w->disable_collisions = 0;
   Image* float_image = Image_convert(surface_elevation, FLOATMONO);
@@ -60,9 +66,12 @@ void world_fixCollisions(World* w, Vehicle* v){
       while (item2) {
         Vehicle* v2 = (Vehicle*)item2;
         if (v2 == v) goto END;
+        printf("lockcollision1\n");
         pthread_mutex_lock(&v2->mutex);
+        printf("lockcollision1post\n");
         Vehicle_fixCollisions(v, v2);
         pthread_mutex_unlock(&v2->mutex);
+        printf("unlockcollision1\n");
       END:
         item2 = item2->next;
       }
@@ -74,6 +83,7 @@ void world_fixCollisions(World* w, Vehicle* v){
 }
 
 void World_update(World* w) {
+  pthread_mutex_lock(&w->update_mutex);
   struct timeval current_time;
   gettimeofday(&current_time, 0);
   struct timeval dt;
@@ -110,9 +120,11 @@ void World_update(World* w) {
   }
   sem_post(&sem);
   w->last_update = current_time;
+  pthread_mutex_unlock(&w->update_mutex);
 }
 
 void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time) {
+  pthread_mutex_lock(&w->update_mutex);
   struct timeval current_time;
   gettimeofday(&current_time, 0);
   struct timeval dt;
@@ -126,6 +138,7 @@ void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time) {
   Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
   Vehicle_setTime(v, current_time);
   v->manual_updated = 1;
+  pthread_mutex_unlock(&w->update_mutex);
 }
 
 Vehicle* World_getVehicle(World* w, int vehicle_id) {
