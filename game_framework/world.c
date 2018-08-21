@@ -36,7 +36,7 @@ void World_disableVehicleCollisions(World* w) { w->disable_collisions = 1; }
 int World_init(World* w, Image* surface_elevation, Image* surface_texture,
                float x_step, float y_step, float z_step) {
   int ret = pthread_mutex_init(&(w->update_mutex), NULL);
-  if (ret == -1) debug_print("Mutex init for world was not successfuf");
+  if (ret == -1) debug_print("Mutex init for world was not successful");
   List_init(&w->vehicles);
   w->disable_collisions = 0;
   Image* float_image = Image_convert(surface_elevation, FLOATMONO);
