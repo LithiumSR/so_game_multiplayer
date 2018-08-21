@@ -87,10 +87,10 @@ void World_update(World* w) {
   while (item) {
     Vehicle* v = (Vehicle*)item;
     pthread_mutex_lock(&v->mutex);
+    World_fixCollisions(w, v);
     if (!Vehicle_update(v, delta * w->time_scale)) {
       Vehicle_reset(v);
     } else {
-      World_fixCollisions(w, v);
       if (v->manual_updated) {
         struct timeval dt_manual;
         timersub(&current_time, &v->world_update_time, &dt_manual);
