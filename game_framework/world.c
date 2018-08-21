@@ -7,10 +7,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
-#include "../common/common.h"
-#include "vehicle.h"
 #include "../av_framework/image.h"
 #include "../av_framework/surface.h"
+#include "../common/common.h"
+#include "vehicle.h"
 
 void World_destroy(World* w) {
   int ret = pthread_mutex_destroy(&(w->update_mutex));
@@ -29,13 +29,9 @@ void World_destroy(World* w) {
   sem_destroy(&sem);
 }
 
-int World_isCollisionsDisabled(World* w) {
-  return w->disable_collisions;
-}
+int World_isCollisionsDisabled(World* w) { return w->disable_collisions; }
 
-void World_disableVehicleCollisions(World* w){
-  w->disable_collisions = 1;
-}
+void World_disableVehicleCollisions(World* w) { w->disable_collisions = 1; }
 
 int World_init(World* w, Image* surface_elevation, Image* surface_texture,
                float x_step, float y_step, float z_step) {
@@ -57,23 +53,23 @@ int World_init(World* w, Image* surface_elevation, Image* surface_texture,
   return 1;
 }
 
-void World_fixCollisions(World* w, Vehicle* v){
-  //v mutex is already locked
+void World_fixCollisions(World* w, Vehicle* v) {
+  // v mutex is already locked
   if (World_isCollisionsDisabled(w)) return;
   ListItem* item2 = w->vehicles.first;
-      char flag = 0;
-  for(;item2!=NULL;item2=item2->next) {
-        Vehicle* v2 = (Vehicle*)item2;
-        if (v2 == v || v2->id == v->id) continue;
-        pthread_mutex_lock(&v2->mutex);
-        Vehicle_fixCollisions(v, v2);
-        pthread_mutex_unlock(&v2->mutex);
-      }
-      if (!flag) {
-        v->is_new = 0;
-        v->temp_x = v->x;
-        v->temp_y = v->y;
-      }
+  char flag = 0;
+  for (; item2 != NULL; item2 = item2->next) {
+    Vehicle* v2 = (Vehicle*)item2;
+    if (v2 == v || v2->id == v->id) continue;
+    pthread_mutex_lock(&v2->mutex);
+    Vehicle_fixCollisions(v, v2);
+    pthread_mutex_unlock(&v2->mutex);
+  }
+  if (!flag) {
+    v->is_new = 0;
+    v->temp_x = v->x;
+    v->temp_y = v->y;
+  }
 }
 
 void World_update(World* w) {
@@ -91,10 +87,10 @@ void World_update(World* w) {
   while (item) {
     Vehicle* v = (Vehicle*)item;
     pthread_mutex_lock(&v->mutex);
+    World_fixCollisions(w, v);
     if (!Vehicle_update(v, delta * w->time_scale)) {
       Vehicle_reset(v);
     } else {
-      World_fixCollisions(w,v);
       if (v->manual_updated) {
         struct timeval dt_manual;
         timersub(&current_time, &v->world_update_time, &dt_manual);
@@ -156,4 +152,3 @@ Vehicle* World_addVehicle(World* w, Vehicle* v) {
 Vehicle* World_detachVehicle(World* w, Vehicle* v) {
   return (Vehicle*)List_detach(&w->vehicles, (ListItem*)v);
 }
-  
