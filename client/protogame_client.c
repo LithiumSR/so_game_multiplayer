@@ -13,11 +13,11 @@
 #include "../av_framework/audio_context.h"
 #include "../av_framework/image.h"
 #include "../av_framework/surface.h"
-#include "../game_framework/world.h"
 #include "../av_framework/world_viewer.h"
 #include "../common/common.h"
 #include "../game_framework/protogame_protocol.h"
 #include "../game_framework/vehicle.h"
+#include "../game_framework/world.h"
 #include "client_op.h"
 #define NO_ACCESS -2
 #define SENDER_SLEEP 200 * 1000
@@ -392,7 +392,8 @@ int main(int argc, char** argv) {
     fprintf(stdout, "[Main] Received track number \n");
   }
   // create Vehicle
-  World_init(&local_world->world, surface_elevation, surface_texture, 0.5, 0.5, 0.5);
+  World_init(&local_world->world, surface_elevation, surface_texture, 0.5, 0.5,
+             0.5);
   vehicle = (Vehicle*)malloc(sizeof(Vehicle));
   Vehicle_init(vehicle, &local_world->world, id, my_texture);
   World_addVehicle(&local_world->world, vehicle);
@@ -428,7 +429,8 @@ int main(int argc, char** argv) {
 // Disconnect from server if required by macro
 SKIP:
   if (SINGLEPLAYER) sendGoodbye(socket_desc, id);
-  WorldViewer_runGlobal(&local_world->world, vehicle, background_track, &argc, argv);
+  WorldViewer_runGlobal(&local_world->world, vehicle, background_track, &argc,
+                        argv);
 
   // Waiting threads to end and cleaning resources
   debug_print("[Main] Disabling and joining on UDP and TCP threads \n");

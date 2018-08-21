@@ -9,11 +9,11 @@
 #include <unistd.h>
 #include "../av_framework/image.h"
 #include "../av_framework/surface.h"
-#include "../game_framework/world.h"
 #include "../av_framework/world_viewer.h"
 #include "../common/common.h"
 #include "../game_framework/protogame_protocol.h"
 #include "../game_framework/vehicle.h"
+#include "../game_framework/world.h"
 
 // Used to get ID from server
 int getID(int socket_desc) {
@@ -280,7 +280,7 @@ AudioContext* getAudioContext(int socket_desc) {
   int track_number = deserialized_packet->track_number;
   char loop = deserialized_packet->loop;
   Packet_free(&(deserialized_packet->header));
-    if (track_number < 0 || track_number >= 100000) return NULL;
+  if (track_number < 0 || track_number >= 100000) return NULL;
   char number[16];
   sprintf(number, "%d", track_number);
   char filename[1024];
@@ -291,7 +291,7 @@ AudioContext* getAudioContext(int socket_desc) {
   AudioContext_openDevice();
   AudioContext* ac = (AudioContext*)malloc(sizeof(AudioContext));
   int res = AudioContext_init(ac, filename, loop, AC_PERSISTENT);
-  if(res ==-1 ) return NULL;
+  if (res == -1) return NULL;
   return ac;
 }
 

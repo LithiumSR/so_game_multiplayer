@@ -10,13 +10,13 @@
 #include <unistd.h>
 #include "../av_framework/image.h"
 #include "../av_framework/surface.h"
-#include "../game_framework/world.h"
 #include "../av_framework/world_viewer.h"
 #include "../client/client_op.h"
 #include "../common/common.h"
 #include "../game_framework/client_list.h"
 #include "../game_framework/protogame_protocol.h"
 #include "../game_framework/vehicle.h"
+#include "../game_framework/world.h"
 #define RECEIVER_SLEEP 20 * 1000
 #define WORLD_LOOP_SLEEP 100 * 1000
 
@@ -251,7 +251,8 @@ int TCPHandler(int socket_desc, char* buf_rcv, Image* texture_map,
     return 0;
   } else if (header->type == GetAudioInfo) {
     char buf_send[BUFFERSIZE];
-    AudioInfoPacket* response = (AudioInfoPacket*)malloc(sizeof(AudioInfoPacket));
+    AudioInfoPacket* response =
+        (AudioInfoPacket*)malloc(sizeof(AudioInfoPacket));
     PacketHeader ph;
     ph.type = PostAudioInfo;
     response->header = ph;

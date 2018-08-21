@@ -77,7 +77,7 @@ void AudioList_cleanExpiredItems(AudioListHead* head) {
   if (head == NULL) return;
   AudioListItem* track = head->first;
   while (track != NULL) {
-    AudioListItem* tmp=track;
+    AudioListItem* tmp = track;
     track = track->next;
     ALenum state;
     if (tmp->audio_context != NULL) {
@@ -89,6 +89,5 @@ void AudioList_cleanExpiredItems(AudioListHead* head) {
       AudioContext_free(dt->audio_context);
       free(dt);
     }
-
   }
 }
