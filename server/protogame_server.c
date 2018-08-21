@@ -760,12 +760,13 @@ void* UDPSender(void* args) {
     wup->updates = (ClientUpdate*)malloc(sizeof(ClientUpdate) * n);
     client = users->first;
     gettimeofday(&wup->time, NULL);
-    for (int i = 0; client != NULL; i++) {
+    int k = 0;
+    while(client != NULL) {
       if (!(client->is_udp_addr_ready && client->inside_world)) {
         client = client->next;
         continue;
       }
-      ClientUpdate* cup = &(wup->updates[i]);
+      ClientUpdate* cup = &(wup->updates[k]);
       pthread_mutex_lock(&client->vehicle->mutex);
       Vehicle_getXYTheta(client->vehicle, &(client->x), &(client->y),
                          &(cup->theta));
@@ -787,6 +788,7 @@ void* UDPSender(void* args) {
              cup->id, cup->x, cup->y, cup->theta, cup->translational_force,
              cup->rotational_force);
       client = client->next;
+      k++;
     }
 
     int size = Packet_serialize(buf_send, &wup->header);
