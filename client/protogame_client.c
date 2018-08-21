@@ -447,7 +447,7 @@ void* UDPReceiver(void* args) {
                 }
               }
             }
-          } else if (CACHE_TEXTURE){
+          } else if (CACHE_TEXTURE && !SERVER_SIDE_POSITION_CHECK){
             ignored++;
             int id_struct = hasUser(lw->ids, WORLDSIZE, wup->updates[i].id);
             if (id_struct == -1) continue;
@@ -465,7 +465,6 @@ void* UDPReceiver(void* args) {
                       ignored);
         for (int i = 0; i < WORLDSIZE; i++) {
           if (i == 0) continue;
-          if (lw->ids[i]!= -1) printf("%d %d %d\n",lw->ids[i],mask[i],updated[i]);
           if (mask[i] == UNTOUCHED && lw->ids[i] != -1) {
             debug_print("[WorldUpdate] Removing Vehicles with ID %d \n",
                         lw->ids[i]);
