@@ -10,6 +10,3 @@ script:
   - ./test_message_list
   - ./test_client_list
   - ./test_packets_serialization
-  - sed -i 's/SERVER_SIDE_POSITION_CHECK 1/SERVER_SIDE_POSITION_CHECK 0/g' ./common/common.h
-  - make
-  - ./test_packets_serialization
