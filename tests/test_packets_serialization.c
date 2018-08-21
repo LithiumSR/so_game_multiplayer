@@ -94,6 +94,10 @@ int main(int argc, char const* argv[]) {
   update_block->x = 4.4;
   update_block->y = 6.4;
   update_block->theta = 90;
+   ClientStatusUpdate* status_update_block =
+      (ClientStatusUpdate*)malloc(sizeof(ClientStatusUpdate));
+  status_update_block->id = 10;
+  status_update_block->status = Online;
   WorldUpdatePacket* world_packet =
       (WorldUpdatePacket*)malloc(sizeof(WorldUpdatePacket));
   PacketHeader w_head;
@@ -101,14 +105,17 @@ int main(int argc, char const* argv[]) {
   world_packet->header = w_head;
   world_packet->num_update_vehicles = 1;
   world_packet->updates = update_block;
-
+   world_packet->num_status_vehicles = 1;
+  world_packet->status_updates = status_update_block;
   printf("world_packet with:\ntype\t%d\nsize\t%d\nnum_v\t%d\n",
          world_packet->header.type, world_packet->header.size,
          world_packet->num_update_vehicles);
   printf("update_block:\nid\t\t%d\n(x,y,theta)\t(%f,%f,%f)\n",
          world_packet->updates->id, world_packet->updates->x,
          world_packet->updates->y, world_packet->updates->theta);
-
+  printf("status_update_block:\nid\t\t%d\nstatus\t\t%d\n",
+         world_packet->status_updates->id,
+         world_packet->status_updates->status);
   printf("serialize\n");
   char world_buffer[1000000];
   int world_buffer_size = Packet_serialize(world_buffer, &world_packet->header);
@@ -132,6 +139,13 @@ int main(int argc, char const* argv[]) {
             printf("World Update block is different!! \n");
             return -1;
         }
+  printf("status_update_block:\nid\t\t%d\nstatus\t\t%d\n",
+         deserialized_wu_packet->status_updates->id,
+         deserialized_wu_packet->status_updates->status);
+  if(deserialized_wu_packet->status_updates->id!=world_packet->status_updates->id || deserialized_wu_packet->status_updates->status!=world_packet->status_updates->status) {
+      printf("Status update block is different!! \n");
+      return -1;
+  }
   Packet_free(&world_packet->header);
   Packet_free(&deserialized_wu_packet->header);
   printf("done\n");
