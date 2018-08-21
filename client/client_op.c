@@ -280,10 +280,10 @@ AudioContext* getAudioContext(int socket_desc) {
   int track_number = deserialized_packet->track_number;
   char loop = deserialized_packet->loop;
   Packet_free(&(deserialized_packet->header));
-  char number[12];
-  if (track_number > 1000) return NULL;
+    if (track_number < 0 || track_number >= 100000) return NULL;
+  char number[16];
   sprintf(number, "%d", track_number);
-  char filename[128];
+  char filename[1024];
   strcpy(filename, "./resources/sounds/track");
   strcat(filename, number);
   strcat(filename, ".wav");
