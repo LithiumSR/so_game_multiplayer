@@ -10,8 +10,7 @@ void AudioList_init(AudioListHead* head) {
   head->size = 0;
 }
 
-AudioListItem* AudioList_findByContext(AudioListHead* head,
-                                         AudioContext* ac) {
+AudioListItem* AudioList_findByContext(AudioListHead* head, AudioContext* ac) {
   if (head == NULL) return NULL;
   AudioListItem* tmp = head->first;
   while (tmp != NULL) {
@@ -69,7 +68,9 @@ AudioListItem* AudioList_findByFilename(AudioListHead* head, char* filename) {
   if (head == NULL) return NULL;
   AudioListItem* track = head->first;
   while (track != NULL) {
-    if(track->audio_context!=NULL && strcmp(track->audio_context->filename,filename)==0) return track;
+    if (track->audio_context != NULL &&
+        strcmp(track->audio_context->filename, filename) == 0)
+      return track;
     track = track->next;
   }
   return NULL;
@@ -88,7 +89,8 @@ void AudioList_cleanExpiredItems(AudioListHead* head) {
   if (head == NULL) return;
   AudioListItem* track = head->first;
   while (track != NULL) {
-    if (track->audio_context!=NULL && track->audio_context->cflags==AC_PERSISTENT) {
+    if (track->audio_context != NULL &&
+        track->audio_context->cflags == AC_PERSISTENT) {
       track = track->next;
       continue;
     }

@@ -93,9 +93,11 @@ void MessageList_print(MessageListHead* messages) {
       printf("(id: %d,", message->id);
       printf("sender: %s,", message->sender);
       printf("text: %s,", message->text);
-      printf("messageType: %d,",message->type);
-      if(i==messages->size-1) printf("time: %d:%d)", info->tm_hour, info->tm_min);
-      else printf("time: %d:%d),\n", info->tm_hour, info->tm_min);
+      printf("messageType: %d,", message->type);
+      if (i == messages->size - 1)
+        printf("time: %d:%d)", info->tm_hour, info->tm_min);
+      else
+        printf("time: %d:%d),\n", info->tm_hour, info->tm_min);
       message = message->next;
       i++;
     } else

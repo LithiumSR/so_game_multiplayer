@@ -63,14 +63,17 @@ int Vehicle_update(Vehicle* v, float dt);
 
 void Vehicle_destroy(Vehicle* v);
 
-void Vehicle_increaseTranslationalForce(Vehicle* v, float translational_force_update);
+void Vehicle_increaseTranslationalForce(Vehicle* v,
+                                        float translational_force_update);
 
 void Vehicle_increaseRotationalForce(Vehicle* v, float rotational_force_update);
 
 void Vehicle_decreaseRotationalForce(Vehicle* v, float rotational_force_update);
 
-void Vehicle_decreaseTranslationalForce(Vehicle* v, float translational_force_update);
+void Vehicle_decreaseTranslationalForce(Vehicle* v,
+                                        float translational_force_update);
 
-void Vehicle_decayForcesUpdate(Vehicle* v, float translational_update_decay, float rotational_update_decay);
+void Vehicle_decayForcesUpdate(Vehicle* v, float translational_update_decay,
+                               float rotational_update_decay);
 
 int Vehicle_fixCollisions(Vehicle* v, Vehicle* v2);
