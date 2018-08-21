@@ -719,12 +719,13 @@ void *UDPSender(void *args) {
     wup->updates = (ClientUpdate *)malloc(sizeof(ClientUpdate) * n);
     client = users->first;
     gettimeofday(&wup->time, NULL);
-    for (int i = 0; client != NULL; i++) {
+    int k = 0;
+    while(client != NULL) {
       if (client->is_udp_addr_ready == 0 || client->v_texture == NULL) {
         client = client->next;
         continue;
       }
-      ClientUpdate *cup = &(wup->updates[i]);
+      ClientUpdate *cup = &(wup->updates[k]);
       cup->y = client->y;
       cup->x = client->x;
       cup->theta = client->theta;
@@ -737,6 +738,7 @@ void *UDPSender(void *args) {
              cup->id, cup->x, cup->y, cup->theta, cup->rotational_force,
              cup->translational_force);
       client = client->next;
+      k++;
     }
 
     int size = Packet_serialize(buf_send, &wup->header);
