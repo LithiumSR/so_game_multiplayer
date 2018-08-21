@@ -281,7 +281,7 @@ AudioContext* getAudioContext(int socket_desc) {
   char loop = deserialized_packet->loop;
   MusicType type = deserialized_packet->type;
   Packet_free(&(deserialized_packet->header));
-  if (track_number == -1) return NULL;
+  if (track_number < 0) return NULL;
   char number[12];
   if (track_number > 1000) return NULL;
   sprintf(number, "%d", track_number);
