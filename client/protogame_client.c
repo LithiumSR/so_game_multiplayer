@@ -29,7 +29,7 @@ int window;
 Vehicle* vehicle;  // The vehicle
 int id;
 char username[32];
-AudioContext* backgroud_track = NULL;
+AudioContext* background_track = NULL;
 // flags and counters
 char connectivity = 1;
 char exchange_update = 1;
@@ -548,7 +548,7 @@ int main(int argc, char** argv) {
   sendVehicleTexture(socket_desc, my_texture, id);
   fprintf(stdout, "[Main] Client Vehicle texture sent \n");
   if (CLIENT_AUDIO) {
-    backgroud_track = getAudioContext(socket_desc);
+    background_track = getAudioContext(socket_desc);
     fprintf(stdout, "[Main] Received track number \n");
   }
   // create Vehicle
@@ -590,7 +590,7 @@ int main(int argc, char** argv) {
 // Disconnect from server if required by macro
 SKIP:
   if (SINGLEPLAYER) sendGoodbye(socket_desc, id);
-  WorldViewer_runGlobal(&local_world->world, vehicle, backgroud_track, &argc, argv);
+  WorldViewer_runGlobal(&local_world->world, vehicle, background_track, &argc, argv);
 
   // Waiting threads to end and cleaning resources
   debug_print("[Main] Disabling and joining on UDP and TCP threads \n");
