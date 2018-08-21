@@ -130,13 +130,11 @@ typedef struct {
 // server world update, send by server (UDP)
 typedef struct {
   PacketHeader header;
-  int num_update_vehicles;
-#ifdef _USE_SERVER_SIDE_FOG_
-  int num_status_vehicles;
-#endif
   struct timeval time;
+  int num_update_vehicles;
   ClientUpdate* updates;
 #ifdef _USE_SERVER_SIDE_FOG_
+  int num_status_vehicles;
   ClientStatusUpdate* status_updates;
 #endif
 } WorldUpdatePacket;
