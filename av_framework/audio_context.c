@@ -33,16 +33,17 @@ int AudioContext_openDevice(void) {
 
 void AudioContext_closeDevice(void) { alutExit(); }
 
-int AudioContext_init(AudioContext *ac, char *filename, char loop, CleanupFlag flag) {
+int AudioContext_init(AudioContext *ac, char *filename, char loop,
+                      CleanupFlag flag) {
   if (access(filename, F_OK | R_OK) == -1) return -1;
   ac->buffer = setupBuffer(filename);
   ac->source = setupSource(ac->buffer);
   ac->volume = DEFAULT_VOLUME;
   ac->loop = loop;
   ac->cflags = flag;
-  int len= strlen(filename);
-  ac->filename = (char*)malloc(sizeof(char)*len);
-  strncpy(ac->filename,filename,len);
+  int len = strlen(filename);
+  ac->filename = (char *)malloc(sizeof(char) * len);
+  strncpy(ac->filename, filename, len);
   return 0;
 }
 
@@ -60,8 +61,8 @@ void AudioContext_startTrackLoop(AudioContext *ac) {
 }
 
 void AudioContext_setCleanupFlag(AudioContext *ac, CleanupFlag flag) {
-  if (ac==NULL) return;
-  ac->cflags=flag;
+  if (ac == NULL) return;
+  ac->cflags = flag;
 }
 
 void AudioContext_startTrackNoLoop(AudioContext *ac) {

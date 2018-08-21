@@ -83,7 +83,7 @@ typedef struct {
   struct timeval client_update_time, client_creation_time;
 } ClientUpdate;
 
-//contains client's status
+// contains client's status
 typedef struct {
   int id;
   Status status;

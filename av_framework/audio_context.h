@@ -15,12 +15,13 @@ typedef struct AudioContext {
   float volume;
   char loop;
   CleanupFlag cflags;
-  char* filename;
+  char *filename;
 } AudioContext;
 
 int AudioContext_openDevice(void);
 void AudioContext_closeDevice(void);
-int AudioContext_init(AudioContext *ac, char *filename, char loop, CleanupFlag flag);
+int AudioContext_init(AudioContext *ac, char *filename, char loop,
+                      CleanupFlag flag);
 void AudioContext_startTrack(AudioContext *ac);
 void AudioContext_stopTrack(AudioContext *ac);
 void AudioContext_free(AudioContext *ac);

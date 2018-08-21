@@ -39,7 +39,8 @@ int Packet_serialize(char* dest, const PacketHeader* h) {
       const MessageHistoryPacket* mh = (MessageHistoryPacket*)h;
       memcpy(dest, mh, sizeof(MessageHistoryPacket));
       dest_end += sizeof(MessageHistoryPacket);
-      memcpy(dest_end, mh->messages, mh->num_messages * sizeof(MessageBroadcast));
+      memcpy(dest_end, mh->messages,
+             mh->num_messages * sizeof(MessageBroadcast));
       dest_end += mh->num_messages * sizeof(MessageBroadcast);
       break;
     }
@@ -103,7 +104,8 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
       return (PacketHeader*)audio_packet;
     }
     case ChatAuth: {
-      MessageAuthPacket* mp = (MessageAuthPacket*)malloc(sizeof(MessageAuthPacket));
+      MessageAuthPacket* mp =
+          (MessageAuthPacket*)malloc(sizeof(MessageAuthPacket));
       memcpy(mp, buffer, sizeof(MessageAuthPacket));
       return (PacketHeader*)mp;
     }
@@ -113,10 +115,12 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
       return (PacketHeader*)mp;
     }
     case ChatHistory: {
-      MessageHistoryPacket* mh = (MessageHistoryPacket*)malloc(sizeof(MessageHistoryPacket));
+      MessageHistoryPacket* mh =
+          (MessageHistoryPacket*)malloc(sizeof(MessageHistoryPacket));
       memcpy(mh, buffer, sizeof(MessageHistoryPacket));
       // we get the number of messages
-      mh->messages = (MessageBroadcast*)malloc(mh->num_messages * sizeof(MessageBroadcast));
+      mh->messages = (MessageBroadcast*)malloc(mh->num_messages *
+                                               sizeof(MessageBroadcast));
       buffer += sizeof(MessageHistoryPacket);
       memcpy(mh->messages, buffer, mh->num_messages * sizeof(MessageBroadcast));
       return (PacketHeader*)mh;
@@ -140,8 +144,8 @@ PacketHeader* Packet_deserialize(const char* buffer, int size) {
           (WorldUpdatePacket*)malloc(sizeof(WorldUpdatePacket));
       memcpy(world_packet, buffer, sizeof(WorldUpdatePacket));
       // we get the number of clients
-      world_packet->updates = (ClientUpdate*)malloc(world_packet->num_update_vehicles *
-                                                    sizeof(ClientUpdate));
+      world_packet->updates = (ClientUpdate*)malloc(
+          world_packet->num_update_vehicles * sizeof(ClientUpdate));
       world_packet->status_updates = (ClientStatusUpdate*)malloc(
           world_packet->num_status_vehicles * sizeof(ClientStatusUpdate));
       buffer += sizeof(WorldUpdatePacket);

@@ -9,11 +9,11 @@
 #include <unistd.h>
 #include "../av_framework/image.h"
 #include "../av_framework/surface.h"
-#include "../game_framework/world.h"
 #include "../av_framework/world_viewer.h"
 #include "../common/common.h"
 #include "../game_framework/protogame_protocol.h"
 #include "../game_framework/vehicle.h"
+#include "../game_framework/world.h"
 
 // Used to get ID from server
 int getID(int socket_desc) {
