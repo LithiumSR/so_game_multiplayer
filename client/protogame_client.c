@@ -325,7 +325,7 @@ void* UDPReceiver(void* args) {
         for (int i = 0; i < wup->num_status_vehicles; i++) {
           int ret = hasUser(lw->ids, WORLDSIZE, wup->status_updates[i].id);
           if (ret == -1) continue;
-          if (wup->status_updates[i].status == Online && CACHE_TEXTURE) mask[ret] = 1;
+          if (wup->status_updates[i].status == Online && CACHE_TEXTURE) mask[ret] = TOUCHED;
         }
 #endif
 
@@ -341,8 +341,8 @@ void* UDPReceiver(void* args) {
             if (id_struct == -1) {
               if (new_position == -1) continue;
               debug_print("[INFO] Found new vehicle \n");
-              mask[new_position] = 1;
-              updated[new_position] = 1;
+              mask[new_position] = TOUCHED;
+              updated[new_position] = TOUCHED;
               debug_print(
                   "[INFO] New Vehicle with id %d and x: %f y: %f z: %f \n",
                   wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
@@ -367,8 +367,8 @@ void* UDPReceiver(void* args) {
               lw->vehicle_login_time[new_position] =
                   wup->updates[i].client_creation_time;
             } else {
-              mask[id_struct] = 1;
-              updated[id_struct] = 1;
+              mask[id_struct] = TOUCHED;
+              updated[id_struct] = TOUCHED;
               if (timercmp(&wup->updates[i].client_creation_time,
                            &lw->vehicle_login_time[id_struct], !=)) {
                 debug_print("[WARNING] Forcing refresh for client with id %d",
@@ -451,7 +451,7 @@ void* UDPReceiver(void* args) {
             ignored++;
             int id_struct = hasUser(lw->ids, WORLDSIZE, wup->updates[i].id);
             if (id_struct == -1) continue;
-            mask[id_struct] = 1;
+            mask[id_struct] = TOUCHED;
             if (lw->is_disabled[id_struct]) continue;
             debug_print("[INFO] Temporary disabling a vehicle %d \n",
                         lw->ids[id_struct]);
