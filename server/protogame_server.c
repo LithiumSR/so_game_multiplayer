@@ -689,7 +689,6 @@ void* UDPSender(void* args) {
       while (tmp != NULL) {
         ClientStatusUpdate* csu = &wup->status_updates[k];
         csu->id = tmp->id;
-        printf("%d\n",csu->id);
         if (tmp->is_udp_addr_ready && tmp->inside_world)
           csu->status = Online;
         else
