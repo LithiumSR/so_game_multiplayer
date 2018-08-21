@@ -281,11 +281,11 @@ AudioContext* getAudioContext(int socket_desc) {
   char loop = deserialized_packet->loop;
   MusicType type = deserialized_packet->type;
   Packet_free(&(deserialized_packet->header));
-  if (track_number < 0) return NULL;
-  char number[12];
+  if (track_number < 0 || track_number >= 100000) return NULL;
+  char number[16];
   if (track_number > 1000) return NULL;
   sprintf(number, "%d", track_number);
-  char filename[128];
+  char filename[1024];
   if (type == Track)
     strcpy(filename, "./resources/sounds/track");
   else if (type == Effect)
