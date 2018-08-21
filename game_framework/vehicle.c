@@ -65,7 +65,7 @@ int Vehicle_update(Vehicle* v, float dt) {
 void Vehicle_init(Vehicle* v, World* w, int id, Image* texture) {
   int ret;
   ret = pthread_mutex_init(&(v->mutex), NULL);
-  if (ret == -1) debug_print("Mutex init for vehicle was not successfuf");
+  if (ret == -1) debug_print("Mutex init for vehicle was not successful");
   v->world = w;
   v->id = id;
   v->texture = texture;
