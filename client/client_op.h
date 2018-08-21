@@ -11,4 +11,4 @@ int sendVehicleTexture(int socket, Image *texture, int id);
 int sendGoodbye(int socket, int id);
 Image *getVehicleTexture(int socket, int id);
 AudioContext *getAudioContext(int socket);
-int joinChat(int socket_desc, int id, char* username);
+int joinChat(int socket_desc, int id, char *username);

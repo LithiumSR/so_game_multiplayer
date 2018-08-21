@@ -13,11 +13,11 @@
 #include "../av_framework/audio_context.h"
 #include "../av_framework/image.h"
 #include "../av_framework/surface.h"
-#include "../game_framework/world.h"
 #include "../av_framework/world_viewer.h"
 #include "../common/common.h"
 #include "../game_framework/protogame_protocol.h"
 #include "../game_framework/vehicle.h"
+#include "../game_framework/world.h"
 #include "client_op.h"
 
 #define UNTOUCHED 0
@@ -95,9 +95,12 @@ void handleSignal(int signal) {
   }
 }
 
-//This method returns the index of the user in the array. If it returns -1 and existing_index is != -1 it means that the user was already in the array in the 
-//position 'existing_index'. If the method returns -1 and existing_index==-1 it means that the world is full and no space can be found to save the new user.
-int addUser(int ids[], int size, int id, int* existing_index, int* users_online) {
+// This method returns the index of the user in the array. If it returns -1 and
+// existing_index is != -1 it means that the user was already in the array in the
+// position 'existing_index'. If the method returns -1 and existing_index==-1 it
+// means that the world is full and no space can be found to save the new user.
+int addUser(int ids[], int size, int id, int* existing_index,
+            int* users_online) {
   if (*users_online == WORLDSIZE) {
     *existing_index = -1;
     return -1;
@@ -325,7 +328,8 @@ void* UDPReceiver(void* args) {
         for (int i = 0; i < wup->num_status_vehicles; i++) {
           int ret = hasUser(lw->ids, WORLDSIZE, wup->status_updates[i].id);
           if (ret == -1) continue;
-          if (wup->status_updates[i].status == Online && CACHE_TEXTURE) mask[ret] = TOUCHED;
+          if (wup->status_updates[i].status == Online && CACHE_TEXTURE)
+            mask[ret] = TOUCHED;
         }
 #endif
 
@@ -447,7 +451,7 @@ void* UDPReceiver(void* args) {
                 }
               }
             }
-          } else if (CACHE_TEXTURE && !SERVER_SIDE_POSITION_CHECK){
+          } else if (CACHE_TEXTURE && !SERVER_SIDE_POSITION_CHECK) {
             ignored++;
             int id_struct = hasUser(lw->ids, WORLDSIZE, wup->updates[i].id);
             if (id_struct == -1) continue;
@@ -491,20 +495,20 @@ void* UDPReceiver(void* args) {
         Packet_free(&wup->header);
         break;
       }
-    default: {
-      fprintf(stderr,
-              "[UDP_Receiver] Found an unknown udp packet. Terminating the "
-              "client now... \n");
-      sendGoodbye(socket_desc, id);
-      connectivity = 0;
-      exchange_update = 0;
-      WorldViewer_exit(-1);
-      break;
+      default: {
+        fprintf(stderr,
+                "[UDP_Receiver] Found an unknown udp packet. Terminating the "
+                "client now... \n");
+        sendGoodbye(socket_desc, id);
+        connectivity = 0;
+        exchange_update = 0;
+        WorldViewer_exit(-1);
+        break;
+      }
     }
+    usleep(RECEIVER_SLEEP);
   }
-  usleep(RECEIVER_SLEEP);
-}
-pthread_exit(NULL);
+  pthread_exit(NULL);
 }
 
 int main(int argc, char** argv) {
@@ -595,7 +599,8 @@ int main(int argc, char** argv) {
   }
 
   // create Vehicle
-  World_init(&local_world->world, surface_elevation, surface_texture, 0.5, 0.5, 0.5);
+  World_init(&local_world->world, surface_elevation, surface_texture, 0.5, 0.5,
+             0.5);
 
   vehicle = (Vehicle*)malloc(sizeof(Vehicle));
   Vehicle_init(vehicle, &local_world->world, id, my_texture);
@@ -635,7 +640,8 @@ int main(int argc, char** argv) {
 SKIP:
   if (SINGLEPLAYER) sendGoodbye(socket_desc, id);
 
-  WorldViewer_runGlobal(&local_world->world, vehicle, background_track, &argc, argv);
+  WorldViewer_runGlobal(&local_world->world, vehicle, background_track, &argc,
+                        argv);
 
   // Waiting threads to end and cleaning resources
   debug_print("[Main] Disabling and joining on UDP and TCP threads \n");

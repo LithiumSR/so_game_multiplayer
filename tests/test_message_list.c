@@ -25,7 +25,7 @@ int main(int argc, char const* argv[]) {
   time(&el->time);
   el->type = Hello;
   printf("Done.\n");
-  MessageList_insert(list,el);
+  MessageList_insert(list, el);
   MessageList_print(list);
   printf("Adding message 2 to list...");
   MessageListItem* el2 = (MessageListItem*)malloc(sizeof(MessageListItem));
@@ -36,7 +36,7 @@ int main(int argc, char const* argv[]) {
   strncpy(el2->text, text2, TEXT_LEN);
   time(&el2->time);
   el2->type = Hello;
-  MessageList_insert(list,el2);
+  MessageList_insert(list, el2);
   printf("Done.\n");
   MessageList_print(list);
   printf("Removing all messages...");

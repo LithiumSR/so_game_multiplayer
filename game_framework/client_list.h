@@ -2,14 +2,14 @@
 #include <netinet/in.h>
 #include <time.h>
 #include "../av_framework/image.h"
-#include "vehicle.h"
 #include "../common/common.h"
+#include "vehicle.h"
 typedef struct ClientListItem {
   struct ClientListItem* next;
   int id;
   float x, y, theta, prev_x, prev_y, x_shift, y_shift;
-  struct sockaddr_in user_addr_tcp,user_addr_udp;
-  struct timeval last_update_time,creation_time,world_update_time;
+  struct sockaddr_in user_addr_tcp, user_addr_udp;
+  struct timeval last_update_time, creation_time, world_update_time;
   char is_udp_addr_ready;
   int afk_counter;
   char inside_world;

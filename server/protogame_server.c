@@ -10,7 +10,6 @@
 #include <unistd.h>
 #include "../av_framework/image.h"
 #include "../av_framework/surface.h"
-#include "../game_framework/world.h"
 #include "../av_framework/world_viewer.h"
 #include "../client/client_op.h"
 #include "../common/common.h"
@@ -18,6 +17,7 @@
 #include "../game_framework/message_list.h"
 #include "../game_framework/protogame_protocol.h"
 #include "../game_framework/vehicle.h"
+#include "../game_framework/world.h"
 #define RECEIVER_SLEEP 50 * 1000
 #define WORLD_LOOP_SLEEP 70 * 1000
 #define SENDER_SLEEP 1000 * 1000
@@ -366,7 +366,8 @@ int TCPHandler(int socket_desc, char* buf_rcv, Image* texture_map,
     }
     case (GetAudioInfo): {
       char buf_send[BUFFERSIZE];
-      AudioInfoPacket* response = (AudioInfoPacket*)malloc(sizeof(AudioInfoPacket));
+      AudioInfoPacket* response =
+          (AudioInfoPacket*)malloc(sizeof(AudioInfoPacket));
       PacketHeader ph;
       ph.type = PostAudioInfo;
       response->header = ph;
@@ -554,7 +555,8 @@ int sendMessages(int socket_udp) {
   if (messages->size == 0) goto END;
   PacketHeader ph;
   ph.type = ChatHistory;
-  MessageHistoryPacket* mh = (MessageHistoryPacket*)malloc(sizeof(MessageHistoryPacket));
+  MessageHistoryPacket* mh =
+      (MessageHistoryPacket*)malloc(sizeof(MessageHistoryPacket));
   mh->header = ph;
   mh->num_messages = messages->size;
   mh->messages =
@@ -761,7 +763,7 @@ void* UDPSender(void* args) {
     client = users->first;
     gettimeofday(&wup->time, NULL);
     int k = 0;
-    while(client != NULL) {
+    while (client != NULL) {
       if (!(client->is_udp_addr_ready && client->inside_world)) {
         client = client->next;
         continue;
