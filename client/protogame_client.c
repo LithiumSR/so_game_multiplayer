@@ -328,7 +328,7 @@ void *UDPReceiver(void *args) {
         for (int i = 0; i < wup->num_status_vehicles; i++) {
           int ret = hasUser(lw->ids, WORLDSIZE, wup->status_updates[i].id);
           if (ret == -1) continue;
-          if (wup->status_updates[i].status == Online && CACHE_TEXTURE) mask[ret] = 1;
+          if (wup->status_updates[i].status == Online && CACHE_TEXTURE) mask[ret] = TOUCHED;
         }
 #endif
 
