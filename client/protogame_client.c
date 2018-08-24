@@ -35,6 +35,7 @@ struct timeval last_update_time;
 struct timeval start_time;
 AudioContext* background_track = NULL;
 pthread_mutex_t time_lock;
+char kicked = 0;
 
 typedef struct localWorld {
   World world;
@@ -187,6 +188,7 @@ void* UDPReceiver(void* args) {
       sendGoodbye(socket_desc, id);
       connectivity = 0;
       exchange_update = 0;
+      kicked = 1;
       WorldViewer_exit(0);
     }
 
