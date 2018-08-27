@@ -25,6 +25,8 @@
 // world
 World server_world;
 struct timeval world_update_time;
+Image* surface_elevation;
+Image* surface_texture;
 // flags
 int connectivity = 1;
 int exchange_update = 1;
@@ -857,19 +859,21 @@ int main(int argc, char** argv) {
   // load the images
   fprintf(stdout, "[Main] loading elevation image from %s ... ",
           elevation_filename);
-  Image* surface_elevation = Image_load(elevation_filename);
+  surface_elevation = Image_load(elevation_filename);
   if (surface_elevation) {
     fprintf(stdout, "Done! \n");
   } else {
     fprintf(stdout, "Fail! \n");
+    return -1;
   }
   fprintf(stdout, "[Main] loading texture image from %s ... ",
           texture_filename);
-  Image* surface_texture = Image_load(texture_filename);
+  surface_texture = Image_load(texture_filename);
   if (surface_texture) {
     fprintf(stdout, "Done! \n");
   } else {
     fprintf(stdout, "Fail! \n");
+    return -1;
   }
 
   port_number_no = htons((uint16_t)tmp);
