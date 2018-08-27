@@ -524,6 +524,7 @@ int main(int argc, char** argv) {
     printf("Done! \n");
   } else {
     printf("Fail! \n");
+    return -1;
   }
   long tmp = strtol(argv[2], NULL, 0);
 
