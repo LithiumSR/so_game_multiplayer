@@ -870,6 +870,7 @@ int main(int argc, char **argv) {
     fprintf(stdout, "Done! \n");
   } else {
     fprintf(stdout, "Fail! \n");
+    return -1;
   }
   fprintf(stdout, "[Main] loading texture image from %s ... ",
           texture_filename);
@@ -878,6 +879,7 @@ int main(int argc, char **argv) {
     fprintf(stdout, "Done! \n");
   } else {
     fprintf(stdout, "Fail! \n");
+    return -1;
   }
 
   port_number_no = htons((uint16_t)tmp);
