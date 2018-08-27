@@ -23,7 +23,9 @@
 #if SERVER_SIDE_POSITION_CHECK == 1
 #define _USE_SERVER_SIDE_FOG_
 #endif
-
+//resources
+Image* surface_elevation;
+Image* surface_texture;
 // syncronization
 pthread_mutex_t users_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t messages_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -863,7 +865,7 @@ int main(int argc, char **argv) {
   // load the images
   fprintf(stdout, "[Main] loading elevation image from %s ... ",
           elevation_filename);
-  Image *surface_elevation = Image_load(elevation_filename);
+  surface_elevation = Image_load(elevation_filename);
   if (surface_elevation) {
     fprintf(stdout, "Done! \n");
   } else {
@@ -871,7 +873,7 @@ int main(int argc, char **argv) {
   }
   fprintf(stdout, "[Main] loading texture image from %s ... ",
           texture_filename);
-  Image *surface_texture = Image_load(texture_filename);
+  surface_texture = Image_load(texture_filename);
   if (surface_texture) {
     fprintf(stdout, "Done! \n");
   } else {
