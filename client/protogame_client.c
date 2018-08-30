@@ -48,6 +48,7 @@ int socket_udp = -1;   // socket udp
 struct sockaddr_in udp_server = {0};
 struct timeval last_update_time;
 struct timeval start_time;
+char kicked = 0;
 pthread_mutex_t time_lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct localWorld {
@@ -85,7 +86,7 @@ void handleSignal(int signal) {
       connectivity = 0;
       exchange_update = 0;
       pthread_mutex_lock(&time_lock);
-      if (last_update_time.tv_sec != 1) sendGoodbye(socket_desc, id);
+      if (last_update_time.tv_sec != 1 && !kicked) sendGoodbye(socket_desc, id);
       pthread_mutex_unlock(&time_lock);
       WorldViewer_exit(0);
       break;
@@ -258,6 +259,7 @@ void* UDPReceiver(void* args) {
                 "[WARNING] You were kicked out of the server for inactivity... "
                 "Closing the client now \n");
         sendGoodbye(socket_desc, id);
+        kicked = 1;
         connectivity = 0;
         exchange_update = 0;
         WorldViewer_exit(0);
@@ -522,6 +524,7 @@ int main(int argc, char** argv) {
     printf("Done! \n");
   } else {
     printf("Fail! \n");
+    return -1;
   }
   long tmp = strtol(argv[2], NULL, 0);
 

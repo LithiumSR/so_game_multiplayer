@@ -28,6 +28,8 @@
 // world
 World server_world;
 struct timeval world_update_time;
+Image* surface_elevation;
+Image* surface_texture;
 // flags
 int connectivity = 1;
 int exchange_update = 1;
@@ -162,7 +164,7 @@ int UDPHandler(int socket_udp, char* buf_rcv, struct sockaddr_in client_addr) {
       MessageListItem* mli = (MessageListItem*)malloc(sizeof(MessageListItem));
       pthread_mutex_lock(&users_mutex);
       ClientListItem* user = ClientList_findByID(users, mp->message.id);
-      if (user == NULL || !user->inside_chat) {
+      if (user == NULL || !user->inside_chat || !user->inside_world) {
         free(mli);
         pthread_mutex_unlock(&users_mutex);
         return 0;
@@ -579,7 +581,7 @@ int sendMessages(int socket_udp) {
   pthread_mutex_lock(&users_mutex);
   ClientListItem* client = users->first;
   for (; client != NULL; client = client->next) {
-    if (!client->is_udp_addr_ready || !client->inside_chat) continue;
+    if (!client->is_udp_addr_ready || !client->inside_chat || !client->inside_world) continue;
     int ret = sendto(socket_udp, buf_send, size, 0,
                      (struct sockaddr*)&client->user_addr_udp,
                      (socklen_t)sizeof(client->user_addr_udp));
@@ -961,19 +963,21 @@ int main(int argc, char** argv) {
   // load the images
   fprintf(stdout, "[Main] loading elevation image from %s ... ",
           elevation_filename);
-  Image* surface_elevation = Image_load(elevation_filename);
+  surface_elevation = Image_load(elevation_filename);
   if (surface_elevation) {
     fprintf(stdout, "Done! \n");
   } else {
     fprintf(stdout, "Fail! \n");
+    return -1;
   }
   fprintf(stdout, "[Main] loading texture image from %s ... ",
           texture_filename);
-  Image* surface_texture = Image_load(texture_filename);
+  surface_texture = Image_load(texture_filename);
   if (surface_texture) {
     fprintf(stdout, "Done! \n");
   } else {
     fprintf(stdout, "Fail! \n");
+    return -1;
   }
 
 #ifdef _USE_SERVER_SIDE_FOG_
