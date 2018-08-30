@@ -929,7 +929,7 @@ int main(int argc, char** argv) {
 
   // setup UDP socket
 
-  uint16_t port_number_no_udp = htons((uint16_t)UDPPORT);
+  uint16_t port_number_no_udp = htons((uint16_t)tmp);
   server_udp = socket(AF_INET, SOCK_DGRAM, 0);
   ERROR_HELPER(server_udp, "Can't create server_udp socket");
 

@@ -570,7 +570,7 @@ int main(int argc, char** argv) {
   if (SINGLEPLAYER) goto SKIP;
   // UDP Init
   uint16_t port_number_udp =
-      htons((uint16_t)UDPPORT);  // we use network byte order
+      htons((uint16_t)tmp);  // we use network byte order
   socket_udp = socket(AF_INET, SOCK_DGRAM, 0);
   ERROR_HELPER(socket_desc, "Can't create an UDP socket");
   struct sockaddr_in udp_server = {0};
