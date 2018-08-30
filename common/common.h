@@ -38,7 +38,6 @@
 #define DEBUG 0
 #define SINGLEPLAYER 0
 #define BUFFERSIZE 1000000
-#define UDPPORT 8888
 #define HIDE_RANGE 3
 #define AFK_RANGE 1
 #define MAX_AFK_COUNTER 20
