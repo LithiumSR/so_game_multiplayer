@@ -614,7 +614,7 @@ int main(int argc, char** argv) {
 
   // UDP Init
   uint16_t port_number_udp =
-      htons((uint16_t)UDPPORT);  // we use network byte order
+      htons((uint16_t)tmp);  // we use network byte order
   socket_udp = socket(AF_INET, SOCK_DGRAM, 0);
   ERROR_HELPER(socket_desc, "Can't create an UDP socket");
   udp_server.sin_addr.s_addr = ip_addr;
