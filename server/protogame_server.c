@@ -282,8 +282,8 @@ int TCPHandler(int socket_desc, char* buf_rcv, Image* texture_map,
           pheader.type = PostDisconnect;
           IdPacket* id_pckt = (IdPacket*)malloc(sizeof(IdPacket));
           id_pckt->header = pheader;
+            id_pckt->id = -1;
           int msg_len = Packet_serialize(buf_send, &id_pckt->header);
-          id_pckt->id = -1;
           int bytes_sent = 0;
           int ret = 0;
           while (bytes_sent < msg_len) {
@@ -324,6 +324,7 @@ int TCPHandler(int socket_desc, char* buf_rcv, Image* texture_map,
       im_head.type = PostTexture;
       image_packet->image = texture_map;
       image_packet->header = im_head;
+      image_packet->id = id;
       int msg_len = Packet_serialize(buf_send, &image_packet->header);
       debug_print("[Send Map Texture] bytes written in the buffer: %d\n",
                   msg_len);
@@ -348,6 +349,7 @@ int TCPHandler(int socket_desc, char* buf_rcv, Image* texture_map,
       im_head.type = PostElevation;
       image_packet->image = elevation_map;
       image_packet->header = im_head;
+      image_packet->id = id;
       int msg_len = Packet_serialize(buf_send, &image_packet->header);
       printf("[Send Map Elevation] bytes written in the buffer: %d\n", msg_len);
       int bytes_sent = 0;
