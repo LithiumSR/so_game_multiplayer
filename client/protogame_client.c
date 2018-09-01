@@ -36,7 +36,7 @@
 int window;
 Vehicle* vehicle;  // The vehicle
 int id;
-char username[32];
+char username[USERNAME_LEN];
 AudioContext* background_track = NULL;
 // flags and counters
 char connectivity = 1;
@@ -197,7 +197,7 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
     connectivity = 0;
     exchange_update = 0;
     fprintf(stderr,
-            "[WARNING] Server is not avaiable. Terminating the client now...");
+            "\n[WARNING] Server is not avaiable. Terminating the client now...");
     WorldViewer_exit(0);
   } else if (last_update_time.tv_sec != -1 &&
              current_time.tv_sec - last_update_time.tv_sec >
@@ -205,7 +205,7 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
     connectivity = 0;
     exchange_update = 0;
     fprintf(stderr,
-            "[WARNING] Server is not avaiable. Terminating the client now...");
+            "\n[WARNING] Server is not avaiable. Terminating the client now...");
     WorldViewer_exit(0);
   }
   pthread_mutex_unlock(&time_lock);
@@ -256,7 +256,7 @@ void* UDPReceiver(void* args) {
     switch (ph->type) {
       case (PostDisconnect): {
         fprintf(stderr,
-                "[WARNING] You were kicked out of the server for inactivity... "
+                "\n[WARNING] You were kicked out of the server for inactivity... "
                 "Closing the client now \n");
         sendGoodbye(socket_desc, id);
         kicked = 1;
