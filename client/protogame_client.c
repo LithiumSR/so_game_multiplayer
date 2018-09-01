@@ -41,7 +41,7 @@ char connectivity = 1;
 char exchange_update = 1;
 // networking
 uint16_t port_number_no;
-char username[32];
+char username[USERNAME_LEN];
 int socket_desc = -1;  // socket tcp
 int socket_udp = -1;   // socket udp
 struct timeval last_update_time;
@@ -147,7 +147,7 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
     connectivity = 0;
     exchange_update = 0;
     fprintf(stderr,
-            "[WARNING] Server is not avaiable. Terminating the client now...");
+            "\n[WARNING] Server is not avaiable. Terminating the client now...");
     WorldViewer_exit(0);
   } else if (last_update_time.tv_sec != -1 &&
              current_time.tv_sec - last_update_time.tv_sec >
@@ -155,7 +155,7 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
     connectivity = 0;
     exchange_update = 0;
     fprintf(stderr,
-            "[WARNING] Server is not avaiable. Terminating the client now...");
+            "\n[WARNING] Server is not avaiable. Terminating the client now...");
     WorldViewer_exit(0);
   }
   pthread_mutex_unlock(&time_lock);
@@ -251,14 +251,14 @@ void *UDPReceiver(void *args) {
     debug_print("[UDP_Receiver] Received %d bytes over UDP\n", bytes_read);
     PacketHeader *ph = (PacketHeader *)buf_rcv;
     if (ph->size != bytes_read) {
-      debug_print("[WARNING] Skipping partial UDP packet \n");
+      debug_print("\n[WARNING] Skipping partial UDP packet \n");
       sleep(1);
       continue;
     }
     switch (ph->type) {
       case (PostDisconnect): {
         fprintf(stderr,
-                "[WARNING] You were kicked out of the server for "
+                "\n[WARNING] You were kicked out of the server for "
                 "inactivity... Closing the client now \n");
         connectivity = 0;
         exchange_update = 0;
