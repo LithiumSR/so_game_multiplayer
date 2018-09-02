@@ -97,9 +97,10 @@ void handleSignal(int signal) {
 }
 
 // This method returns the index of the user in the array. If it returns -1 and
-// existing_index is != -1 it means that the user was already in the array in the
-// position 'existing_index'. If the method returns -1 and existing_index==-1 it
-// means that the world is full and no space can be found to save the new user.
+// existing_index is != -1 it means that the user was already in the array in
+// the position 'existing_index'. If the method returns -1 and
+// existing_index==-1 it means that the world is full and no space can be found
+// to save the new user.
 int addUser(int ids[], int size, int id, int* existing_index,
             int* users_online) {
   if (*users_online == WORLDSIZE) {
@@ -196,16 +197,18 @@ int sendUpdates(int socket_udp, struct sockaddr_in server_addr, int serverlen) {
       current_time.tv_sec - start_time.tv_sec > MAX_TIME_WITHOUT_WORLDUPDATE) {
     connectivity = 0;
     exchange_update = 0;
-    fprintf(stderr,
-            "\n[WARNING] Server is not avaiable. Terminating the client now...");
+    fprintf(
+        stderr,
+        "\n[WARNING] Server is not avaiable. Terminating the client now...");
     WorldViewer_exit(0);
   } else if (last_update_time.tv_sec != -1 &&
              current_time.tv_sec - last_update_time.tv_sec >
                  MAX_TIME_WITHOUT_WORLDUPDATE) {
     connectivity = 0;
     exchange_update = 0;
-    fprintf(stderr,
-            "\n[WARNING] Server is not avaiable. Terminating the client now...");
+    fprintf(
+        stderr,
+        "\n[WARNING] Server is not avaiable. Terminating the client now...");
     WorldViewer_exit(0);
   }
   pthread_mutex_unlock(&time_lock);
@@ -255,9 +258,10 @@ void* UDPReceiver(void* args) {
     if (ph->size != bytes_read) ERROR_HELPER(-1, "Partial UDP READ!");
     switch (ph->type) {
       case (PostDisconnect): {
-        fprintf(stderr,
-                "\n[WARNING] You were kicked out of the server for inactivity... "
-                "Closing the client now \n");
+        fprintf(
+            stderr,
+            "\n[WARNING] You were kicked out of the server for inactivity... "
+            "Closing the client now \n");
         sendGoodbye(socket_desc, id);
         kicked = 1;
         connectivity = 0;
@@ -346,15 +350,19 @@ void* UDPReceiver(void* args) {
                                     &new_position, &(lw->users_online));
             if (id_struct == -1) {
               if (new_position == -1) continue;
-              debug_print("[INFO] Found new vehicle \n");
-              mask[new_position] = TOUCHED;
-              updated[new_position] = TOUCHED;
               debug_print(
                   "[INFO] New Vehicle with id %d and x: %f y: %f z: %f \n",
                   wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
                   wup->updates[i].theta);
               Image* img = getVehicleTexture(socket_tcp, wup->updates[i].id);
-              if (img == NULL) continue;
+              if (img == NULL) {
+                lw->ids[new_position] = -1;
+                continue;
+              }
+              // Update masks
+              mask[new_position] = TOUCHED;
+              updated[new_position] = TOUCHED;
+
               Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
               Vehicle_init(new_vehicle, &lw->world, wup->updates[i].id, img);
               lw->vehicles[new_position] = new_vehicle;
@@ -373,8 +381,6 @@ void* UDPReceiver(void* args) {
               lw->vehicle_login_time[new_position] =
                   wup->updates[i].client_creation_time;
             } else {
-              mask[id_struct] = TOUCHED;
-              updated[id_struct] = TOUCHED;
               if (timercmp(&wup->updates[i].client_creation_time,
                            &lw->vehicle_login_time[id_struct], !=)) {
                 debug_print("[WARNING] Forcing refresh for client with id %d",
@@ -392,6 +398,10 @@ void* UDPReceiver(void* args) {
                 }
                 Image* img = getVehicleTexture(socket_tcp, wup->updates[i].id);
                 if (img == NULL) continue;
+                //Update masks
+                mask[id_struct] = TOUCHED;
+                updated[id_struct] = TOUCHED;
+                
                 Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
                 Vehicle_init(new_vehicle, &lw->world, wup->updates[i].id, img);
                 lw->vehicles[id_struct] = new_vehicle;
@@ -613,8 +623,7 @@ int main(int argc, char** argv) {
   if (SINGLEPLAYER) goto SKIP;
 
   // UDP Init
-  uint16_t port_number_udp =
-      htons((uint16_t)tmp);  // we use network byte order
+  uint16_t port_number_udp = htons((uint16_t)tmp);  // we use network byte order
   socket_udp = socket(AF_INET, SOCK_DGRAM, 0);
   ERROR_HELPER(socket_desc, "Can't create an UDP socket");
   udp_server.sin_addr.s_addr = ip_addr;
