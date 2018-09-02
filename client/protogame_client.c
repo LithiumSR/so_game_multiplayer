@@ -228,12 +228,15 @@ void* UDPReceiver(void* args) {
                              wup->updates[i].y, wup->updates[i].theta);
         else if (id_struct == -1) {
           if (new_position == -1) continue;
-          mask[new_position] = 1;
           fprintf(stdout, "New Vehicle with id %d and x: %f y: %f z: %f \n",
                   wup->updates[i].id, wup->updates[i].x, wup->updates[i].y,
                   wup->updates[i].theta);
           Image* img = getVehicleTexture(socket_tcp, wup->updates[i].id);
-          if (img == NULL) continue;
+          if (img == NULL) {
+            lw->ids[new_position] = -1;
+            continue;
+          }
+          mask[new_position] = 1;
           Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
           Vehicle_init(new_vehicle, &lw->world, wup->updates[i].id, img);
           lw->vehicles[new_position] = new_vehicle;
@@ -261,7 +264,13 @@ void* UDPReceiver(void* args) {
               free(lw->vehicles[id_struct]);
             }
             Image* img = getVehicleTexture(socket_tcp, wup->updates[i].id);
-            if (img == NULL) continue;
+            if (img == NULL) {
+              // Remove vehicle if server cannot provide a texture
+              lw->ids[id_struct] = -1;
+              lw->has_vehicle[id_struct] = 0;
+              mask[id_struct] = NO_ACCESS;
+              continue;
+            }
             Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
             Vehicle_init(new_vehicle, &lw->world, wup->updates[i].id, img);
             lw->vehicles[id_struct] = new_vehicle;
@@ -404,8 +413,7 @@ int main(int argc, char** argv) {
   local_world->has_vehicle[0] = 1;
   if (SINGLEPLAYER) goto SKIP;
   // UDP Init
-  uint16_t port_number_udp =
-      htons((uint16_t)tmp);  // we use network byte order
+  uint16_t port_number_udp = htons((uint16_t)tmp);  // we use network byte order
   int socket_udp = socket(AF_INET, SOCK_DGRAM, 0);
   ERROR_HELPER(socket_desc, "Can't create an UDP socket");
   struct sockaddr_in udp_server = {
