@@ -381,6 +381,8 @@ void* UDPReceiver(void* args) {
               lw->vehicle_login_time[new_position] =
                   wup->updates[i].client_creation_time;
             } else {
+              mask[id_struct] = TOUCHED;
+              updated[id_struct] = TOUCHED;
               if (timercmp(&wup->updates[i].client_creation_time,
                            &lw->vehicle_login_time[id_struct], !=)) {
                 debug_print("[WARNING] Forcing refresh for client with id %d",
@@ -397,11 +399,15 @@ void* UDPReceiver(void* args) {
                   free(lw->vehicles[id_struct]);
                 }
                 Image* img = getVehicleTexture(socket_tcp, wup->updates[i].id);
-                if (img == NULL) continue;
-                //Update masks
-                mask[id_struct] = TOUCHED;
-                updated[id_struct] = TOUCHED;
-                
+                if (img == NULL) {
+                  // Remove vehicle if server cannot provide a texture
+                  lw->ids[id_struct] = -1;
+                  lw->has_vehicle[id_struct] = 0;
+                  lw->is_disabled[id_struct] = 0;
+                  updated[id_struct] = UNTOUCHED;
+                  mask[id_struct] = UNTOUCHED;
+                  continue;
+                }
                 Vehicle* new_vehicle = (Vehicle*)malloc(sizeof(Vehicle));
                 Vehicle_init(new_vehicle, &lw->world, wup->updates[i].id, img);
                 lw->vehicles[id_struct] = new_vehicle;
