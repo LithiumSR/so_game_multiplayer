@@ -122,8 +122,8 @@ void idle(void) {
     pthread_mutex_lock(&audio_list_mutex);
     AudioList_cleanExpiredItems(audio_list);
     pthread_mutex_unlock(&audio_list_mutex);
+    glutPostRedisplay();
   }
-  glutPostRedisplay();
 }
 
 void Surface_destructor(Surface *s) {
@@ -397,10 +397,9 @@ END:
 }
 
 void _WorldViewer_exit(void) {
-  glutLeaveMainLoop();
   int id = glutGetWindow();
   if (id != 0) glutDestroyWindow(id);
-  exit(ret);
+  glutLeaveMainLoop();
 }
 
 void WorldViewer_reshapeViewport(WorldViewer *viewer, int width, int height) {
@@ -415,7 +414,7 @@ void WorldViewer_runGlobal(World *world, Vehicle *self, AudioContext *audio,
   glutInit(argc_ptr, argv);
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutCreateWindow("protogame_multiplayer");
-
+  glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_EXIT);
   // set the callbacks
   glutDisplayFunc(display);
   glutIdleFunc(idle);

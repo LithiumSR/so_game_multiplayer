@@ -629,8 +629,6 @@ SKIP:
     PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_receiver failed");
     ret = pthread_join(message_sender, NULL);
     PTHREAD_ERROR_HELPER(ret, "pthread_join on thread message_sender failed");
-    ret = close(socket_udp);
-    ERROR_HELPER(ret, "Failed to close UDP socket");
   }
 
   fprintf(stdout, "[Main] Cleaning up... \n");
