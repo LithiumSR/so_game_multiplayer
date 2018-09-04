@@ -670,8 +670,6 @@ SKIP:
     PTHREAD_ERROR_HELPER(ret, "pthread_join on thread UDP_receiver failed");
     ret = pthread_join(message_sender, NULL);
     PTHREAD_ERROR_HELPER(ret, "pthread_join on thread message_sender failed");
-    ret = close(socket_udp);
-    ERROR_HELPER(ret, "Failed to close UDP socket");
   }
 
   fprintf(stdout, "[Main] Cleaning up... \n");
@@ -694,8 +692,10 @@ SKIP:
   free(local_world);
   ret = close(socket_desc);
   ERROR_HELPER(ret, "Failed to close TCP socket");
-  if (!SINGLEPLAYER) ret = close(socket_udp);
-  ERROR_HELPER(ret, "Failed to close UDP socket");
+  if (!SINGLEPLAYER) {
+    ret = close(socket_udp);
+    ERROR_HELPER(ret, "Failed to close UDP socket");
+  }
   // resources cleanup
   Image_free(surface_elevation);
   Image_free(surface_texture);
