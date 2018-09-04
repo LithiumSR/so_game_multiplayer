@@ -9,6 +9,7 @@
 #endif
 
 int main(int argc, char const* argv[]) {
+  char ret = 0;
   // id packet
   printf("allocate an IDPacket\n");
   IdPacket* id_packet = (IdPacket*)malloc(sizeof(IdPacket));
@@ -38,7 +39,7 @@ int main(int argc, char const* argv[]) {
          deserialized_packet->id);
   if (deserialized_packet->id != id_packet->id) {
     printf("ID is different!\n");
-    return -1;
+    ret = -1;
   }
   printf("delete the packets\n");
   // can I pass the id_packet oppure the header??
@@ -146,7 +147,7 @@ int main(int argc, char const* argv[]) {
       deserialized_wu_packet->updates->y != world_packet->updates->y ||
       deserialized_wu_packet->updates->theta != world_packet->updates->theta) {
     printf("World Update block is different!! \n");
-    return -1;
+    ret = -1;
   }
 #ifdef _USE_SERVER_SIDE_FOG_
   printf("status_update_block:\nid\t\t%d\nstatus\t\t%d\n",
@@ -157,7 +158,7 @@ int main(int argc, char const* argv[]) {
       deserialized_wu_packet->status_updates->status !=
           world_packet->status_updates->status) {
     printf("Status update block is different!! \n");
-    return -1;
+    ret = -1;
   }
 #endif
   Packet_free(&world_packet->header);
@@ -208,7 +209,7 @@ int main(int argc, char const* argv[]) {
       deserialized_vehicle_packet->rotational_force !=
           vehicle_packet->rotational_force) {
     printf("Vehicle update packet is different!!\n");
-    return -1;
+    ret = -1;
   }
   Packet_free(&vehicle_packet->header);
   Packet_free(&deserialized_vehicle_packet->header);
@@ -259,7 +260,7 @@ int main(int argc, char const* argv[]) {
       (strcmp(deserialized_message_packet->message.text,
               mp_pckt->message.text) != 0)) {
     printf("MessagePacket is different!!\n");
-    return -1;
+    ret = -1;
   }
   Packet_free(&deserialized_message_packet->header);
   Packet_free(&mp_pckt->header);
@@ -292,7 +293,7 @@ int main(int argc, char const* argv[]) {
   if (deserialized_auth_packet->id != auth_pckt->id ||
       (strcmp(deserialized_auth_packet->username, auth_pckt->username) != 0)) {
     printf("MessageAuth packet is different!!\n");
-    return -1;
+    ret = -1;
   }
   Packet_free(&deserialized_auth_packet->header);
   Packet_free(&auth_pckt->header);
@@ -345,7 +346,7 @@ int main(int argc, char const* argv[]) {
               history_pckt->messages->text) != 0) ||
       info_des->tm_hour != info->tm_hour || info_des->tm_min != info->tm_min) {
     printf("HistoryPacket is differnt!!\n");
-    return -1;
+    ret = -1;
   }
   Packet_free(&deserialized_history_packet->header);
   Packet_free(&history_pckt->header);
@@ -379,9 +380,9 @@ int main(int argc, char const* argv[]) {
   if (deserialized_audio_packet->track_number != audio_packet->track_number ||
       deserialized_audio_packet->loop != audio_packet->loop) {
     printf("AudioPacket is different!!\n");
-    return -1;
+    ret = -1;
   }
   Packet_free(&deserialized_audio_packet->header);
   Packet_free(&audio_packet->header);
-  return 0;
+  return ret;
 }
