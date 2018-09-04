@@ -10,7 +10,18 @@
 #define _USE_SERVER_SIDE_FOG_
 #endif
 
+MessageListItem* findById(MessageListHead* head, int id){
+  if (head == NULL) return NULL;
+  MessageListItem* item = head->first;
+  while(item!=NULL){
+    if (item->id == id) return item;
+    item = item->next;
+  }
+  return NULL;
+}
+
 int main(int argc, char const* argv[]) {
+  char flag = 0;
   printf("Creating message list...");
   MessageListHead* list = (MessageListHead*)malloc(sizeof(MessageListHead));
   MessageList_init(list);
@@ -26,6 +37,10 @@ int main(int argc, char const* argv[]) {
   el->type = Hello;
   printf("Done.\n");
   MessageList_insert(list, el);
+  if (findById(list,10) == NULL) {
+    printf("ERROR IN ADD\n");
+    flag = -1;
+  }
   MessageList_print(list);
   printf("Adding message 2 to list...");
   MessageListItem* el2 = (MessageListItem*)malloc(sizeof(MessageListItem));
@@ -37,11 +52,19 @@ int main(int argc, char const* argv[]) {
   time(&el2->time);
   el2->type = Hello;
   MessageList_insert(list, el2);
+  if (findById(list,11) == NULL) {
+    printf("ERROR IN ADD\n");
+    flag = -1;
+  }
   printf("Done.\n");
   MessageList_print(list);
   printf("Removing all messages...");
   MessageList_removeAll(list);
+  if (findById(list,10) != NULL || findById(list,11)!= NULL) {
+    printf("ERROR IN REMOVEALL\n");
+    flag = -1;
+  }
   printf("Done.\n");
   MessageList_print(list);
-  return 0;
+  return flag;
 }
