@@ -18,9 +18,9 @@
 #include "../game_framework/protogame_protocol.h"
 #include "../game_framework/vehicle.h"
 #include "../game_framework/world.h"
-#define RECEIVER_SLEEP 50 * 1000
+#define RECEIVER_SLEEP 50 * 100
 #define WORLD_LOOP_SLEEP 70 * 1000
-#define SENDER_SLEEP 1000 * 1000
+#define SENDER_SLEEP 300 * 1000
 #if SERVER_SIDE_POSITION_CHECK == 1
 #define _USE_SERVER_SIDE_FOG_
 #endif
