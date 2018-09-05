@@ -579,6 +579,8 @@ int main(int argc, char** argv) {
   // create Vehicle
   World_init(&local_world->world, surface_elevation, surface_texture, 0.5, 0.5,
              0.5);
+
+  World_disableDecay(&local_world->world);
   World_disableVehicleCollisions(&local_world->world);
   vehicle = (Vehicle*)malloc(sizeof(Vehicle));
   Vehicle_init(vehicle, &local_world->world, id, my_texture);

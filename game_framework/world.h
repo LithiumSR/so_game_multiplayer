@@ -8,12 +8,12 @@
 typedef struct World {
   ListHead vehicles;  // list of vehicles
   Surface ground;     // surface
-
   // stuff
   float dt;
   struct timeval last_update;
   float time_scale;
   char disable_collisions;
+  char disable_decay;
   pthread_mutex_t update_mutex;
 } World;
 
@@ -35,3 +35,5 @@ Vehicle* World_detachVehicle(World* w, Vehicle* v);
 void World_manualUpdate(World* w, Vehicle* v, struct timeval update_time);
 
 void World_disableVehicleCollisions(World* w);
+
+void World_disableDecay(World* w);
