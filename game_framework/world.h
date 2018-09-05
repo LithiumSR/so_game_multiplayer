@@ -14,6 +14,7 @@ typedef struct World {
   struct timeval last_update;
   float time_scale;
   char disable_collisions;
+  char disable_decay;
   pthread_mutex_t update_mutex;
 } World;
 
