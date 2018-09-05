@@ -46,6 +46,7 @@ uint16_t port_number_no;
 int socket_desc = -1;  // socket tcp
 int socket_udp = -1;   // socket udp
 struct sockaddr_in udp_server = {0};
+struct timeval last_world_update_time;
 struct timeval last_update_time;
 struct timeval start_time;
 char kicked = 0;
@@ -86,7 +87,8 @@ void handleSignal(int signal) {
       connectivity = 0;
       exchange_update = 0;
       pthread_mutex_lock(&time_lock);
-      if (last_update_time.tv_sec != 1 && !kicked) sendGoodbye(socket_desc, id);
+      if (last_world_update_time.tv_sec != 1 && !kicked)
+        sendGoodbye(socket_desc, id);
       pthread_mutex_unlock(&time_lock);
       WorldViewer_exit(0);
       break;
@@ -310,15 +312,16 @@ void* UDPReceiver(void* args) {
         debug_print("WorldUpdatePacket contains %d vehicles besides mine \n",
                     wup->num_update_vehicles - 1);
         pthread_mutex_lock(&time_lock);
-        if (last_update_time.tv_sec != -1 &&
-            timercmp(&last_update_time, &wup->time, >=)) {
+        if (last_world_update_time.tv_sec != -1 &&
+            timercmp(&last_world_update_time, &wup->time, >=)) {
           pthread_mutex_unlock(&time_lock);
           debug_print("[INFO] Ignoring a WorldUpdatePacket... \n");
           Packet_free(&wup->header);
           usleep(RECEIVER_SLEEP);
           continue;
         }
-        last_update_time = wup->time;
+        last_world_update_time = wup->time;
+        gettimeofday(&last_update_time, NULL);
         pthread_mutex_unlock(&time_lock);
         char mask[WORLDSIZE];
         for (int k = 0; k < WORLDSIZE; k++) mask[k] = UNTOUCHED;
@@ -550,6 +553,7 @@ int main(int argc, char** argv) {
   }
   fprintf(stdout, "[Main] Starting... \n");
   last_update_time.tv_sec = -1;
+  last_world_update_time.tv_sec = -1;
 
 #ifdef _USE_CACHED_TEXTURE_
   debug_print("[INFO] CACHE_TEXTURE option is enabled \n");
