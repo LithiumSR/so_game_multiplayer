@@ -68,6 +68,7 @@ void Vehicle_init(Vehicle* v, World* w, int id, Image* texture) {
   if (ret == -1) debug_print("Mutex init for vehicle was not successful");
   v->world = w;
   v->id = id;
+  v->self_vehicle = 0;
   v->texture = texture;
   v->theta = 0;
   v->list.next = v->list.prev = 0;

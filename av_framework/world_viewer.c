@@ -302,6 +302,7 @@ void Vehicle_draw(Vehicle *v) {
 }
 
 void WorldViewer_init(WorldViewer *viewer, World *w, Vehicle *self) {
+  self->self_vehicle = 1;
   viewer->world = w;
   viewer->camera_z = 1;
   viewer->zoom = 1;
