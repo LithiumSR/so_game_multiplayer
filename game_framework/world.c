@@ -29,9 +29,9 @@ void World_destroy(World* w) {
   sem_destroy(&sem);
 }
 
-int World_isCollisionsDisabled(World* w) { return w->disable_collisions; }
-
 void World_disableVehicleCollisions(World* w) { w->disable_collisions = 1; }
+
+void World_disableDecay(World* w) { w->disable_collisions = 1; }
 
 int World_init(World* w, Image* surface_elevation, Image* surface_texture,
                float x_step, float y_step, float z_step) {
@@ -39,6 +39,7 @@ int World_init(World* w, Image* surface_elevation, Image* surface_texture,
   if (ret == -1) debug_print("Mutex init for world was not successful");
   List_init(&w->vehicles);
   w->disable_collisions = 0;
+  w->disable_decay = 0;
   Image* float_image = Image_convert(surface_elevation, FLOATMONO);
 
   if (!float_image) return 0;
@@ -55,7 +56,7 @@ int World_init(World* w, Image* surface_elevation, Image* surface_texture,
 
 void World_fixCollisions(World* w, Vehicle* v) {
   // v mutex is already locked
-  if (World_isCollisionsDisabled(w)) return;
+  if (w->disable_collisions) return;
   ListItem* item2 = w->vehicles.first;
   char flag = 0;
   for (; item2 != NULL; item2 = item2->next) {
@@ -97,10 +98,11 @@ void World_update(World* w) {
         float exp_manual = delta / (30000 * 1e-6);
         float tr_decay_manual = powf(1 - 0.001, exp_manual);
         float rt_decay_manual = powf(1 - 0.15, exp_manual);
+        if (v->self_vehicle && !w->disable_collisions)
         Vehicle_decayForcesUpdate(v, tr_decay_manual, rt_decay_manual);
         v->manual_updated = 0;
       } else {
-        Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
+        if (v->self_vehicle && !w->disable_collisions) Vehicle_decayForcesUpdate(v, tr_decay, rt_decay);
       }
     }
     Vehicle_setTime(v, current_time);
