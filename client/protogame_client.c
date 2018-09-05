@@ -21,8 +21,8 @@
 #include "client_op.h"
 #define UNTOUCHED 0
 #define TOUCHED 1
-#define SENDER_SLEEP 400 * 1000
-#define RECEIVER_SLEEP 500 * 1000
+#define SENDER_SLEEP 200 * 1000
+#define RECEIVER_SLEEP 50 * 100
 #define MAX_FAILED_ATTEMPTS 20
 #if CACHE_TEXTURE == 1
 #define _USE_CACHED_TEXTURE_
