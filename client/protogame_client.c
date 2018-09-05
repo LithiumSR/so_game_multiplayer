@@ -31,6 +31,7 @@ uint16_t port_number_no;
 char connectivity = 1;
 char exchange_update = 1;
 int socket_desc;  // socket tcp
+struct timeval last_word_update_time;
 struct timeval last_update_time;
 struct timeval start_time;
 AudioContext* background_track = NULL;
@@ -62,7 +63,7 @@ void handleSignal(int signal) {
       connectivity = 0;
       exchange_update = 0;
       pthread_mutex_lock(&time_lock);
-      if (last_update_time.tv_sec != 1) sendGoodbye(socket_desc, id);
+      if (last_word_update_time.tv_sec != 1) sendGoodbye(socket_desc, id);
       pthread_mutex_unlock(&time_lock);
       WorldViewer_exit(0);
       break;
@@ -204,8 +205,8 @@ void* UDPReceiver(void* args) {
       WorldUpdatePacket* wup =
           (WorldUpdatePacket*)Packet_deserialize(buf_rcv, bytes_read);
       pthread_mutex_lock(&time_lock);
-      if (last_update_time.tv_sec != -1 &&
-          timercmp(&last_update_time, &wup->time, >=)) {
+      if (last_word_update_time.tv_sec != -1 &&
+          timercmp(&last_word_update_time, &wup->time, >=)) {
         pthread_mutex_unlock(&time_lock);
         fprintf(stdout, "[INFO] Ignoring a WorldUpdatePacket... \n");
         Packet_free(&wup->header);
@@ -215,7 +216,8 @@ void* UDPReceiver(void* args) {
 
       debug_print("WorldUpdatePacket contains %d vehicles besides mine \n",
                   wup->num_vehicles - 1);
-      last_update_time = wup->time;
+      last_word_update_time = wup->time;
+      gettimeofday(&last_update_time, NULL);
       pthread_mutex_unlock(&time_lock);
       char mask[WORLDSIZE];
       for (int k = 0; k < WORLDSIZE; k++) mask[k] = NO_ACCESS;
@@ -343,6 +345,7 @@ int main(int argc, char** argv) {
   }
 
   fprintf(stdout, "[Main] Starting... \n");
+  last_word_update_time.tv_sec = -1;
   last_update_time.tv_sec = -1;
   port_number_no = htons((uint16_t)tmp);  // we use network byte order
   socket_desc = socket(AF_INET, SOCK_STREAM, 0);
