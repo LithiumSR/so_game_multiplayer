@@ -44,6 +44,7 @@ uint16_t port_number_no;
 char username[USERNAME_LEN];
 int socket_desc = -1;  // socket tcp
 int socket_udp = -1;   // socket udp
+struct timeval last_world_update_time;
 struct timeval last_update_time;
 struct timeval start_time;
 pthread_mutex_t time_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -84,7 +85,7 @@ void handleSignal(int signal) {
       connectivity = 0;
       exchange_update = 0;
       pthread_mutex_lock(&time_lock);
-      if (last_update_time.tv_sec != 1) sendGoodbye(socket_desc, id);
+      if (last_world_update_time.tv_sec != 1) sendGoodbye(socket_desc, id);
       pthread_mutex_unlock(&time_lock);
       WorldViewer_exit(0);
       break;
@@ -308,18 +309,19 @@ void *UDPReceiver(void *args) {
         WorldUpdatePacket *wup =
             (WorldUpdatePacket *)Packet_deserialize(buf_rcv, bytes_read);
         pthread_mutex_lock(&time_lock);
-        if (last_update_time.tv_sec != -1 &&
-            timercmp(&last_update_time, &wup->time, >=)) {
+        if (last_world_update_time.tv_sec != -1 &&
+            timercmp(&last_world_update_time, &wup->time, >=)) {
           debug_print("[INFO] Ignoring a WorldUpdatePacket... \n");
           pthread_mutex_unlock(&time_lock);
           Packet_free(&wup->header);
           usleep(RECEIVER_SLEEP);
           continue;
         }
-        pthread_mutex_unlock(&time_lock);
         debug_print("WorldUpdatePacket contains %d vehicles besides mine\n",
                     wup->num_update_vehicles - 1);
-        last_update_time = wup->time;
+        last_world_update_time = wup->time;
+        gettimeofday(&last_update_time,NULL);
+        pthread_mutex_unlock(&time_lock);
         char mask[WORLDSIZE];
         int ignored = 0;
         char updated[WORLDSIZE];
@@ -555,6 +557,7 @@ int main(int argc, char **argv) {
   debug_print("[INFO] CACHE_TEXTURE option is disabled \n");
 #endif
   last_update_time.tv_sec = -1;
+  last_world_update_time.tv_sec = -1;
   port_number_no = htons((uint16_t)tmp);  // we use network byte order
   socket_desc = socket(AF_INET, SOCK_STREAM, 0);
   in_addr_t ip_addr = inet_addr(SERVER_ADDRESS);
