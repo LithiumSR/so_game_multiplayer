@@ -1,7 +1,9 @@
 # protogame_multiplayer
-
+<img align="left" width="300" height="300" src="https://user-images.githubusercontent.com/8293810/45045601-bb020700-b073-11e8-8d0e-9c04f2da9849.png">
 This is a protype of a multiplayer video-game developed originally as part of the final exam of the operating systems course held a held by Giorgio Grisetti and Irvin Aloise at the Sapienza University in 2017-2018.
 Later on, after continuing development, it became my bachelor's thesis.
+<br/>
+<br/>
 
 ## Getting Started
 
