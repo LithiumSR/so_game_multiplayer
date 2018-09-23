@@ -21,4 +21,4 @@ This project comes with a makefile that makes the building process pretty straig
 
 The server can be started using `./protogame_server ./resources/images/maze.pgm ./resources/images/maze.ppm 8888` where the first two arguments are the map elevation and the map texture and the last one is the port number that is going to be used.
 
-The client can be executed with `./protogame_client ./resources/images/square.pgm 8888` where the first argument is the texture of the vehicle that will be visible by everyone and the latter is the port number that will be used during the connection to the server.
+The client can be executed with `./protogame_client ./resources/images/square.ppm 8888` where the first argument is the texture of the vehicle that will be visible by everyone and the latter is the port number that will be used during the connection to the server.
