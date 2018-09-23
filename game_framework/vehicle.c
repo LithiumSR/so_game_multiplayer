@@ -95,6 +95,7 @@ void Vehicle_init(Vehicle* v, World* w, int id, Image* texture) {
 }
 
 void Vehicle_reset(Vehicle* v) {
+  v->is_new = 1;
   v->rotational_force = 0;
   v->translational_force = 0;
   v->x = v->world->ground.rows / 2 * v->world->ground.row_scale;
