@@ -63,7 +63,7 @@ void World_fixCollisions(World* w, Vehicle* v) {
     Vehicle* v2 = (Vehicle*)item2;
     if (v2 == v || v2->id == v->id) continue;
     pthread_mutex_lock(&v2->mutex);
-    Vehicle_fixCollisions(v, v2);
+    flag = Vehicle_fixCollisions(v, v2);
     pthread_mutex_unlock(&v2->mutex);
   }
   if (!flag) {
