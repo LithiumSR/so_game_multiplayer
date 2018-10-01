@@ -22,11 +22,11 @@ pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 typedef enum ViewType { Inside, Outside, Global } ViewType;
 
 typedef struct WorldViewer {
-  World *world;
+  World *world = NULL;
   float zoom;
   float camera_z;
   int window_width, window_height;
-  Vehicle *self;
+  Vehicle *self = NULL;
   ViewType view_type;
   int destroy;
 } WorldViewer;
@@ -302,6 +302,7 @@ void Vehicle_draw(Vehicle *v) {
 }
 
 void WorldViewer_init(WorldViewer *viewer, World *w, Vehicle *self) {
+  if (viewer->vehicle != NULL || viewer->world != NULL) return;
   self->self_vehicle = 1;
   viewer->world = w;
   viewer->camera_z = 1;
