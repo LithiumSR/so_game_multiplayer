@@ -78,7 +78,7 @@ void handleSignal(int signal) {
       connectivity = 0;
       exchange_update = 0;
       pthread_mutex_lock(&time_lock);
-      if (last_world_update_time.tv_sec != 1) sendGoodbye(socket_desc, id);
+      if (last_world_update_time.tv_sec != 1 && !kicked) sendGoodbye(socket_desc, id);
       pthread_mutex_unlock(&time_lock);
       WorldViewer_exit(0);
       break;
