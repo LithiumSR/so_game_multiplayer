@@ -256,7 +256,6 @@ void* UDPReceiver(void* args) {
             stderr,
             "\n[WARNING] You were kicked out of the server for inactivity... "
             "Closing the client now \n");
-        sendGoodbye(socket_desc, id);
         connectivity = 0;
         exchange_update = 0;
         kicked = 1;
